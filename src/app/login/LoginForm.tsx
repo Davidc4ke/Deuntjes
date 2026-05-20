@@ -5,7 +5,6 @@ import { signIn } from 'next-auth/react';
 
 export function LoginForm() {
   const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -17,11 +16,11 @@ export function LoginForm() {
     start(async () => {
       const res = await signIn('credentials', {
         username,
-        password,
+        password: '',
         redirect: false,
       });
-      if (res?.error) {
-        setError('Wrong username or password.');
+      if (res?.error || !res?.ok) {
+        setError("That username isn't on the list. Ask David.");
         return;
       }
       router.replace(sp.get('callbackUrl') ?? '/');
@@ -41,18 +40,7 @@ export function LoginForm() {
           autoComplete="username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-      </label>
-      <label>
-        <div className="muted" style={{ marginBottom: 6 }}>
-          Password
-        </div>
-        <input
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          placeholder="bolbo / dilla / david"
           required
         />
       </label>
@@ -64,6 +52,9 @@ export function LoginForm() {
       >
         {pending ? 'Signing in…' : 'Sign in'}
       </button>
+      <p className="muted" style={{ fontSize: 13 }}>
+        Private app for 3 friends. No password — usernames are the whole list.
+      </p>
     </form>
   );
 }
