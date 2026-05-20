@@ -95,7 +95,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       continue;
     }
     let midiBuf: Buffer | null = null;
-    if (take.source === 'uploaded' && take.midiPath) {
+    if (take.midiPath) {
       try {
         midiBuf = await storage.get(take.midiPath);
       } catch {
