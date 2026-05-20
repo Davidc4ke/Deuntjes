@@ -1,15 +1,13 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
+import { authConfig } from './auth.config';
 import { db } from './db/client';
 import { users } from './db/schema';
 import { eq } from 'drizzle-orm';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.NEXTAUTH_SECRET,
-  trustHost: true,
-  session: { strategy: 'jwt' },
-  pages: { signIn: '/login' },
+  ...authConfig,
   providers: [
     Credentials({
       name: 'credentials',
@@ -19,27 +17,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(creds) {
         const username = String(creds?.username ?? '').trim().toLowerCase();
-        console.log('[auth] authorize attempt', { username, hasPassword: !!creds?.password });
         if (!username) return null;
         const [row] = await db.select().from(users).where(eq(users.username, username)).limit(1);
-        if (!row) {
-          console.log('[auth] no user found for', username);
-          return null;
-        }
+        if (!row) return null;
 
         if (row.passwordHash) {
           const password = String(creds?.password ?? '');
-          if (!password) {
-            console.log('[auth] password required but empty');
-            return null;
-          }
+          if (!password) return null;
           const ok = await bcrypt.compare(password, row.passwordHash);
-          if (!ok) {
-            console.log('[auth] bad password for', username);
-            return null;
-          }
+          if (!ok) return null;
         }
-        console.log('[auth] OK', username, row.id);
         return {
           id: row.id,
           name: row.displayName,
@@ -49,20 +36,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.uid = user.id;
-        token.avatar = (user as { image?: string }).image;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (token?.uid) {
-        (session.user as { id?: string }).id = token.uid as string;
-        (session.user as { avatar?: string }).avatar = token.avatar as string;
-      }
-      return session;
-    },
-  },
 });
