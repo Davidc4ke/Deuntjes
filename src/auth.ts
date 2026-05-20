@@ -19,16 +19,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(creds) {
         const username = String(creds?.username ?? '').trim().toLowerCase();
+        console.log('[auth] authorize attempt', { username, hasPassword: !!creds?.password });
         if (!username) return null;
         const [row] = await db.select().from(users).where(eq(users.username, username)).limit(1);
-        if (!row) return null;
+        if (!row) {
+          console.log('[auth] no user found for', username);
+          return null;
+        }
 
         if (row.passwordHash) {
           const password = String(creds?.password ?? '');
-          if (!password) return null;
+          if (!password) {
+            console.log('[auth] password required but empty');
+            return null;
+          }
           const ok = await bcrypt.compare(password, row.passwordHash);
-          if (!ok) return null;
+          if (!ok) {
+            console.log('[auth] bad password for', username);
+            return null;
+          }
         }
+        console.log('[auth] OK', username, row.id);
         return {
           id: row.id,
           name: row.displayName,
