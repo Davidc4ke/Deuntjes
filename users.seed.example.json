@@ -1,0 +1,6 @@
+[
+  { "username": "david", "display_name": "David", "avatar_emoji": "🐸", "password": "change-me" },
+  { "username": "marco", "display_name": "Marco", "avatar_emoji": "🦝", "password": "change-me" },
+  { "username": "anna", "display_name": "Anna", "avatar_emoji": "🦊", "password": "change-me" },
+  { "username": "jamie", "display_name": "Jamie", "avatar_emoji": "🐙", "password": "change-me" }
+]
