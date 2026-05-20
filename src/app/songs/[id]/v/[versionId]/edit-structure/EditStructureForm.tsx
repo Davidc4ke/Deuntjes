@@ -85,22 +85,33 @@ export function EditStructureForm({
 
   function doFork(label: string) {
     start(async () => {
-      const res = await fetch(`/api/songs/${songId}/versions/${versionId}/fork`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          label,
-          overrides: { sections, barCount, timeSigNum, timeSigDen },
-        }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        setError(j.error ?? 'Fork failed');
-        return;
+      try {
+        const res = await fetch(`/api/songs/${songId}/versions/${versionId}/fork`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            label,
+            overrides: { sections, barCount, timeSigNum, timeSigDen },
+          }),
+        });
+        const text = await res.text();
+        let parsed: { versionId?: string; error?: string } = {};
+        try {
+          parsed = text ? JSON.parse(text) : {};
+        } catch {
+          console.error('fork: non-JSON response', res.status, text.slice(0, 200));
+        }
+        if (!res.ok || !parsed.versionId) {
+          console.error('fork failed', res.status, parsed);
+          setError(parsed.error ?? `Fork failed (${res.status})`);
+          return;
+        }
+        router.replace(`/songs/${songId}/v/${parsed.versionId}`);
+        router.refresh();
+      } catch (err) {
+        console.error('fork threw', err);
+        setError(err instanceof Error ? err.message : 'Fork failed');
       }
-      const { versionId: newId } = await res.json();
-      router.replace(`/songs/${songId}/v/${newId}`);
-      router.refresh();
     });
   }
 

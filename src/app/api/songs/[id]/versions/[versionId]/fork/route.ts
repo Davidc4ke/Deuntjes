@@ -42,13 +42,18 @@ export async function POST(
     if (err) return NextResponse.json({ error: err }, { status: 400 });
   }
 
-  const child = await forkVersion({
-    fromVersionId: versionId,
-    songId: id,
-    label,
-    overrides: { ...overrides, barCount },
-    createdBy: userId,
-  });
-
-  return NextResponse.json({ versionId: child.id, versionNumber: child.versionNumber });
+  try {
+    const child = await forkVersion({
+      fromVersionId: versionId,
+      songId: id,
+      label,
+      overrides: { ...overrides, barCount },
+      createdBy: userId,
+    });
+    return NextResponse.json({ versionId: child.id, versionNumber: child.versionNumber });
+  } catch (err) {
+    console.error('[fork] failed', { songId: id, versionId, overrides, err });
+    const msg = err instanceof Error ? err.message : 'fork failed';
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }

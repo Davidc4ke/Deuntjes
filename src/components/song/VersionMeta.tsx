@@ -76,20 +76,31 @@ export function VersionMeta({
 
   function submitFork(label: string) {
     start(async () => {
-      const res = await fetch(`/api/songs/${songId}/versions/${version.id}/fork`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ label, overrides: forkOverrides }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        showToast(j.error ?? 'Fork failed');
-        return;
+      try {
+        const res = await fetch(`/api/songs/${songId}/versions/${version.id}/fork`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ label, overrides: forkOverrides }),
+        });
+        const text = await res.text();
+        let parsed: { versionId?: string; error?: string } = {};
+        try {
+          parsed = text ? JSON.parse(text) : {};
+        } catch {
+          console.error('fork: non-JSON response', res.status, text.slice(0, 200));
+        }
+        if (!res.ok || !parsed.versionId) {
+          console.error('fork failed', res.status, parsed);
+          showToast(parsed.error ?? `Fork failed (${res.status})`);
+          return;
+        }
+        setForkOpen(false);
+        router.replace(`/songs/${songId}/v/${parsed.versionId}`);
+        router.refresh();
+      } catch (err) {
+        console.error('fork threw', err);
+        showToast(err instanceof Error ? err.message : 'Fork failed');
       }
-      const { versionId } = await res.json();
-      setForkOpen(false);
-      router.replace(`/songs/${songId}/v/${versionId}`);
-      router.refresh();
     });
   }
 
