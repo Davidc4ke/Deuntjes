@@ -6,7 +6,7 @@ Operating notes for Claude working on this repo.
 
 After every commit that produces user-visible behavior, end the turn with a short **"Test this"** section that lists:
 
-- The URL/path to open (prod URL if deployed, else local route)
+- The URL/path to open — the **Railway PR preview env** for this branch (not the prod URL, which tracks `main`). Railway needs ~1-2 minutes to build the preview after a push, so tell the user to wait a moment before opening it.
 - The exact action(s) to perform
 - The expected outcome — what they should see or what should *not* happen
 - Any known-stub paths to avoid (so they don't report "broken" on things that aren't built yet)
@@ -14,8 +14,8 @@ After every commit that produces user-visible behavior, end the turn with a shor
 Format:
 
 ```
-**Test this**
-- Open https://<host>/<path>
+**Test this** (give Railway ~1-2 min to build the PR preview first)
+- Open the Railway PR preview URL for this branch
 - Do <action>
 - Expect: <observable outcome>
 - Stubs (not built yet): <list>
@@ -37,17 +37,18 @@ Skip the section only when the change is purely internal (refactor, dependency b
 ## Deploy
 
 - Railway project `Deuntjes`, region `europe-west4-drams3a`
-- `main` branch auto-deploys
-- Public URL: https://web-production-cb956.up.railway.app
+- `main` branch auto-deploys to prod: https://web-production-cb956.up.railway.app
+- **Open PRs get their own Railway preview env** — that's where you and the user verify changes for a branch before merging. Each push to the PR branch rebuilds the preview (~1-2 min).
 - Healthcheck: `/api/healthz`
 - Workspace API key is configured in the chat with the user
 
 ## Branching workflow
 
-- **`main` is the only long-lived branch** and is the GitHub default.
-- Railway tracks `main` — every push deploys.
+- **`main` is the only long-lived branch** and is the GitHub default. Pushes to `main` deploy to prod.
 - For each ticket, develop on a `claude/<topic>-<id>` branch.
-- When the change is ready, **merge to `main` (fast-forward) and push**; do not open PRs unless the user asks.
+- After pushing the topic branch, **open a PR** (if one doesn't already exist for the branch) so Railway spins up a preview env the user can test against. Use `gh pr view` / the GitHub MCP tools to check whether a PR already exists before creating one.
+- Point the "Test this" section at the PR preview URL, not the prod URL.
+- Merge happens **after the user verifies on the preview**. Default to a merge-commit PR merge (matches the existing history); the user may merge themselves or ask you to.
 - Delete the topic branch after merge.
 
 ## Conventions
