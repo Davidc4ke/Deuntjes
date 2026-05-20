@@ -42,9 +42,15 @@ Skip the section only when the change is purely internal (refactor, dependency b
 - Healthcheck: `/api/healthz`
 - Workspace API key is configured in the chat with the user
 
+## Branching workflow
+
+- **`main` is the only long-lived branch** and is the GitHub default.
+- Railway tracks `main` — every push deploys.
+- For each ticket, develop on a `claude/<topic>-<id>` branch.
+- When the change is ready, **merge to `main` (fast-forward) and push**; do not open PRs unless the user asks.
+- Delete the topic branch after merge.
+
 ## Conventions
 
 - Tickets are tracked as GitHub issues #1–#6 with explicit dependencies
-- Develop on `claude/<topic>-<id>` branches; ask before merging to `main`
 - Passwordless login: usernames in `users.seed.json` are the entire access list
-- No PRs unless the user asks
