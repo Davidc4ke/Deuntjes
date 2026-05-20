@@ -39,6 +39,17 @@ export function SongClient({ data, canDelete }: { data: SongData; canDelete: boo
   const [pending, start] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
 
+  // Poll for new server data every 30s while the tab is visible, so new takes
+  // and reactions from other users surface during a session.
+  useEffect(() => {
+    const handle = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        router.refresh();
+      }
+    }, 30_000);
+    return () => window.clearInterval(handle);
+  }, [router]);
+
   // Whenever the parent active mix changes, reset selections to it. This runs
   // after router.refresh() (e.g. when active mix is changed via the picker).
   const activeMixId = data.version.activeMixId;
@@ -244,6 +255,7 @@ export function SongClient({ data, canDelete }: { data: SongData; canDelete: boo
           takes={takesBySlotId.get(openSlot.id) ?? []}
           selections={selectionsForSlot(openSlot.id)}
           canSelect
+          priorLastSeenAt={data.priorLastSeenAt}
           onSelectTake={(sel) => {
             const current = selectionsForSlot(openSlot.id).get(sel.sectionId ?? 'whole');
             if (current === sel.takeId) {

@@ -5,6 +5,7 @@ import { takes } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { storage } from '@/storage';
 import { resolveTakeContext } from '@/lib/takeQueries';
+import { emitTakeForked } from '@/lib/activity';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -46,6 +47,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       newMidiPath = null;
     }
   }
+
+  await emitTakeForked({
+    songId: ctx.song.id,
+    songVersionId: ctx.version.id,
+    userId,
+    targetId: child.id,
+    slotId: ctx.slot.id,
+    childName: name,
+    parentName: parent.name,
+    slotKind: ctx.slot.kind,
+  });
 
   return NextResponse.json({ takeId: child.id, midiPath: newMidiPath }, { status: 201 });
 }

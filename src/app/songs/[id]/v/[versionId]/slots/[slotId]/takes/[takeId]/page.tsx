@@ -14,6 +14,11 @@ import { eq } from 'drizzle-orm';
 import { TakeDetailClient } from './TakeDetailClient';
 import { SLOT_LABELS } from '@/components/song/types';
 import type { SlotKind } from '@/db/schema';
+import {
+  listCommentsForTake,
+  listReactionsForTake,
+  summarizeReactions,
+} from '@/lib/social';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +27,7 @@ export default async function TakeDetailPage({
 }: {
   params: Promise<{ id: string; versionId: string; slotId: string; takeId: string }>;
 }) {
-  await requireUser();
+  const { userId } = await requireUser();
   const { id, versionId, slotId, takeId } = await params;
 
   const [row] = await db
@@ -57,6 +62,13 @@ export default async function TakeDetailPage({
         )[0] ?? null
       : null;
 
+  const [reactions, comments] = await Promise.all([
+    listReactionsForTake(takeId),
+    listCommentsForTake(takeId),
+  ]);
+  const summary = summarizeReactions(reactions, userId);
+  const isSongOwner = row.song.createdBy === userId;
+
   return (
     <>
       <AppBar
@@ -75,6 +87,7 @@ export default async function TakeDetailPage({
           songId={id}
           versionId={versionId}
           slotId={slotId}
+          meId={userId}
           take={{
             id: row.take.id,
             name: row.take.name,
@@ -92,6 +105,10 @@ export default async function TakeDetailPage({
             barCount: row.version.barCount,
           }}
           slotKind={row.slot.kind as SlotKind}
+          initialReactions={reactions}
+          initialReactionSummary={summary}
+          initialComments={comments}
+          canModerate={isSongOwner}
         />
       </main>
     </>

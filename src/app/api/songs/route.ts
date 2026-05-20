@@ -5,6 +5,7 @@ import { songVersions, songs, users } from '@/db/schema';
 import { desc, eq, sql } from 'drizzle-orm';
 import { createSongWithV1, validateSections, type SectionInput } from '@/lib/versionOps';
 import { defaultSections } from '@/lib/musicDefaults';
+import { unreadCountsForUser } from '@/lib/activity';
 
 export async function GET() {
   const session = await auth();
@@ -35,6 +36,11 @@ export async function GET() {
     .leftJoin(latestVersion, eq(latestVersion.songId, songs.id))
     .orderBy(desc(songs.createdAt));
 
+  const unread = await unreadCountsForUser({
+    userId,
+    songIds: rows.map((r) => r.id),
+  });
+
   return NextResponse.json({
     songs: rows.map((r) => ({
       id: r.id,
@@ -46,7 +52,7 @@ export async function GET() {
         avatarEmoji: r.creatorAvatar,
       },
       latestVersionNumber: r.latestVersionNumber ?? 1,
-      unreadCount: 0,
+      unreadCount: unread.get(r.id) ?? 0,
     })),
   });
 }

@@ -6,11 +6,12 @@ import { db } from '@/db/client';
 import { songVersions, songs, users } from '@/db/schema';
 import { desc, eq, sql } from 'drizzle-orm';
 import { SongCard } from '@/components/song/SongCard';
+import { unreadCountsForUser } from '@/lib/activity';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  const { session } = await requireUser();
+  const { session, userId } = await requireUser();
   const name = session.user?.name ?? 'friend';
   const avatar = (session.user as { avatar?: string }).avatar ?? '🎵';
 
@@ -37,6 +38,8 @@ export default async function HomePage() {
     .innerJoin(users, eq(users.id, songs.createdBy))
     .leftJoin(latestVersion, eq(latestVersion.songId, songs.id))
     .orderBy(desc(songs.createdAt));
+
+  const unread = await unreadCountsForUser({ userId, songIds: rows.map((r) => r.id) });
 
   return (
     <>
@@ -95,7 +98,7 @@ export default async function HomePage() {
                       avatarEmoji: r.creatorAvatar,
                     },
                     latestVersionNumber: r.latestVersionNumber ?? 1,
-                    unreadCount: 0,
+                    unreadCount: unread.get(r.id) ?? 0,
                   }}
                 />
               ))}
