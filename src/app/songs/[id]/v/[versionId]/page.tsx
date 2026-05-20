@@ -19,6 +19,9 @@ import {
 import { asc, eq, inArray } from 'drizzle-orm';
 import type { SongData, Take } from '@/components/song/types';
 import type { SlotKind } from '@/db/schema';
+import { bulkSocialForTakes } from '@/lib/social';
+import { lastSeenAtFor, unreadCountsForUser } from '@/lib/activity';
+import { ActivityBell } from '@/components/app/ActivityBell';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +30,7 @@ export default async function SongVersionView({
 }: {
   params: Promise<{ id: string; versionId: string }>;
 }) {
-  await requireUser();
+  const { userId } = await requireUser();
   const { id, versionId } = await params;
 
   const [song] = await db.select().from(songs).where(eq(songs.id, id)).limit(1);
@@ -121,24 +124,39 @@ export default async function SongVersionView({
         .orderBy(asc(drumKitPads.orderIdx))
     : [];
 
-  const takeList: Take[] = takeRows.map((r) => ({
-    id: r.id,
-    slotId: r.slotId,
-    sectionId: r.sectionId,
-    parentTakeId: r.parentTakeId,
-    name: r.name,
-    notes: r.notes,
-    source: r.source,
-    createdAt: r.createdAt.toISOString(),
-    createdBy: {
-      id: r.authorId,
-      displayName: r.authorName,
-      avatarEmoji: r.authorEmoji,
-    },
-  }));
+  const social = await bulkSocialForTakes({
+    takeIds: takeRows.map((r) => r.id),
+    meId: userId,
+  });
+
+  const takeList: Take[] = takeRows.map((r) => {
+    const s = social.get(r.id);
+    return {
+      id: r.id,
+      slotId: r.slotId,
+      sectionId: r.sectionId,
+      parentTakeId: r.parentTakeId,
+      name: r.name,
+      notes: r.notes,
+      source: r.source,
+      createdAt: r.createdAt.toISOString(),
+      createdBy: {
+        id: r.authorId,
+        displayName: r.authorName,
+        avatarEmoji: r.authorEmoji,
+      },
+      reactions: s?.reactions ?? [],
+      commentCount: s?.commentCount ?? 0,
+    };
+  });
+
+  const priorLastSeenAt = await lastSeenAtFor({ userId, songId: id });
+  const unreadMap = await unreadCountsForUser({ userId, songIds: [id] });
+  const initialUnread = unreadMap.get(id) ?? 0;
 
   const data: SongData = {
     song: { id: song.id, title: song.title },
+    priorLastSeenAt: priorLastSeenAt?.toISOString() ?? null,
     version: {
       id: current.id,
       versionNumber: current.versionNumber,
@@ -204,6 +222,14 @@ export default async function SongVersionView({
               }))}
             />
           </span>
+        }
+        right={
+          <ActivityBell
+            songId={id}
+            priorLastSeenAt={priorLastSeenAt?.toISOString() ?? null}
+            initialUnread={initialUnread}
+            meId={userId}
+          />
         }
       />
       <main className="page">

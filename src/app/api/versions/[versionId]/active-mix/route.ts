@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { db } from '@/db/client';
 import { mixes, songVersions } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
+import { emitMixActivated } from '@/lib/activity';
 
 export async function POST(req: Request, { params }: { params: Promise<{ versionId: string }> }) {
   const session = await auth();
@@ -14,6 +15,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ version
   if (!body) return NextResponse.json({ error: 'invalid body' }, { status: 400 });
 
   const mixId = body.mixId ?? null;
+  let mixName: string | null = null;
   if (mixId !== null) {
     const [mix] = await db
       .select()
@@ -23,6 +25,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ version
     if (!mix) {
       return NextResponse.json({ error: 'mix does not belong to version' }, { status: 400 });
     }
+    mixName = mix.name;
   }
 
   const result = await db
@@ -33,5 +36,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ version
   if (result.length === 0) {
     return NextResponse.json({ error: 'version not found' }, { status: 404 });
   }
+
+  if (mixId !== null && mixName !== null) {
+    await emitMixActivated({
+      songId: result[0].songId,
+      songVersionId: versionId,
+      userId,
+      targetId: mixId,
+      mixName,
+    });
+  }
+
   return NextResponse.json({ ok: true, activeMixId: mixId });
 }

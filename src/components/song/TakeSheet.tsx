@@ -28,6 +28,7 @@ export function TakeSheet({
   selections,
   onSelectTake,
   canSelect,
+  priorLastSeenAt,
 }: {
   open: boolean;
   onClose: () => void;
@@ -40,7 +41,11 @@ export function TakeSheet({
   selections: Map<string | 'whole', string>; // value = takeId
   onSelectTake?: (sel: TakeSheetSelection) => void;
   canSelect: boolean;
+  priorLastSeenAt: string | null;
 }) {
+  const seenCutoff = priorLastSeenAt ? new Date(priorLastSeenAt).getTime() : null;
+  const isNew = (take: Take) =>
+    seenCutoff !== null && new Date(take.createdAt).getTime() > seenCutoff;
   const router = useRouter();
   const wholeSongTakes = useMemo(
     () => takes.filter((t) => t.sectionId === null).sort(byCreated),
@@ -91,6 +96,7 @@ export function TakeSheet({
               key={t.id}
               take={t}
               selected={isSelected({ sectionId: null, takeId: t.id })}
+              isNew={isNew(t)}
               onOpen={() => openTake(t.id)}
               onSelect={
                 canSelect && onSelectTake
@@ -122,6 +128,7 @@ export function TakeSheet({
                   key={t.id}
                   take={t}
                   selected={isSelected({ sectionId: section.id, takeId: t.id })}
+                  isNew={isNew(t)}
                   onOpen={() => openTake(t.id)}
                   onSelect={
                     canSelect && onSelectTake

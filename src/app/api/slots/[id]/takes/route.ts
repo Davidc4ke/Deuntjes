@@ -5,6 +5,7 @@ import { sections as sectionsTable, takes } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { storage } from '@/storage';
 import { resolveSlotContext, listTakesForSlot } from '@/lib/takeQueries';
+import { emitTakeAdded } from '@/lib/activity';
 
 const MAX_MIDI_BYTES = 2 * 1024 * 1024; // 2 MB
 
@@ -72,6 +73,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const notes = String(form.get('notes') ?? '').trim() || null;
   const sectionIdRaw = form.get('section_id');
   let sectionId: string | null = null;
+  let sectionName: string | null = null;
   if (typeof sectionIdRaw === 'string' && sectionIdRaw.trim()) {
     sectionId = sectionIdRaw.trim();
     const [section] = await db
@@ -87,6 +89,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!section) {
       return NextResponse.json({ error: 'section does not belong to this version' }, { status: 400 });
     }
+    sectionName = section.name;
   }
 
   const buf = Buffer.from(await file.arrayBuffer());
@@ -112,6 +115,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   await storage.put(midiPath, buf);
 
   await db.update(takes).set({ midiPath }).where(eq(takes.id, take.id));
+
+  await emitTakeAdded({
+    songId: slotCtx.song.id,
+    songVersionId: slotCtx.version.id,
+    userId,
+    targetId: take.id,
+    slotId,
+    takeName: name,
+    slotKind: slotCtx.slot.kind,
+    sectionId,
+    sectionName,
+  });
 
   return NextResponse.json({ takeId: take.id, midiPath }, { status: 201 });
 }

@@ -4,6 +4,7 @@ import { forkVersion, validateSections, type ForkOverrides } from '@/lib/version
 import { db } from '@/db/client';
 import { songVersions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { emitVersionForked } from '@/lib/activity';
 
 export async function POST(
   req: Request,
@@ -48,6 +49,16 @@ export async function POST(
     label,
     overrides: { ...overrides, barCount },
     createdBy: userId,
+  });
+
+  await emitVersionForked({
+    songId: id,
+    songVersionId: child.id,
+    userId,
+    targetId: child.id,
+    versionNumber: child.versionNumber,
+    label,
+    parentVersionNumber: parent.versionNumber,
   });
 
   return NextResponse.json({ versionId: child.id, versionNumber: child.versionNumber });

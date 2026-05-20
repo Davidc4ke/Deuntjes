@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/db/client';
-import { mixSelections, mixes } from '@/db/schema';
+import { mixSelections, mixes, songVersions } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { validateSelections, type SelectionInput } from '@/lib/mixValidate';
+import { emitMixSaved } from '@/lib/activity';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ versionId: string }> }) {
   const session = await auth();
@@ -79,6 +80,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ version
     }
     return mix;
   });
+
+  const [version] = await db
+    .select({ songId: songVersions.songId })
+    .from(songVersions)
+    .where(eq(songVersions.id, versionId))
+    .limit(1);
+  if (version) {
+    await emitMixSaved({
+      songId: version.songId,
+      songVersionId: versionId,
+      userId,
+      targetId: result.id,
+      mixName: name,
+    });
+  }
 
   return NextResponse.json({ mixId: result.id }, { status: 201 });
 }

@@ -5,6 +5,9 @@ import * as Tone from 'tone';
 import { Midi } from '@tonejs/midi';
 import type { SlotKind } from '@/db/schema';
 import { ticksPerBar, OUTPUT_PPQ } from '@/lib/midiBars';
+import { ReactionBar } from '@/components/social/ReactionBar';
+import { CommentThread } from '@/components/social/CommentThread';
+import type { ReactionDTO, ReactionSummary, CommentDTO } from '@/lib/social';
 
 type Take = {
   id: string;
@@ -28,16 +31,26 @@ export function TakeDetailClient({
   songId,
   versionId,
   slotId,
+  meId,
   take,
   version,
   slotKind,
+  initialReactions,
+  initialReactionSummary,
+  initialComments,
+  canModerate,
 }: {
   songId: string;
   versionId: string;
   slotId: string;
+  meId: string;
   take: Take;
   version: Version;
   slotKind: SlotKind;
+  initialReactions: ReactionDTO[];
+  initialReactionSummary: ReactionSummary[];
+  initialComments: CommentDTO[];
+  canModerate: boolean;
 }) {
   const router = useRouter();
   const [name, setName] = useState(take.name);
@@ -240,10 +253,22 @@ export function TakeDetailClient({
         ) : null}
       </div>
 
-      <div className="card">
-        <p className="muted" style={{ margin: 0 }}>
-          🔥 reactions &amp; 💬 comments slot here — both land in ticket #4.
-        </p>
+      <div className="card stack">
+        <ReactionBar
+          takeId={take.id}
+          meId={meId}
+          initialReactions={initialReactions}
+          initialSummary={initialReactionSummary}
+        />
+      </div>
+
+      <div className="card stack">
+        <CommentThread
+          takeId={take.id}
+          meId={meId}
+          initialComments={initialComments}
+          canModerate={canModerate}
+        />
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>

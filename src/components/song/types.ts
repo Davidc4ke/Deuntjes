@@ -6,6 +6,13 @@ export type SongAuthor = {
   avatarEmoji: string;
 };
 
+export type ReactionSummary = {
+  emoji: string;
+  count: number;
+  users: string[];
+  mine: boolean;
+};
+
 export type Take = {
   id: string;
   slotId: string;
@@ -16,6 +23,8 @@ export type Take = {
   source: 'native' | 'uploaded';
   createdAt: string;
   createdBy: SongAuthor;
+  reactions: ReactionSummary[];
+  commentCount: number;
 };
 
 export type Slot = { id: string; kind: SlotKind };
@@ -36,6 +45,7 @@ export type Mix = {
 
 export type SongData = {
   song: { id: string; title: string };
+  priorLastSeenAt: string | null;
   version: {
     id: string;
     versionNumber: number;
