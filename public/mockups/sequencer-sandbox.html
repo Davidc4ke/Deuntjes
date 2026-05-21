@@ -805,11 +805,16 @@
     updateSelectedBar();
   });
 
-  // click empty area deselects (single-select only; in multi-select mode you must press Done)
-  gridEl.addEventListener("click", () => {
-    if (state.multiSelect) return;
-    state.selectedId = null;
+  // click empty area: move cursor to that step. Outside multi-select mode it also deselects.
+  // (Note clicks call stopPropagation, so this only fires when no note was tapped.)
+  gridEl.addEventListener("click", (e) => {
+    const r = gridEl.getBoundingClientRect();
+    const rowH = r.height / state.steps;
+    const step = Math.min(state.steps - 1, Math.max(0, Math.floor((e.clientY - r.top) / rowH)));
+    state.cursor = step;
+    if (!state.multiSelect) state.selectedId = null;
     renderGrid();
+    positionKnobFromCursor();
     updateSelectedBar();
   });
 
