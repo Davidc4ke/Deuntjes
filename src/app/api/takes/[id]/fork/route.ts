@@ -6,6 +6,10 @@ import { eq } from 'drizzle-orm';
 import { storage } from '@/storage';
 import { resolveTakeContext } from '@/lib/takeQueries';
 import { emitTakeForked } from '@/lib/activity';
+import { renderChordPayload } from '@/lib/render/chordTake';
+import { renderTrackerPayload } from '@/lib/render/trackerTake';
+import { buildNativeMidi, midiToBuffer } from '@/lib/render/nativeMidi';
+import type { SlotKind } from '@/db/schema';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -42,10 +46,40 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     try {
       const buf = await storage.get(parent.midiPath);
       await storage.put(newMidiPath, buf);
-      await db.update(takes).set({ midiPath: newMidiPath }).where(eq(takes.id, child.id));
     } catch {
       newMidiPath = null;
     }
+  } else if (parent.source === 'native' && parent.payloadJson) {
+    // Re-render MIDI for the cloned payload so the fork is playable / exportable.
+    const slotKind = ctx.slot.kind as SlotKind;
+    try {
+      const notesEv =
+        slotKind === 'chords'
+          ? renderChordPayload(
+              parent.payloadJson as Parameters<typeof renderChordPayload>[0],
+              ctx.version.timeSigNum,
+              ctx.version.timeSigDen,
+            )
+          : renderTrackerPayload(
+              parent.payloadJson as Parameters<typeof renderTrackerPayload>[0],
+              ctx.version.timeSigNum,
+              ctx.version.timeSigDen,
+            );
+      const midi = buildNativeMidi({
+        slot: slotKind,
+        notes: notesEv,
+        tempoBpm: ctx.version.tempoBpm,
+        timeSigNum: ctx.version.timeSigNum,
+        timeSigDen: ctx.version.timeSigDen,
+      });
+      newMidiPath = `midi/${ctx.song.id}/${ctx.version.id}/${child.id}.mid`;
+      await storage.put(newMidiPath, midiToBuffer(midi));
+    } catch {
+      newMidiPath = null;
+    }
+  }
+  if (newMidiPath) {
+    await db.update(takes).set({ midiPath: newMidiPath }).where(eq(takes.id, child.id));
   }
 
   await emitTakeForked({

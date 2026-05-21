@@ -271,7 +271,7 @@ export function TakeDetailClient({
         />
       </div>
 
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {editing ? (
           <>
             <button type="button" onClick={() => setEditing(false)} disabled={pending}>
@@ -291,9 +291,23 @@ export function TakeDetailClient({
             <button type="button" onClick={() => setEditing(true)}>
               Rename / edit notes
             </button>
-            <button type="button" onClick={fork} disabled={pending}>
-              Fork
-            </button>
+            {take.source === 'native' ? (
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(
+                    `/songs/${songId}/v/${versionId}/slots/${slotId}/new-take?fromTakeId=${take.id}`,
+                  )
+                }
+                disabled={pending}
+              >
+                Edit (fork)
+              </button>
+            ) : (
+              <button type="button" onClick={fork} disabled={pending}>
+                Fork
+              </button>
+            )}
             <button
               type="button"
               onClick={doDelete}

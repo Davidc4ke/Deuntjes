@@ -310,15 +310,21 @@ export async function unreadCountsForUser(opts: {
   songIds: string[];
 }): Promise<Map<string, number>> {
   if (opts.songIds.length === 0) return new Map();
-  // SQL: for each song in the list, count activities by other users newer than
-  // the per-user last_seen_at (coalesced to epoch when missing).
+  // Bind each song id as its own ::uuid parameter — drizzle's `sql` template
+  // spreads JS arrays as separate placeholders, so the previous
+  // `ANY($x::uuid[])` form was getting a single uuid bound to a uuid[]
+  // parameter and pg rejected it as a malformed array literal.
+  const idList = sql.join(
+    opts.songIds.map((id) => sql`${id}::uuid`),
+    sql`, `,
+  );
   const rows = await db.execute<{ song_id: string; n: number }>(sql`
     SELECT a.song_id AS song_id, COUNT(*)::int AS n
     FROM activities a
     LEFT JOIN read_state r
       ON r.user_id = ${opts.userId}::uuid
      AND r.song_id = a.song_id
-    WHERE a.song_id = ANY(${opts.songIds}::uuid[])
+    WHERE a.song_id IN (${idList})
       AND a.user_id <> ${opts.userId}::uuid
       AND a.created_at > COALESCE(r.last_seen_at, 'epoch'::timestamptz)
     GROUP BY a.song_id
