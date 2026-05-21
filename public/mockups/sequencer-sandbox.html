@@ -278,26 +278,76 @@
     background: var(--bottom);
     color: #e9e8ff;
     border-top: 1px solid var(--bottom-line);
-    padding: 12px 14px 16px;
+    padding: 10px 12px 14px;
     display: grid;
     grid-template-columns: 1fr 84px;
     gap: 12px;
-    min-height: 168px;
+    min-height: 132px;
   }
-  .bottom .col-left { display: grid; gap: 10px; align-content: start; }
-  .row-label {
-    display: flex; align-items: center; gap: 10px;
+  .bottom .col-left { display: grid; gap: 8px; align-content: start; }
+
+  /* Chips — small unified button used in both rows */
+  .chip {
+    appearance: none;
+    background: #2f2c4d;
+    color: #d8d4ff;
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 6px 11px;
+    border-radius: 8px;
+    font: 700 11px var(--ui);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+  .chip:hover { background: #3a3760; color: #fff; }
+  .chip.settings {
+    background: rgba(255,255,255,0.04);
+    color: #aaa6d6;
+    letter-spacing: 0.14em;
+  }
+  .chip.settings:hover { background: rgba(255,255,255,0.10); color: #fff; }
+  .chip.primary {
+    background: var(--cursor); color: #fff;
+    border-color: var(--cursor-strong);
+  }
+  .chip.primary:hover { background: var(--cursor-strong); }
+  .chip.danger:hover {
+    background: rgba(255,80,90,0.18);
+    border-color: rgba(255,80,90,0.4);
+    color: #ffcfd2;
+  }
+  .chip-row {
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+  }
+  .chip-row .label {
+    font: 600 10px var(--ui); letter-spacing: 0.12em;
+    text-transform: uppercase; color: rgba(233,232,255,0.55);
+    margin-right: 4px;
+  }
+
+  /* Selected meta */
+  .selected-meta-row {
+    display: flex; align-items: center; gap: 8px;
     font: 600 11px var(--ui);
     color: rgba(233,232,255,0.85);
-    letter-spacing: 0.04em; text-transform: uppercase;
   }
-  .row-label span.val {
-    margin-left: auto;
-    font: 600 11px var(--mono);
+  .selected-meta-row .pitch {
+    font: 700 11px var(--mono);
+    background: rgba(255,255,255,0.08);
+    padding: 3px 7px; border-radius: 4px;
     color: #fff;
-    font-variant-numeric: tabular-nums;
   }
-  .slider-row { display: grid; gap: 4px; }
+  .selected-meta-row .size-control {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+  }
+  .selected-meta-row .size-control input { flex: 1; }
+  .selected-meta-row .size-val {
+    font: 700 11px var(--mono); color: #fff; min-width: 18px; text-align: right;
+  }
+
+  .hidden { display: none !important; }
 
   input[type="range"] {
     -webkit-appearance: none; appearance: none;
@@ -407,6 +457,73 @@
     background: var(--accent); color: #2a1a0d; border-color: var(--accent-edge);
   }
 
+  /* ---- Popup ---- */
+  .popup-layer {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex; align-items: flex-end;
+    z-index: 100;
+  }
+  .popup {
+    background: #1a1a1f;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px 18px 0 0;
+    padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0));
+    width: 100%; max-height: 78%;
+    overflow-y: auto;
+    color: var(--bar-text);
+    box-shadow: 0 -12px 28px rgba(0,0,0,0.55);
+  }
+  .popup-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .popup-header h3 {
+    margin: 0; font: 700 12px var(--ui);
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: #fff;
+  }
+  .popup-close {
+    appearance: none; background: var(--accent); color: #2a1a0d;
+    border: 1px solid var(--accent-edge);
+    border-radius: 8px; padding: 6px 14px;
+    font: 700 11px var(--ui); cursor: pointer;
+    letter-spacing: 0.1em;
+  }
+  .popup-close:hover { background: #ec9d6e; }
+  .popup .field { display: grid; gap: 6px; margin-bottom: 16px; }
+  .popup .field:last-child { margin-bottom: 0; }
+  .popup .field label {
+    font: 600 10px var(--ui); letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--bar-text-mute);
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .popup .field label .val {
+    color: #fff; font: 600 11px var(--mono);
+  }
+  .popup .seg {
+    display: flex; gap: 4px; flex-wrap: wrap;
+  }
+  .popup .seg button {
+    appearance: none; background: rgba(255,255,255,0.04);
+    color: var(--bar-text); border: 1px solid rgba(255,255,255,0.08);
+    padding: 6px 10px; border-radius: 6px;
+    font: 600 11px var(--ui); cursor: pointer;
+    min-width: 36px; text-align: center;
+  }
+  .popup .seg button.active {
+    background: var(--accent); color: #2a1a0d; border-color: var(--accent-edge);
+  }
+
+  /* In-scale key dot */
+  .key.in-scale::after {
+    content: ""; position: absolute;
+    left: 6px; top: 50%; transform: translateY(-50%);
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent);
+  }
+  .key.black.in-scale::after { background: var(--accent-soft); }
+
   /* ---- Caption + hint (outside device) ---- */
   .caption {
     position: fixed; top: 24px; left: 24px;
@@ -481,71 +598,151 @@
       <!-- bottom bar -->
       <div class="bottom">
         <div class="col-left">
-          <!-- Length row -->
-          <div class="slider-row" id="lengthRow">
-            <div class="row-label">
-              <span>Length</span>
-              <span class="val"><span id="lengthVal">16</span> steps</span>
-            </div>
-            <input type="range" id="length" min="4" max="32" value="16" step="1" />
+          <!-- Settings chips -->
+          <div class="chip-row">
+            <button class="chip settings" data-popup="sqc" type="button">Sqc</button>
+            <button class="chip settings" data-popup="ins" type="button">Ins</button>
+            <button class="chip settings" data-popup="inp" type="button">Inp</button>
+            <button class="chip settings" data-popup="key" type="button">Key</button>
           </div>
 
-          <!-- Selected note row -->
-          <div class="note-controls hidden" id="noteRow">
-            <div class="slider-row">
-              <div class="row-label">
-                <span>Selected · <span class="pitch" id="selectedLabel">—</span></span>
-                <span class="val"><span id="noteSizeVal">1</span>×</span>
-              </div>
+          <!-- Selected note meta (single) -->
+          <div class="selected-meta-row hidden" id="noteRow">
+            <span class="pitch" id="selectedLabel">—</span>
+            <div class="size-control">
+              <span style="font: 600 10px var(--ui); letter-spacing: 0.12em; text-transform: uppercase; color: rgba(233,232,255,0.55);">Size</span>
               <input type="range" id="noteSize" min="1" max="8" value="1" step="1" />
-            </div>
-            <div class="note-buttons">
-              <button class="move-btn hidden" id="moveBtn" type="button">Move 02</button>
-              <button class="delete-btn" id="deleteBtn" type="button">Delete</button>
+              <span class="size-val"><span id="noteSizeVal">1</span>×</span>
             </div>
           </div>
 
-          <!-- Multi-select row -->
-          <div class="note-controls hidden" id="multiRow">
-            <div class="row-label">
-              <span>Selection · <span id="multiCount">0</span> notes</span>
-              <span class="val" id="multiHint">tap notes to toggle</span>
-            </div>
-            <div class="note-buttons">
-              <button class="move-btn" id="copyBtn" type="button">Copy</button>
-              <button class="delete-btn" id="multiDeleteBtn" type="button">Delete</button>
-              <button class="move-btn" id="doneBtn" type="button">Done</button>
-            </div>
+          <!-- Multi-select meta -->
+          <div class="selected-meta-row hidden" id="multiRow">
+            <span>Selection · <span id="multiCount">0</span> notes</span>
+            <span style="margin-left:auto; font: 500 10px var(--ui); color: rgba(233,232,255,0.5); letter-spacing: 0.06em;">tap to toggle</span>
           </div>
 
-          <!-- Paste row (visible when clipboard non-empty) -->
-          <div class="paste-row hidden" id="pasteRow">
-            <button class="paste-btn" id="pasteBtn" type="button">PASTE @ 02 · 0 notes</button>
-          </div>
-
-          <!-- ADSR -->
-          <div class="adsr">
-            <label class="knob-cell">A
-              <input type="range" id="attack" min="0" max="1" step="0.01" value="0.02">
-              <span class="v" id="attackV">0.02</span>
-            </label>
-            <label class="knob-cell">D
-              <input type="range" id="decay" min="0" max="1" step="0.01" value="0.15">
-              <span class="v" id="decayV">0.15</span>
-            </label>
-            <label class="knob-cell">S
-              <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.7">
-              <span class="v" id="sustainV">0.70</span>
-            </label>
-            <label class="knob-cell">R
-              <input type="range" id="release" min="0" max="2" step="0.01" value="0.4">
-              <span class="v" id="releaseV">0.40</span>
-            </label>
+          <!-- Quick actions -->
+          <div class="chip-row" id="actionsRow">
+            <button class="chip primary hidden" id="pasteBtn" type="button">Paste</button>
+            <button class="chip hidden" id="moveBtn" type="button">Move 02</button>
+            <button class="chip hidden" id="copyBtn" type="button">Copy</button>
+            <button class="chip danger hidden" id="deleteBtn" type="button">Delete</button>
+            <button class="chip danger hidden" id="multiDeleteBtn" type="button">Delete</button>
+            <button class="chip hidden" id="doneBtn" type="button">Done</button>
           </div>
         </div>
         <div class="transport">
           <button id="playBtn" type="button" data-state="stopped">PLAY</button>
           <button id="stopBtn" type="button">STOP</button>
+        </div>
+      </div>
+
+      <!-- Popup layer -->
+      <div class="popup-layer hidden" id="popupLayer">
+        <div class="popup hidden" data-name="sqc">
+          <header class="popup-header">
+            <h3>Sequencer</h3>
+            <button class="popup-close" type="button">Done</button>
+          </header>
+          <div class="field">
+            <label>Length <span class="val"><span id="lengthVal">16</span> steps</span></label>
+            <input type="range" id="length" min="4" max="32" value="16" step="1">
+          </div>
+          <div class="field">
+            <label>Default note size <span class="val"><span id="defaultSizeVal">1</span>×</span></label>
+            <input type="range" id="defaultSize" min="1" max="8" value="1" step="1">
+          </div>
+          <div class="field">
+            <label>Cursor snap</label>
+            <div class="seg" data-group="snap">
+              <button data-value="step" class="active" type="button">Step</button>
+              <button data-value="half" type="button">½ step</button>
+              <button data-value="off" type="button">Off</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="popup hidden" data-name="ins">
+          <header class="popup-header">
+            <h3>Instrument</h3>
+            <button class="popup-close" type="button">Done</button>
+          </header>
+          <div class="field">
+            <label>Preset</label>
+            <div class="seg" data-group="instrument">
+              <button data-value="bass" class="active" type="button">Bass</button>
+              <button data-value="lead" type="button">Lead</button>
+              <button data-value="pluck" type="button">Pluck</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Attack <span class="val" id="attackV">0.02</span></label>
+            <input type="range" id="attack" min="0" max="1" step="0.01" value="0.02">
+          </div>
+          <div class="field">
+            <label>Decay <span class="val" id="decayV">0.15</span></label>
+            <input type="range" id="decay" min="0" max="1" step="0.01" value="0.15">
+          </div>
+          <div class="field">
+            <label>Sustain <span class="val" id="sustainV">0.70</span></label>
+            <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.7">
+          </div>
+          <div class="field">
+            <label>Release <span class="val" id="releaseV">0.40</span></label>
+            <input type="range" id="release" min="0" max="2" step="0.01" value="0.4">
+          </div>
+        </div>
+
+        <div class="popup hidden" data-name="inp">
+          <header class="popup-header">
+            <h3>Keyboard</h3>
+            <button class="popup-close" type="button">Done</button>
+          </header>
+          <div class="field">
+            <label>Key zoom <span class="val"><span id="zoomVal">100</span>%</span></label>
+            <input type="range" id="zoom" min="60" max="220" step="5" value="100">
+          </div>
+        </div>
+
+        <div class="popup hidden" data-name="key">
+          <header class="popup-header">
+            <h3>Key &amp; Scale</h3>
+            <button class="popup-close" type="button">Done</button>
+          </header>
+          <div class="field">
+            <label>Highlight in-scale keys</label>
+            <div class="seg" data-group="scaleOn">
+              <button data-value="0" class="active" type="button">Off</button>
+              <button data-value="1" type="button">On</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Root</label>
+            <div class="seg" data-group="root">
+              <button data-value="C" class="active" type="button">C</button>
+              <button data-value="C#" type="button">C#</button>
+              <button data-value="D" type="button">D</button>
+              <button data-value="D#" type="button">D#</button>
+              <button data-value="E" type="button">E</button>
+              <button data-value="F" type="button">F</button>
+              <button data-value="F#" type="button">F#</button>
+              <button data-value="G" type="button">G</button>
+              <button data-value="G#" type="button">G#</button>
+              <button data-value="A" type="button">A</button>
+              <button data-value="A#" type="button">A#</button>
+              <button data-value="B" type="button">B</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Scale</label>
+            <div class="seg" data-group="scale">
+              <button data-value="major" class="active" type="button">Major</button>
+              <button data-value="minor" type="button">Minor</button>
+              <button data-value="pent-major" type="button">Pent maj</button>
+              <button data-value="pent-minor" type="button">Pent min</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -576,12 +773,29 @@
     clipboard: null,          // [{relStep, pitch, size}] anchored at top-most copied step
     playing: false,
     nextId: 1,
+    defaultSize: 1,
+    snap: "step",
+    keyboardZoom: 1.0,
+    scaleOn: false,
+    scaleRoot: "C",
+    scaleType: "major",
   };
+
+  const SCALE_OFFSETS = {
+    major: [0,2,4,5,7,9,11],
+    minor: [0,2,3,5,7,8,10],
+    "pent-major": [0,2,4,7,9],
+    "pent-minor": [0,3,5,7,10],
+  };
+  const NOTE_INDEX = { C:0, "C#":1, D:2, "D#":3, E:4, F:5, "F#":6, G:7, "G#":8, A:9, "A#":10, B:11 };
+  const INDEX_NOTE = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 
   // ---------- DOM refs ----------
   const $ = (id) => document.getElementById(id);
   const keysEl = $("keys"), gridEl = $("grid"), knobEl = $("knob"), scrollerEl = $("scroller");
-  const lengthEl = $("length"), lengthValEl = $("lengthVal"), lengthRow = $("lengthRow");
+  const lengthEl = $("length"), lengthValEl = $("lengthVal");
+  const defaultSizeEl = $("defaultSize"), defaultSizeValEl = $("defaultSizeVal");
+  const zoomEl = $("zoom"), zoomValEl = $("zoomVal");
   const noteRow = $("noteRow"), noteSizeEl = $("noteSize"), noteSizeValEl = $("noteSizeVal");
   const selectedLabel = $("selectedLabel"), deleteBtn = $("deleteBtn"), moveBtn = $("moveBtn");
   const multiRow = $("multiRow"), multiCount = $("multiCount");
@@ -615,10 +829,26 @@
   [attackEl, decayEl, sustainEl, releaseEl].forEach(el => el.addEventListener("input", applyADSR));
 
   // ---------- Piano render ----------
+  function getInScaleClasses() {
+    const root = NOTE_INDEX[state.scaleRoot] || 0;
+    const offsets = SCALE_OFFSETS[state.scaleType] || SCALE_OFFSETS.major;
+    return new Set(offsets.map(o => INDEX_NOTE[(root + o) % 12]));
+  }
+
+  function refreshKeyHighlights() {
+    keysEl.querySelectorAll(".key").forEach(k => k.classList.remove("in-scale"));
+    if (!state.scaleOn) return;
+    const inScale = getInScaleClasses();
+    keysEl.querySelectorAll(".key").forEach(k => {
+      const cls = k.dataset.pitch.replace(/[0-9]/g, "");
+      if (inScale.has(cls)) k.classList.add("in-scale");
+    });
+  }
+
   function renderKeys() {
     keysEl.innerHTML = "";
     const whites = PITCHES.filter(p => !p.isBlack);
-    const wh = WHITE_KEY_H;
+    const wh = WHITE_KEY_H * state.keyboardZoom;
     keysEl.style.height = (whites.length * wh) + "px";
     const layout = {};
     let wi = 0;
@@ -658,6 +888,7 @@
       el.addEventListener("click", (e) => { e.stopPropagation(); onKeyPress(p.name, el); });
       keysEl.appendChild(el);
     });
+    refreshKeyHighlights();
   }
 
   // ---------- Grid render ----------
@@ -766,7 +997,8 @@
       existing.pitch = pitch;
       state.selectedId = existing.id;
     } else {
-      const note = { id: state.nextId++, step: state.cursor, size: 1, pitch };
+      const size = Math.min(state.defaultSize, state.steps - state.cursor);
+      const note = { id: state.nextId++, step: state.cursor, size, pitch };
       state.notes.push(note);
       state.selectedId = note.id;
     }
@@ -854,40 +1086,81 @@
   }
 
   function updateSelectedBar() {
-    lengthRow.classList.add("hidden");
     noteRow.classList.add("hidden");
     multiRow.classList.add("hidden");
     moveBtn.classList.add("hidden");
+    copyBtn.classList.add("hidden");
+    doneBtn.classList.add("hidden");
+    deleteBtn.classList.add("hidden");
+    multiDeleteBtn.classList.add("hidden");
 
     if (state.multiSelect) {
       multiRow.classList.remove("hidden");
       multiCount.textContent = state.selectedIds.size;
+      copyBtn.classList.remove("hidden");
+      multiDeleteBtn.classList.remove("hidden");
+      doneBtn.classList.remove("hidden");
     } else {
       const n = state.notes.find(x => x.id === state.selectedId);
       if (n) {
         noteRow.classList.remove("hidden");
-        selectedLabel.textContent = n.pitch + " · step " + String(n.step + 1).padStart(2, "0");
+        selectedLabel.textContent = n.pitch + " · " + String(n.step + 1).padStart(2, "0");
         noteSizeEl.value = n.size;
         noteSizeValEl.textContent = n.size;
+        deleteBtn.classList.remove("hidden");
         if (state.cursor !== n.step) {
           moveBtn.classList.remove("hidden");
           moveBtn.textContent = "Move " + String(state.cursor + 1).padStart(2, "0");
         }
-      } else {
-        lengthRow.classList.remove("hidden");
       }
     }
 
-    const pasteRow = $("pasteRow");
     if (state.clipboard && state.clipboard.length > 0) {
-      pasteRow.classList.remove("hidden");
+      pasteBtn.classList.remove("hidden");
       const count = state.clipboard.length;
-      pasteBtn.textContent = "PASTE @ " + String(state.cursor + 1).padStart(2, "0")
-        + " · " + count + " note" + (count === 1 ? "" : "s");
+      pasteBtn.textContent = "Paste " + String(state.cursor + 1).padStart(2, "0")
+        + " · " + count;
     } else {
-      pasteRow.classList.add("hidden");
+      pasteBtn.classList.add("hidden");
     }
   }
+
+  // ---------- Popups ----------
+  const popupLayer = $("popupLayer");
+  document.querySelectorAll("[data-popup]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const name = btn.dataset.popup;
+      document.querySelectorAll(".popup").forEach(p => p.classList.toggle("hidden", p.dataset.name !== name));
+      popupLayer.classList.remove("hidden");
+    });
+  });
+  document.querySelectorAll(".popup-close").forEach(b => b.addEventListener("click", () => popupLayer.classList.add("hidden")));
+  popupLayer.addEventListener("click", (e) => { if (e.target === popupLayer) popupLayer.classList.add("hidden"); });
+
+  document.querySelectorAll(".seg").forEach(seg => {
+    seg.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-value]");
+      if (!btn) return;
+      seg.querySelectorAll("button").forEach(b => b.classList.toggle("active", b === btn));
+      const group = seg.dataset.group;
+      const value = btn.dataset.value;
+      if (group === "snap") state.snap = value;
+      else if (group === "instrument") { /* preset hook for later */ }
+      else if (group === "scaleOn") { state.scaleOn = value === "1"; refreshKeyHighlights(); }
+      else if (group === "root") { state.scaleRoot = value; refreshKeyHighlights(); }
+      else if (group === "scale") { state.scaleType = value; refreshKeyHighlights(); }
+    });
+  });
+
+  defaultSizeEl.addEventListener("input", () => {
+    state.defaultSize = parseInt(defaultSizeEl.value, 10);
+    defaultSizeValEl.textContent = state.defaultSize;
+  });
+  zoomEl.addEventListener("input", () => {
+    state.keyboardZoom = parseInt(zoomEl.value, 10) / 100;
+    zoomValEl.textContent = zoomEl.value;
+    renderKeys();
+  });
 
   copyBtn.addEventListener("click", copySelection);
   multiDeleteBtn.addEventListener("click", deleteSelection);
@@ -1005,9 +1278,9 @@
     if (scheduledId !== null) { Tone.Transport.clear(scheduledId); scheduledId = null; }
     Tone.Transport.cancel(0);
     Tone.Transport.position = "0:0:0";
-    state.cursor = 0; renderGrid(); positionKnobFromCursor();
+    renderGrid(); positionKnobFromCursor();
 
-    let i = 0;
+    let i = state.cursor;
     scheduledId = Tone.Transport.scheduleRepeat((time) => {
       Tone.Draw.schedule(() => {
         state.cursor = i % state.steps;
