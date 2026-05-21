@@ -2,416 +2,610 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Sequencer Sandbox — Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f0f10;
-    --panel: #ffffff;
-    --panel-2: #f3f3f3;
-    --grey: #b3b3b6;
-    --grey-2: #9a9a9d;
-    --orange: #f4ab78;
-    --orange-strong: #ec8c4e;
-    --purple: #7e74e0;
-    --purple-strong: #5b50d6;
-    --text: #e7e7ea;
-    --text-mute: #9d9da3;
-    --line: #d8d8db;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; }
-  body { display: flex; align-items: center; justify-content: center; padding: 24px; }
-  .app {
-    width: min(960px, 100%);
-    display: grid;
-    grid-template-rows: auto auto 1fr auto;
-    gap: 12px;
-  }
-  .title { color: var(--text-mute); font-size: 16px; text-align: center; }
-  .topbar {
-    display: grid;
-    grid-template-columns: 240px 1fr;
-    background: var(--grey);
-    border-radius: 8px;
-    padding: 12px;
-    gap: 12px;
-    align-items: center;
-  }
-  .topbar .left, .topbar .right { display: flex; gap: 8px; align-items: center; }
-  .pill {
-    background: white; border: none; border-radius: 999px; padding: 8px 18px;
-    font-weight: 600; color: #222; cursor: pointer; font-size: 14px;
-  }
-  .pill.orange { background: var(--orange); color: #2a1d0e; }
-  .pill:hover { filter: brightness(0.97); }
+    /* iPhone 17 logical portrait viewport */
+    --phone-w: 402px;
+    --phone-h: 874px;
 
+    /* Palette — restrained, DAW-inspired */
+    --backdrop: #0b0b0d;
+    --backdrop-2: #161618;
+    --frame-edge: #1f1f23;
+    --frame-line: #2a2a30;
+
+    --stage: #fafaf9;
+    --stage-line: #e6e6e3;
+    --stage-line-strong: #d4d4cf;
+    --stage-text: #1d1d1f;
+    --stage-text-mute: #7a7a7f;
+
+    --bar: #313137;
+    --bar-text: #d4d4d8;
+    --bar-text-mute: #8b8b92;
+
+    --accent: #e9925c;          /* warm coral, less candy than the mockup */
+    --accent-edge: #c47338;
+    --accent-soft: #f4caaa;
+
+    --cursor: #6b5fd9;          /* dialed-back purple */
+    --cursor-strong: #5246c9;
+
+    --bottom: #2c2a4a;          /* deep indigo, not the daytime purple */
+    --bottom-2: #3a3760;
+    --bottom-line: #4a4870;
+
+    /* Type */
+    --ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--backdrop); color: var(--bar-text); font-family: var(--ui); font-feature-settings: "cv11", "ss01"; }
+  body {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #1a1a1e 0%, transparent 60%),
+      var(--backdrop);
+  }
+
+  /* ---- Phone frame ---- */
+  .device {
+    width: var(--phone-w);
+    height: var(--phone-h);
+    background: #000;
+    border-radius: 44px;
+    padding: 8px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.04) inset,
+      0 0 0 1px var(--frame-edge),
+      0 30px 60px rgba(0,0,0,0.6),
+      0 0 0 8px #050507;
+    position: relative;
+  }
+  .device::before {
+    /* Dynamic Island */
+    content: ""; position: absolute; left: 50%; top: 12px;
+    transform: translateX(-50%);
+    width: 110px; height: 32px; background: #000;
+    border-radius: 999px; z-index: 10;
+  }
+  .screen {
+    width: 100%; height: 100%;
+    background: var(--backdrop-2);
+    border-radius: 36px;
+    overflow: hidden;
+    position: relative;
+    display: grid;
+    grid-template-rows: 44px 56px 1fr auto;
+  }
+  /* status bar simulation */
+  .status {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 22px 4px;
+    color: var(--bar-text); font-size: 13px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .status .right { display: flex; gap: 6px; align-items: center; opacity: 0.85; }
+  .status svg { width: 16px; height: 11px; }
+
+  /* ---- Top bar (settings) ---- */
+  .topbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    background: var(--bar);
+    border-bottom: 1px solid var(--frame-line);
+  }
+  .topbar .group { display: flex; gap: 6px; align-items: center; }
+  .topbar .spacer { flex: 1; }
+  .pill {
+    appearance: none; border: 1px solid rgba(255,255,255,0.08);
+    background: #404049; color: var(--bar-text);
+    padding: 7px 14px; border-radius: 10px;
+    font: 600 13px var(--ui); cursor: pointer;
+    letter-spacing: -0.005em;
+  }
+  .pill:hover { background: #4a4a55; }
+  .pill.accent { background: var(--accent); color: #2a1a0d; border-color: rgba(0,0,0,0.12); }
+  .pill.accent:hover { background: #ec9d6e; }
+  .pill.ghost { background: transparent; color: var(--bar-text-mute); }
+
+  /* ---- Stage (piano + grid + scroller) ---- */
   .stage {
     display: grid;
-    grid-template-columns: 240px 1fr 28px;
-    background: var(--panel);
-    border-radius: 0;
-    min-height: 560px;
+    grid-template-columns: 116px 1fr 32px;
+    background: var(--stage);
+    color: var(--stage-text);
     position: relative;
-  }
-  /* Piano roll */
-  .piano {
-    position: relative;
-    background: #fff;
-    border-right: 1px solid var(--line);
     overflow: hidden;
-    user-select: none;
   }
-  .piano .keys { position: relative; height: 100%; }
+
+  /* Piano */
+  .piano { position: relative; background: #fff; border-right: 1px solid var(--stage-line-strong); overflow: hidden; user-select: none; }
+  .piano-inner { position: relative; height: 100%; }
   .key {
     position: absolute; left: 0; right: 0; cursor: pointer;
-    display: flex; align-items: center; justify-content: flex-end;
-    padding-right: 10px; font-weight: 700; color: #222;
+    display: flex; align-items: flex-end; justify-content: flex-end;
+    padding: 0 8px 4px;
+    font: 600 10px var(--mono); letter-spacing: 0.02em;
+    color: var(--stage-text);
   }
-  .key.white { background: #fff; border-bottom: 1px solid #e3e3e3; }
+  .key.white { background: #fff; border-bottom: 1px solid #ececea; }
+  .key.white:nth-child(7n) { border-bottom-color: #d8d8d4; } /* slight emphasis */
   .key.black {
-    background: #1c1c1f; right: 40%; left: 0; border-bottom: 1px solid #000;
+    background: #1f1f23; right: 38%; left: 0;
     z-index: 2; color: #fff;
+    border-bottom: 1px solid #000;
+    box-shadow: 1px 0 0 rgba(0,0,0,0.5) inset, -2px 2px 4px rgba(0,0,0,0.12);
   }
-  .key.highlight { background: var(--orange) !important; color: #2a1d0e !important; }
-  .key:active { filter: brightness(0.85); }
-  .key.flash { background: var(--orange-strong) !important; color: white !important; transition: background 80ms; }
+  .key.octave-label { color: var(--stage-text-mute); }
+  .key.flash { background: var(--accent) !important; color: #2a1a0d !important; transition: background 100ms; }
+  .key.black.flash { color: #2a1a0d !important; }
 
-  /* Sequencer grid */
+  /* Grid */
   .grid {
     position: relative;
-    background: #fff;
-    overflow: hidden;
+    background:
+      linear-gradient(to bottom, rgba(0,0,0,0.015), transparent 40%),
+      var(--stage);
   }
   .row {
     position: absolute; left: 0; right: 0;
-    border-top: 1px solid var(--line);
     display: flex; align-items: center;
-    padding-left: 14px; gap: 12px;
+    padding-left: 10px; gap: 10px;
   }
+  .row::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 0;
+    height: 1px; background: var(--stage-line);
+  }
+  .row.beat::before { background: var(--stage-line-strong); }
   .row .num {
-    font-size: 12px; color: #767679; width: 18px; text-align: right;
-  }
-  .row.cursor::before {
-    content: ""; position: absolute; left: 38px; right: 6px; top: 50%;
-    height: 1px; background: var(--purple-strong);
+    font: 600 10px var(--mono);
+    color: var(--stage-text-mute);
+    width: 18px; text-align: right;
+    font-variant-numeric: tabular-nums;
   }
   .row.cursor .num {
-    background: var(--purple-strong); color: white; border-radius: 999px;
-    width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center;
-    font-weight: 700;
+    color: var(--cursor-strong); font-weight: 700;
+  }
+  .row.cursor::after {
+    content: ""; position: absolute;
+    left: 36px; right: 8px; top: 50%;
+    height: 1.5px; background: var(--cursor);
+    box-shadow: 0 0 0 2px rgba(107,95,217,0.12);
   }
 
   .note {
-    position: absolute;
-    background: var(--orange); color: #2a1d0e;
-    border-radius: 6px;
-    font-weight: 700; font-size: 12px;
-    display: flex; align-items: flex-start; justify-content: flex-start;
-    padding: 6px 8px;
+    position: absolute; left: 38px; right: 14px;
+    background: var(--accent);
+    color: #2a1a0d;
+    border-radius: 5px;
+    font: 600 11px var(--mono);
+    display: flex; align-items: flex-start; padding: 5px 7px;
     cursor: pointer;
-    box-shadow: 0 0 0 1px rgba(0,0,0,0.03) inset;
+    border: 1px solid var(--accent-edge);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.4) inset,
+      0 1px 2px rgba(0,0,0,0.06);
   }
-  .note.selected { outline: 2px solid var(--purple-strong); outline-offset: 1px; }
-  .note.playing { background: var(--orange-strong); color: white; }
+  .note.selected {
+    outline: 2px solid var(--cursor); outline-offset: 1px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.4) inset,
+      0 2px 8px rgba(107,95,217,0.25);
+  }
+  .note.playing { background: var(--accent-edge); color: #fff; }
 
-  /* Right scroller */
+  /* Scroller */
   .scroller {
     position: relative;
-    background: var(--grey);
-    margin-left: 4px;
-    border-radius: 6px;
-    overflow: visible;
+    background: linear-gradient(to right, rgba(0,0,0,0.04), transparent);
+    border-left: 1px solid var(--stage-line);
   }
   .scroller .track {
-    position: absolute; top: 8px; bottom: 8px; left: 50%; transform: translateX(-50%);
-    width: 8px; background: var(--grey-2); border-radius: 4px;
+    position: absolute; top: 10px; bottom: 10px;
+    left: 50%; transform: translateX(-50%);
+    width: 4px; background: var(--stage-line-strong); border-radius: 2px;
   }
   .knob {
     position: absolute; left: 50%; transform: translate(-50%, -50%);
-    width: 28px; height: 28px; background: var(--purple); border-radius: 50%;
-    cursor: grab; box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    width: 22px; height: 22px; background: var(--cursor);
+    border-radius: 50%; cursor: grab;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.25) inset,
+      0 2px 6px rgba(0,0,0,0.25);
+    border: 1px solid var(--cursor-strong);
   }
-  .knob:active { cursor: grabbing; background: var(--purple-strong); }
+  .knob:active { cursor: grabbing; background: var(--cursor-strong); }
 
-  /* Bottom bar */
+  /* ---- Bottom bar ---- */
   .bottom {
-    background: #8c84e6;
-    border-radius: 0 0 6px 6px;
-    padding: 14px 16px;
+    background: var(--bottom);
+    color: #e9e8ff;
+    border-top: 1px solid var(--bottom-line);
+    padding: 12px 14px 16px;
     display: grid;
-    grid-template-columns: 1fr 120px;
-    gap: 14px;
-    color: white;
-    align-items: stretch;
+    grid-template-columns: 1fr 84px;
+    gap: 12px;
+    min-height: 168px;
   }
-  .bottom .col-left { display: grid; gap: 10px; }
-  .row1 { display: flex; align-items: center; gap: 12px; }
-  .row1 label { font-size: 12px; opacity: 0.9; }
-  input[type="range"] { -webkit-appearance: none; appearance: none; background: transparent; }
-  input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: rgba(255,255,255,0.5); border-radius: 2px; }
-  input[type="range"]::-moz-range-track { height: 4px; background: rgba(255,255,255,0.5); border-radius: 2px; }
+  .bottom .col-left { display: grid; gap: 10px; align-content: start; }
+  .row-label {
+    display: flex; align-items: center; gap: 10px;
+    font: 600 11px var(--ui);
+    color: rgba(233,232,255,0.85);
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .row-label span.val {
+    margin-left: auto;
+    font: 600 11px var(--mono);
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+  .slider-row { display: grid; gap: 4px; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; background: transparent;
+    height: 18px;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 3px; background: rgba(255,255,255,0.18); border-radius: 2px;
+  }
+  input[type="range"]::-moz-range-track {
+    height: 3px; background: rgba(255,255,255,0.18); border-radius: 2px;
+  }
   input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none; appearance: none;
-    margin-top: -8px;
-    width: 20px; height: 20px; background: var(--orange); border-radius: 50%;
-    border: 2px solid white;
+    margin-top: -7px;
+    width: 16px; height: 16px; background: var(--accent);
+    border: 2px solid #fff; border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
   }
   input[type="range"]::-moz-range-thumb {
-    width: 20px; height: 20px; background: var(--orange); border-radius: 50%;
-    border: 2px solid white;
+    width: 16px; height: 16px; background: var(--accent);
+    border: 2px solid #fff; border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
   }
-  .adsr { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-  .adsr label { display: grid; gap: 4px; font-size: 11px; opacity: 0.95; }
-  .selected-bar { display: flex; gap: 16px; align-items: center; min-height: 26px; }
-  .selected-bar.hidden { opacity: 0.4; }
-  .selected-bar button {
-    background: rgba(0,0,0,0.25); color: white; border: none;
-    padding: 6px 12px; border-radius: 6px; font-weight: 600; cursor: pointer;
-  }
-  .selected-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
+  input[type="range"]:disabled::-webkit-slider-thumb { background: #6f6f7a; }
+  input[type="range"]:disabled::-moz-range-thumb { background: #6f6f7a; }
 
-  .transport { display: grid; grid-template-rows: 1fr 1fr; gap: 10px; }
+  .adsr {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .adsr .knob-cell {
+    display: grid; gap: 2px;
+    font: 600 10px var(--ui);
+    color: rgba(233,232,255,0.75);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    text-align: center;
+  }
+  .adsr .knob-cell span.v {
+    font: 600 10px var(--mono); color: #fff;
+  }
+
+  .note-controls {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+  }
+  .selected-meta {
+    font: 600 12px var(--ui);
+    color: rgba(233,232,255,0.85);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .selected-meta .pitch {
+    font: 600 12px var(--mono); color: #fff;
+    background: rgba(255,255,255,0.08);
+    padding: 3px 7px; border-radius: 4px;
+  }
+  .delete-btn {
+    appearance: none; border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06); color: #fff;
+    padding: 7px 12px; border-radius: 8px;
+    font: 600 12px var(--ui); cursor: pointer;
+  }
+  .delete-btn:hover { background: rgba(255,80,90,0.18); border-color: rgba(255,80,90,0.4); color: #ffcfd2; }
+
+  .hidden { display: none !important; }
+
+  /* Transport */
+  .transport { display: grid; grid-template-rows: 1fr 1fr; gap: 8px; }
   .transport button {
-    background: white; color: #222; border: none; border-radius: 12px;
-    font-weight: 800; letter-spacing: 0.5px; cursor: pointer; font-size: 14px;
+    appearance: none; border: 1px solid rgba(0,0,0,0.08);
+    background: #fff; color: #1d1d1f;
+    border-radius: 12px;
+    font: 700 13px var(--ui);
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 1px 3px rgba(0,0,0,0.25);
   }
-  .transport button:hover { filter: brightness(0.97); }
+  .transport button:hover { background: #f5f5f4; }
+  .transport button#playBtn[data-state="playing"] {
+    background: var(--accent); color: #2a1a0d; border-color: var(--accent-edge);
+  }
 
-  .hint {
-    position: fixed; top: 16px; left: 16px; max-width: 220px; font-size: 12px; color: #c8c8cc;
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px; padding: 10px 12px; line-height: 1.45;
+  /* ---- Caption + hint (outside device) ---- */
+  .caption {
+    position: fixed; top: 24px; left: 24px;
+    max-width: 220px;
+    color: #a4a4ad;
+    font: 500 12px var(--ui);
+    line-height: 1.55;
   }
-  .hint h4 { margin: 0 0 6px; font-size: 12px; color: #fff; letter-spacing: 0.4px; text-transform: uppercase; }
-  .hint kbd { background: #2a2a2e; border-radius: 4px; padding: 1px 5px; font-size: 11px; }
+  .caption h1 {
+    font: 600 12px var(--ui); letter-spacing: 0.12em;
+    text-transform: uppercase; color: #d8d8dd;
+    margin: 0 0 8px;
+  }
+  .caption p { margin: 0 0 6px; }
+  .caption .num { display: inline-block; width: 16px; color: #6b5fd9; font-weight: 700; }
+
+  @media (max-width: 900px) {
+    body { padding: 0; align-items: stretch; }
+    .device {
+      width: 100vw; height: 100vh; border-radius: 0; padding: 0;
+      box-shadow: none;
+    }
+    .device::before { display: none; }
+    .screen { border-radius: 0; }
+    .caption { display: none; }
+  }
 </style>
 </head>
 <body>
-  <div class="hint">
-    <h4>How to play</h4>
-    1. Drag the purple knob (right) to move the cursor.<br/>
-    2. Click a piano key to place a note at the cursor step.<br/>
-    3. Click a note to select → Delete / Size in bottom bar.<br/>
-    4. PLAY / PAUSE / STOP at bottom right.
-  </div>
+  <aside class="caption">
+    <h1>Sequencer · Sandbox Mockup</h1>
+    <p><span class="num">1.</span>Drag the purple knob to move the cursor.</p>
+    <p><span class="num">2.</span>Tap a key — places a note at the cursor.</p>
+    <p><span class="num">3.</span>Tap an existing note to select; edit in the dock.</p>
+    <p><span class="num">4.</span>Pressing a key while cursor sits on a note replaces it.</p>
+    <p><span class="num">5.</span>PLAY · PAUSE · STOP at bottom right.</p>
+  </aside>
 
-  <div class="app">
-    <div class="title">Pattern — Single Instrument — Piano Mode</div>
-
-    <div class="topbar">
-      <div class="left">
-        <button class="pill">Back</button>
-        <button class="pill">Input</button>
-      </div>
-      <div class="right">
-        <button class="pill orange">Bass</button>
-      </div>
-    </div>
-
-    <div class="stage">
-      <div class="piano" id="piano"><div class="keys" id="keys"></div></div>
-      <div class="grid" id="grid"></div>
-      <div class="scroller" id="scroller">
-        <div class="track"></div>
-        <div class="knob" id="knob"></div>
-      </div>
-    </div>
-
-    <div class="bottom">
-      <div class="col-left">
-        <div class="row1">
-          <label style="min-width:50px">Length</label>
-          <input type="range" id="length" min="4" max="32" value="16" step="1" style="flex:1" />
-          <span id="lengthVal" style="font-weight:700; min-width:24px; text-align:right">16</span>
-        </div>
-        <div class="adsr">
-          <label>A <input type="range" id="attack" min="0" max="1" step="0.01" value="0.02"></label>
-          <label>D <input type="range" id="decay" min="0" max="1" step="0.01" value="0.15"></label>
-          <label>S <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.7"></label>
-          <label>R <input type="range" id="release" min="0" max="2" step="0.01" value="0.4"></label>
-        </div>
-        <div class="selected-bar hidden" id="selectedBar">
-          <span>Selected: <span id="selectedLabel">—</span></span>
-          <label>Size <input type="range" id="noteSize" min="1" max="8" value="1" step="1" disabled></label>
-          <span id="noteSizeVal">1</span>
-          <button id="deleteBtn" disabled>Delete</button>
+  <div class="device" role="application" aria-label="Sequencer sandbox mockup">
+    <div class="screen">
+      <!-- status bar -->
+      <div class="status">
+        <span>9:41</span>
+        <div class="right">
+          <svg viewBox="0 0 16 11" fill="currentColor"><rect x="0" y="3" width="3" height="8" rx="0.5"/><rect x="4.5" y="2" width="3" height="9" rx="0.5"/><rect x="9" y="1" width="3" height="10" rx="0.5"/><rect x="13.5" y="0" width="3" height="11" rx="0.5"/></svg>
+          <span style="font: 600 12px var(--mono);">100%</span>
         </div>
       </div>
-      <div class="transport">
-        <button id="playBtn">PLAY</button>
-        <button id="stopBtn">STOP</button>
+
+      <!-- top bar -->
+      <div class="topbar">
+        <div class="group">
+          <button class="pill ghost" type="button">Back</button>
+          <button class="pill" type="button">Input</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="group">
+          <button class="pill accent" type="button">Bass</button>
+        </div>
+      </div>
+
+      <!-- stage -->
+      <div class="stage">
+        <div class="piano"><div class="piano-inner" id="keys"></div></div>
+        <div class="grid" id="grid"></div>
+        <div class="scroller" id="scroller">
+          <div class="track"></div>
+          <div class="knob" id="knob" role="slider" aria-label="Step cursor"></div>
+        </div>
+      </div>
+
+      <!-- bottom bar -->
+      <div class="bottom">
+        <div class="col-left">
+          <!-- Length row -->
+          <div class="slider-row" id="lengthRow">
+            <div class="row-label">
+              <span>Length</span>
+              <span class="val"><span id="lengthVal">16</span> steps</span>
+            </div>
+            <input type="range" id="length" min="4" max="32" value="16" step="1" />
+          </div>
+
+          <!-- Selected note row -->
+          <div class="note-controls hidden" id="noteRow">
+            <div class="slider-row">
+              <div class="row-label">
+                <span>Selected · <span class="pitch" id="selectedLabel">—</span></span>
+                <span class="val"><span id="noteSizeVal">1</span>×</span>
+              </div>
+              <input type="range" id="noteSize" min="1" max="8" value="1" step="1" />
+            </div>
+            <button class="delete-btn" id="deleteBtn" type="button">Delete</button>
+          </div>
+
+          <!-- ADSR -->
+          <div class="adsr">
+            <label class="knob-cell">A
+              <input type="range" id="attack" min="0" max="1" step="0.01" value="0.02">
+              <span class="v" id="attackV">0.02</span>
+            </label>
+            <label class="knob-cell">D
+              <input type="range" id="decay" min="0" max="1" step="0.01" value="0.15">
+              <span class="v" id="decayV">0.15</span>
+            </label>
+            <label class="knob-cell">S
+              <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.7">
+              <span class="v" id="sustainV">0.70</span>
+            </label>
+            <label class="knob-cell">R
+              <input type="range" id="release" min="0" max="2" step="0.01" value="0.4">
+              <span class="v" id="releaseV">0.40</span>
+            </label>
+          </div>
+        </div>
+        <div class="transport">
+          <button id="playBtn" type="button" data-state="stopped">PLAY</button>
+          <button id="stopBtn" type="button">STOP</button>
+        </div>
       </div>
     </div>
   </div>
 
 <script src="https://cdn.jsdelivr.net/npm/tone@15.0.4/build/Tone.js"></script>
 <script>
-  // ---------- Constants ----------
-  const PITCHES = []; // C2..C5 (37 keys), low -> high
+  // ---------- Pitches C2..C5 ----------
   const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+  const PITCHES = []; // built low -> high
   for (let o = 2; o <= 5; o++) {
     for (let i = 0; i < 12; i++) {
       PITCHES.push({ name: NOTE_NAMES[i] + o, isBlack: NOTE_NAMES[i].includes("#") });
-      if (o === 5 && i === 0) break; // stop after C5
+      if (o === 5 && i === 0) break;
     }
   }
-  PITCHES.reverse(); // top-of-piano (highest) first for vertical layout
+  PITCHES.reverse(); // top of piano = highest
 
-  // ---------- State ----------
   const state = {
     steps: 16,
-    cursor: 0, // 0-indexed step
-    notes: [], // { id, step, size, pitch }
+    cursor: 0,
+    notes: [],          // {id, step, size, pitch}
     selectedId: null,
     playing: false,
     nextId: 1,
   };
 
-  // ---------- DOM ----------
-  const keysEl = document.getElementById("keys");
-  const gridEl = document.getElementById("grid");
-  const knobEl = document.getElementById("knob");
-  const scrollerEl = document.getElementById("scroller");
-  const lengthEl = document.getElementById("length");
-  const lengthValEl = document.getElementById("lengthVal");
-  const playBtn = document.getElementById("playBtn");
-  const stopBtn = document.getElementById("stopBtn");
-  const selectedBar = document.getElementById("selectedBar");
-  const selectedLabel = document.getElementById("selectedLabel");
-  const noteSizeEl = document.getElementById("noteSize");
-  const noteSizeValEl = document.getElementById("noteSizeVal");
-  const deleteBtn = document.getElementById("deleteBtn");
-  const attackEl = document.getElementById("attack");
-  const decayEl = document.getElementById("decay");
-  const sustainEl = document.getElementById("sustain");
-  const releaseEl = document.getElementById("release");
+  // ---------- DOM refs ----------
+  const $ = (id) => document.getElementById(id);
+  const keysEl = $("keys"), gridEl = $("grid"), knobEl = $("knob"), scrollerEl = $("scroller");
+  const lengthEl = $("length"), lengthValEl = $("lengthVal"), lengthRow = $("lengthRow");
+  const noteRow = $("noteRow"), noteSizeEl = $("noteSize"), noteSizeValEl = $("noteSizeVal");
+  const selectedLabel = $("selectedLabel"), deleteBtn = $("deleteBtn");
+  const playBtn = $("playBtn"), stopBtn = $("stopBtn");
+  const attackEl = $("attack"), decayEl = $("decay"), sustainEl = $("sustain"), releaseEl = $("release");
+  const adsrV = { attack: $("attackV"), decay: $("decayV"), sustain: $("sustainV"), release: $("releaseV") };
 
   // ---------- Audio ----------
   const synth = new Tone.MonoSynth({
     oscillator: { type: "sawtooth" },
     envelope: {
-      attack: parseFloat(attackEl.value),
-      decay: parseFloat(decayEl.value),
-      sustain: parseFloat(sustainEl.value),
-      release: parseFloat(releaseEl.value),
+      attack: +attackEl.value, decay: +decayEl.value,
+      sustain: +sustainEl.value, release: +releaseEl.value,
     },
-    filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.5, baseFrequency: 200, octaves: 3 },
+    filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.5, baseFrequency: 220, octaves: 3 },
   }).toDestination();
   synth.volume.value = -8;
 
   function applyADSR() {
-    synth.envelope.attack = parseFloat(attackEl.value);
-    synth.envelope.decay = parseFloat(decayEl.value);
-    synth.envelope.sustain = parseFloat(sustainEl.value);
-    synth.envelope.release = parseFloat(releaseEl.value);
+    synth.envelope.attack = +attackEl.value;
+    synth.envelope.decay = +decayEl.value;
+    synth.envelope.sustain = +sustainEl.value;
+    synth.envelope.release = +releaseEl.value;
+    adsrV.attack.textContent = (+attackEl.value).toFixed(2);
+    adsrV.decay.textContent = (+decayEl.value).toFixed(2);
+    adsrV.sustain.textContent = (+sustainEl.value).toFixed(2);
+    adsrV.release.textContent = (+releaseEl.value).toFixed(2);
   }
   [attackEl, decayEl, sustainEl, releaseEl].forEach(el => el.addEventListener("input", applyADSR));
 
-  // ---------- Render piano keys ----------
+  // ---------- Piano render ----------
   function renderKeys() {
     keysEl.innerHTML = "";
-    // Place WHITE keys first (positioned by white-key index), then BLACK on top
     const whites = PITCHES.filter(p => !p.isBlack);
-    const totalWhites = whites.length;
-    const pianoHeight = keysEl.clientHeight || 560;
-    const whiteH = pianoHeight / totalWhites;
-
-    // Map each pitch -> { top, height, white }
+    const h = keysEl.clientHeight || 580;
+    const wh = h / whites.length;
     const layout = {};
-    let whiteIndex = 0;
-    PITCHES.forEach((p, idx) => {
-      if (!p.isBlack) {
-        layout[p.name] = { top: whiteIndex * whiteH, height: whiteH, isBlack: false };
-        whiteIndex++;
-      }
+    let wi = 0;
+    PITCHES.forEach(p => {
+      if (!p.isBlack) { layout[p.name] = { top: wi * wh, h: wh, black: false }; wi++; }
     });
-    // Black keys: position between adjacent whites (above the upper white in our top-to-bottom layout)
     PITCHES.forEach((p, idx) => {
-      if (p.isBlack) {
-        // The black key sits between the white below it (idx+1) and the white above it (idx-1) in the array.
-        const prev = PITCHES[idx - 1]; // higher white
-        if (prev && !prev.isBlack) {
-          const prevLayout = layout[prev.name];
-          layout[p.name] = {
-            top: prevLayout.top + prevLayout.height * 0.65,
-            height: whiteH * 0.7,
-            isBlack: true,
-          };
-        }
+      if (!p.isBlack) return;
+      const prev = PITCHES[idx - 1];
+      if (prev && !prev.isBlack) {
+        const L = layout[prev.name];
+        layout[p.name] = { top: L.top + L.h * 0.65, h: wh * 0.62, black: true };
       }
     });
 
-    // Render
     PITCHES.forEach(p => {
-      if (p.isBlack) return; // black on top later
+      if (p.isBlack) return;
       const el = document.createElement("div");
       el.className = "key white";
-      el.dataset.pitch = p.name;
-      const L = layout[p.name];
-      el.style.top = L.top + "px";
-      el.style.height = L.height + "px";
       if (p.name.startsWith("C") && !p.name.includes("#")) {
+        el.classList.add("octave-label");
         el.textContent = p.name;
       }
+      el.dataset.pitch = p.name;
+      const L = layout[p.name];
+      el.style.top = L.top + "px"; el.style.height = L.h + "px";
       el.addEventListener("click", () => onKeyPress(p.name, el));
       keysEl.appendChild(el);
     });
     PITCHES.forEach(p => {
-      if (!p.isBlack) return;
-      const L = layout[p.name];
-      if (!L) return;
+      if (!p.isBlack || !layout[p.name]) return;
       const el = document.createElement("div");
       el.className = "key black";
       el.dataset.pitch = p.name;
-      el.style.top = L.top + "px";
-      el.style.height = L.height + "px";
+      const L = layout[p.name];
+      el.style.top = L.top + "px"; el.style.height = L.h + "px";
       el.addEventListener("click", (e) => { e.stopPropagation(); onKeyPress(p.name, el); });
       keysEl.appendChild(el);
     });
   }
 
-  // ---------- Render sequencer rows + notes ----------
+  // ---------- Grid render ----------
   function renderGrid() {
     gridEl.innerHTML = "";
-    const h = gridEl.clientHeight || 560;
+    const h = gridEl.clientHeight || 580;
     const rowH = h / state.steps;
+
     for (let i = 0; i < state.steps; i++) {
       const row = document.createElement("div");
-      row.className = "row" + (i === state.cursor ? " cursor" : "");
+      row.className = "row" + (i % 4 === 0 ? " beat" : "") + (i === state.cursor ? " cursor" : "");
       row.style.top = (i * rowH) + "px";
       row.style.height = rowH + "px";
       const num = document.createElement("span");
       num.className = "num";
-      num.textContent = i + 1;
+      num.textContent = String(i + 1).padStart(2, "0");
       row.appendChild(num);
       gridEl.appendChild(row);
     }
-    // Notes
+
+    // notes (only those within visible range; others kept in state)
     state.notes.forEach(n => {
-      const noteEl = document.createElement("div");
-      noteEl.className = "note" + (n.id === state.selectedId ? " selected" : "");
-      noteEl.dataset.id = n.id;
-      noteEl.textContent = n.pitch;
-      noteEl.style.top = (n.step * rowH + 4) + "px";
-      noteEl.style.height = (n.size * rowH - 8) + "px";
-      noteEl.style.left = "50px";
-      noteEl.style.width = "80px";
-      noteEl.addEventListener("click", (e) => { e.stopPropagation(); selectNote(n.id); });
-      gridEl.appendChild(noteEl);
+      if (n.step >= state.steps) return;
+      const el = document.createElement("div");
+      el.className = "note" + (n.id === state.selectedId ? " selected" : "");
+      el.dataset.id = n.id;
+      el.textContent = n.pitch;
+      el.style.top = (n.step * rowH + 3) + "px";
+      const visibleSize = Math.min(n.size, state.steps - n.step);
+      el.style.height = (visibleSize * rowH - 6) + "px";
+      el.addEventListener("click", (e) => { e.stopPropagation(); selectNote(n.id); });
+      gridEl.appendChild(el);
     });
   }
 
   // ---------- Interactions ----------
   function onKeyPress(pitch, el) {
-    el && el.classList.add("flash");
-    setTimeout(() => el && el.classList.remove("flash"), 120);
+    if (el) { el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 120); }
     Tone.start();
     synth.triggerAttackRelease(pitch, "8n");
-    // Place note at current cursor
-    const note = { id: state.nextId++, step: state.cursor, size: 1, pitch };
-    state.notes.push(note);
-    state.selectedId = note.id;
+
+    // If a note already exists at the cursor step, replace its pitch instead of creating a new one
+    const existing = state.notes.find(n => n.step === state.cursor && n.step < state.steps);
+    if (existing) {
+      existing.pitch = pitch;
+      state.selectedId = existing.id;
+    } else {
+      const note = { id: state.nextId++, step: state.cursor, size: 1, pitch };
+      state.notes.push(note);
+      state.selectedId = note.id;
+    }
     renderGrid();
     updateSelectedBar();
   }
@@ -423,28 +617,24 @@
   }
 
   function updateSelectedBar() {
-    const note = state.notes.find(n => n.id === state.selectedId);
-    if (!note) {
-      selectedBar.classList.add("hidden");
-      selectedLabel.textContent = "—";
-      noteSizeEl.disabled = true;
-      deleteBtn.disabled = true;
+    const n = state.notes.find(x => x.id === state.selectedId);
+    if (!n) {
+      lengthRow.classList.remove("hidden");
+      noteRow.classList.add("hidden");
       return;
     }
-    selectedBar.classList.remove("hidden");
-    selectedLabel.textContent = note.pitch + " @ step " + (note.step + 1);
-    noteSizeEl.disabled = false;
-    deleteBtn.disabled = false;
-    noteSizeEl.value = note.size;
-    noteSizeValEl.textContent = note.size;
+    lengthRow.classList.add("hidden");
+    noteRow.classList.remove("hidden");
+    selectedLabel.textContent = n.pitch + " · step " + String(n.step + 1).padStart(2, "0");
+    noteSizeEl.value = n.size;
+    noteSizeValEl.textContent = n.size;
   }
 
   noteSizeEl.addEventListener("input", () => {
-    const note = state.notes.find(n => n.id === state.selectedId);
-    if (!note) return;
-    const newSize = parseInt(noteSizeEl.value, 10);
-    note.size = Math.min(newSize, state.steps - note.step);
-    noteSizeValEl.textContent = note.size;
+    const n = state.notes.find(x => x.id === state.selectedId);
+    if (!n) return;
+    n.size = Math.min(parseInt(noteSizeEl.value, 10), state.steps - n.step);
+    noteSizeValEl.textContent = n.size;
     renderGrid();
   });
 
@@ -455,40 +645,36 @@
     updateSelectedBar();
   });
 
-  // Click empty grid area to deselect
+  // click empty area deselects
   gridEl.addEventListener("click", () => {
     state.selectedId = null;
     renderGrid();
     updateSelectedBar();
   });
 
-  // ---------- Length slider ----------
+  // ---------- Length ----------
   lengthEl.addEventListener("input", () => {
     state.steps = parseInt(lengthEl.value, 10);
     lengthValEl.textContent = state.steps;
     state.cursor = Math.min(state.cursor, state.steps - 1);
-    state.notes = state.notes.filter(n => n.step < state.steps);
-    state.notes.forEach(n => { n.size = Math.min(n.size, state.steps - n.step); });
+    // do NOT remove out-of-range notes — they stay in state and reappear when length grows again
     renderGrid();
     positionKnobFromCursor();
   });
 
-  // ---------- Scroller knob (drag to move cursor) ----------
-  function knobRange() {
-    const r = scrollerEl.getBoundingClientRect();
-    return { top: r.top + 14, bottom: r.bottom - 14 };
-  }
+  // ---------- Scroller knob ----------
   function positionKnobFromCursor() {
     const r = scrollerEl.getBoundingClientRect();
-    const usable = r.height - 28; // 14px padding top+bottom
+    const pad = 10;
+    const usable = r.height - pad * 2;
     const frac = state.cursor / Math.max(1, state.steps - 1);
-    const y = 14 + frac * usable;
-    knobEl.style.top = y + "px";
+    knobEl.style.top = (pad + frac * usable) + "px";
   }
   function setCursorFromClientY(clientY) {
     const r = scrollerEl.getBoundingClientRect();
-    const usable = r.height - 28;
-    const y = Math.max(0, Math.min(usable, clientY - r.top - 14));
+    const pad = 10;
+    const usable = r.height - pad * 2;
+    const y = Math.max(0, Math.min(usable, clientY - r.top - pad));
     const frac = y / usable;
     const step = Math.round(frac * (state.steps - 1));
     if (step !== state.cursor) {
@@ -498,83 +684,96 @@
     positionKnobFromCursor();
   }
   let dragging = false;
-  knobEl.addEventListener("mousedown", (e) => { dragging = true; e.preventDefault(); });
-  window.addEventListener("mousemove", (e) => { if (dragging) setCursorFromClientY(e.clientY); });
-  window.addEventListener("mouseup", () => { dragging = false; });
-  scrollerEl.addEventListener("click", (e) => { if (e.target === knobEl) return; setCursorFromClientY(e.clientY); });
+  const startDrag = (e) => { dragging = true; e.preventDefault(); };
+  const moveDrag = (e) => {
+    if (!dragging) return;
+    const y = e.touches ? e.touches[0].clientY : e.clientY;
+    setCursorFromClientY(y);
+  };
+  const endDrag = () => { dragging = false; };
+  knobEl.addEventListener("mousedown", startDrag);
+  knobEl.addEventListener("touchstart", startDrag, { passive: false });
+  window.addEventListener("mousemove", moveDrag);
+  window.addEventListener("touchmove", moveDrag, { passive: false });
+  window.addEventListener("mouseup", endDrag);
+  window.addEventListener("touchend", endDrag);
+  scrollerEl.addEventListener("click", (e) => {
+    if (e.target === knobEl) return;
+    setCursorFromClientY(e.clientY);
+  });
 
-  // ---------- Playback ----------
+  // ---------- Transport ----------
   let scheduledId = null;
-  let stepTime = "8n";
+  const stepTime = "8n";
   function play() {
     Tone.start();
     applyADSR();
     if (state.playing) {
-      // pause
       Tone.Transport.pause();
       state.playing = false;
       playBtn.textContent = "PLAY";
+      playBtn.dataset.state = "stopped";
       return;
     }
     state.playing = true;
     playBtn.textContent = "PAUSE";
+    playBtn.dataset.state = "playing";
 
-    if (scheduledId !== null) {
-      Tone.Transport.clear(scheduledId);
-      scheduledId = null;
-    }
+    if (scheduledId !== null) { Tone.Transport.clear(scheduledId); scheduledId = null; }
     Tone.Transport.cancel(0);
     Tone.Transport.position = "0:0:0";
     state.cursor = 0; renderGrid(); positionKnobFromCursor();
 
-    // Schedule: every step, advance cursor and trigger notes whose step == cursor
     let i = 0;
     scheduledId = Tone.Transport.scheduleRepeat((time) => {
       Tone.Draw.schedule(() => {
         state.cursor = i % state.steps;
         renderGrid();
         positionKnobFromCursor();
-        document.querySelectorAll(".note.playing").forEach(el => el.classList.remove("playing"));
       }, time);
-      state.notes.filter(n => n.step === (i % state.steps)).forEach(n => {
-        const dur = n.size * Tone.Time(stepTime).toSeconds();
-        synth.triggerAttackRelease(n.pitch, dur, time);
-        Tone.Draw.schedule(() => {
-          const el = gridEl.querySelector('.note[data-id="' + n.id + '"]');
-          if (el) el.classList.add("playing");
-        }, time);
-      });
-      i++;
-      if (i >= state.steps) i = 0; // loop
+      state.notes
+        .filter(n => n.step < state.steps && n.step === (i % state.steps))
+        .forEach(n => {
+          const dur = Math.min(n.size, state.steps - n.step) * Tone.Time(stepTime).toSeconds();
+          synth.triggerAttackRelease(n.pitch, dur, time);
+          Tone.Draw.schedule(() => {
+            const el = gridEl.querySelector('.note[data-id="' + n.id + '"]');
+            if (el) {
+              el.classList.add("playing");
+              setTimeout(() => el.classList.remove("playing"), dur * 1000);
+            }
+          }, time);
+        });
+      i = (i + 1) % state.steps;
     }, stepTime);
 
     Tone.Transport.start();
   }
-
   function stop() {
     Tone.Transport.stop();
     Tone.Transport.cancel(0);
     if (scheduledId !== null) { Tone.Transport.clear(scheduledId); scheduledId = null; }
     state.playing = false;
     playBtn.textContent = "PLAY";
+    playBtn.dataset.state = "stopped";
     state.cursor = 0;
     renderGrid();
     positionKnobFromCursor();
-    document.querySelectorAll(".note.playing").forEach(el => el.classList.remove("playing"));
   }
-
   playBtn.addEventListener("click", play);
   stopBtn.addEventListener("click", stop);
 
   // ---------- Init ----------
   function init() {
+    applyADSR();
     renderKeys();
     renderGrid();
     positionKnobFromCursor();
     updateSelectedBar();
-    window.addEventListener("resize", () => { renderKeys(); renderGrid(); positionKnobFromCursor(); });
+    window.addEventListener("resize", () => {
+      renderKeys(); renderGrid(); positionKnobFromCursor();
+    });
   }
-  // Wait for layout
   requestAnimationFrame(init);
 </script>
 </body>
