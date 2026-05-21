@@ -751,11 +751,12 @@
             <button class="popup-close" type="button">Done</button>
           </header>
           <div class="field">
-            <label>Preset</label>
+            <label>Preset <span class="val" style="font-weight:500; text-transform:none; letter-spacing:0; color: var(--bar-text-mute);">for active channel</span></label>
             <div class="seg" data-group="instrument">
               <button data-value="bass" class="active" type="button">Bass</button>
               <button data-value="lead" type="button">Lead</button>
               <button data-value="pluck" type="button">Pluck</button>
+              <button data-value="pad" type="button">Pad</button>
             </div>
           </div>
           <div class="field">
@@ -871,10 +872,10 @@
     scaleRoot: "C",
     scaleType: "major",
     channels: [
-      { id: 1, name: "Bass",  color: CHANNEL_PALETTE[0].color, edge: CHANNEL_PALETTE[0].edge },
-      { id: 2, name: "Drum",  color: CHANNEL_PALETTE[1].color, edge: CHANNEL_PALETTE[1].edge },
-      { id: 3, name: "Lead",  color: CHANNEL_PALETTE[2].color, edge: CHANNEL_PALETTE[2].edge },
-      { id: 4, name: "Chord", color: CHANNEL_PALETTE[3].color, edge: CHANNEL_PALETTE[3].edge },
+      { id: 1, name: "Bass",  color: CHANNEL_PALETTE[0].color, edge: CHANNEL_PALETTE[0].edge, presetName: "bass",  adsr: { attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  } },
+      { id: 2, name: "Drum",  color: CHANNEL_PALETTE[1].color, edge: CHANNEL_PALETTE[1].edge, presetName: "pluck", adsr: { attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 } },
+      { id: 3, name: "Lead",  color: CHANNEL_PALETTE[2].color, edge: CHANNEL_PALETTE[2].edge, presetName: "lead",  adsr: { attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  } },
+      { id: 4, name: "Chord", color: CHANNEL_PALETTE[3].color, edge: CHANNEL_PALETTE[3].edge, presetName: "pad",   adsr: { attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  } },
     ],
     activeChannelId: 1,
     nextChannelId: 5,
@@ -882,6 +883,17 @@
 
   function activeChannel() { return state.channels.find(c => c.id === state.activeChannelId) || state.channels[0]; }
   function activeNotes() { return state.notes.filter(n => n.channelId === state.activeChannelId); }
+
+  function formatStep(stepFloat) {
+    const oneBased = stepFloat + 1;
+    if (Math.abs(oneBased - Math.round(oneBased)) < 1e-6) {
+      return String(Math.round(oneBased)).padStart(2, "0");
+    }
+    if (Math.abs(oneBased * 2 - Math.round(oneBased * 2)) < 1e-6) {
+      return String(Math.floor(oneBased)).padStart(2, "0") + "½";
+    }
+    return oneBased.toFixed(2);
+  }
 
   const CHANNEL_PALETTE = [
     { color: "#e9925c", edge: "#c47338" }, // coral / bass
@@ -893,6 +905,14 @@
     { color: "#ff7e9a", edge: "#cc5772" }, // rose
     { color: "#5cd3c6", edge: "#349a90" }, // teal
   ];
+
+  const PRESETS = {
+    bass:  { osc: "sawtooth", attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  },
+    lead:  { osc: "square",   attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  },
+    pluck: { osc: "triangle", attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 },
+    pad:   { osc: "sine",     attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  },
+  };
+  const PRESET_ORDER = ["bass", "lead", "pluck", "pad"];
 
   const SCALE_OFFSETS = {
     major: [0,2,4,5,7,9,11],
@@ -918,28 +938,69 @@
   const attackEl = $("attack"), decayEl = $("decay"), sustainEl = $("sustain"), releaseEl = $("release");
   const adsrV = { attack: $("attackV"), decay: $("decayV"), sustain: $("sustainV"), release: $("releaseV") };
 
-  // ---------- Audio ----------
-  const synth = new Tone.MonoSynth({
-    oscillator: { type: "sawtooth" },
-    envelope: {
-      attack: +attackEl.value, decay: +decayEl.value,
-      sustain: +sustainEl.value, release: +releaseEl.value,
-    },
-    filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.5, baseFrequency: 220, octaves: 3 },
-  }).toDestination();
-  synth.volume.value = -8;
+  // ---------- Audio (per-channel synths) ----------
+  const channelSynths = {};
+
+  function makeSynth(channel) {
+    const p = PRESETS[channel.presetName] || PRESETS.bass;
+    const s = new Tone.MonoSynth({
+      oscillator: { type: p.osc },
+      envelope: {
+        attack: channel.adsr.attack, decay: channel.adsr.decay,
+        sustain: channel.adsr.sustain, release: channel.adsr.release,
+      },
+      filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.5, baseFrequency: 220, octaves: 3 },
+    }).toDestination();
+    s.volume.value = -10;
+    return s;
+  }
+  function getSynth(channelId) {
+    if (!channelSynths[channelId]) {
+      const ch = state.channels.find(c => c.id === channelId);
+      if (ch) channelSynths[channelId] = makeSynth(ch);
+    }
+    return channelSynths[channelId];
+  }
+  function disposeChannelSynth(channelId) {
+    if (channelSynths[channelId]) {
+      try { channelSynths[channelId].dispose(); } catch (_) {}
+      delete channelSynths[channelId];
+    }
+  }
 
   function applyADSR() {
-    synth.envelope.attack = +attackEl.value;
-    synth.envelope.decay = +decayEl.value;
-    synth.envelope.sustain = +sustainEl.value;
-    synth.envelope.release = +releaseEl.value;
-    adsrV.attack.textContent = (+attackEl.value).toFixed(2);
-    adsrV.decay.textContent = (+decayEl.value).toFixed(2);
-    adsrV.sustain.textContent = (+sustainEl.value).toFixed(2);
-    adsrV.release.textContent = (+releaseEl.value).toFixed(2);
+    const ch = activeChannel();
+    ch.adsr.attack  = +attackEl.value;
+    ch.adsr.decay   = +decayEl.value;
+    ch.adsr.sustain = +sustainEl.value;
+    ch.adsr.release = +releaseEl.value;
+    const s = getSynth(ch.id);
+    if (s) {
+      s.envelope.attack  = ch.adsr.attack;
+      s.envelope.decay   = ch.adsr.decay;
+      s.envelope.sustain = ch.adsr.sustain;
+      s.envelope.release = ch.adsr.release;
+    }
+    adsrV.attack.textContent  = ch.adsr.attack.toFixed(2);
+    adsrV.decay.textContent   = ch.adsr.decay.toFixed(2);
+    adsrV.sustain.textContent = ch.adsr.sustain.toFixed(2);
+    adsrV.release.textContent = ch.adsr.release.toFixed(2);
   }
   [attackEl, decayEl, sustainEl, releaseEl].forEach(el => el.addEventListener("input", applyADSR));
+
+  function syncInsPopup() {
+    const ch = activeChannel();
+    attackEl.value  = ch.adsr.attack;
+    decayEl.value   = ch.adsr.decay;
+    sustainEl.value = ch.adsr.sustain;
+    releaseEl.value = ch.adsr.release;
+    adsrV.attack.textContent  = ch.adsr.attack.toFixed(2);
+    adsrV.decay.textContent   = ch.adsr.decay.toFixed(2);
+    adsrV.sustain.textContent = ch.adsr.sustain.toFixed(2);
+    adsrV.release.textContent = ch.adsr.release.toFixed(2);
+    const seg = document.querySelector(".seg[data-group='instrument']");
+    if (seg) seg.querySelectorAll("button").forEach(b => b.classList.toggle("active", b.dataset.value === ch.presetName));
+  }
 
   // ---------- Piano render ----------
   function getInScaleClasses() {
@@ -1100,7 +1161,12 @@
     }
     state.selectedIds.add(noteId);
     const n = state.notes.find(x => x.id === noteId);
-    if (n) { Tone.start(); synth.triggerAttackRelease(n.pitch, "8n"); flashKey(n.pitch); }
+    if (n) {
+      Tone.start();
+      const s = getSynth(n.channelId);
+      if (s) s.triggerAttackRelease(n.pitch, "8n");
+      flashKey(n.pitch);
+    }
     renderGrid();
     updateSelectedBar();
   }
@@ -1109,18 +1175,18 @@
   function onKeyPress(pitch, el) {
     if (el) { el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 120); }
     Tone.start();
-    synth.triggerAttackRelease(pitch, "8n");
-
-    // Notes snap to integer steps; the cursor may be fractional for visual finesse.
-    const targetStep = Math.round(state.cursor);
     const ch = state.activeChannelId;
-    const existing = state.notes.find(n => n.channelId === ch && n.step === targetStep && n.step < state.steps);
+    const s = getSynth(ch);
+    if (s) s.triggerAttackRelease(pitch, "8n");
+
+    // Notes inherit the cursor's exact fractional step (snap is applied to the cursor itself).
+    const targetStep = state.cursor;
+    const existing = state.notes.find(n => n.channelId === ch && Math.abs(n.step - targetStep) < 1e-6 && n.step < state.steps);
     if (existing) {
       existing.pitch = pitch;
       state.selectedId = existing.id;
     } else {
-      const size = Math.min(state.defaultSize, state.steps - targetStep);
-      const note = { id: state.nextId++, step: targetStep, size, pitch, channelId: ch };
+      const note = { id: state.nextId++, step: targetStep, size: state.defaultSize, pitch, channelId: ch };
       state.notes.push(note);
       state.selectedId = note.id;
     }
@@ -1140,7 +1206,12 @@
       } else {
         state.selectedIds.add(id);
         const n = state.notes.find(x => x.id === id);
-        if (n) { Tone.start(); synth.triggerAttackRelease(n.pitch, "8n"); flashKey(n.pitch); }
+        if (n) {
+          Tone.start();
+          const s = getSynth(n.channelId);
+          if (s) s.triggerAttackRelease(n.pitch, "8n");
+          flashKey(n.pitch);
+        }
       }
       renderGrid();
       updateSelectedBar();
@@ -1150,7 +1221,8 @@
     const n = state.notes.find(x => x.id === id);
     if (n) {
       Tone.start();
-      synth.triggerAttackRelease(n.pitch, "8n");
+      const s = getSynth(n.channelId);
+      if (s) s.triggerAttackRelease(n.pitch, "8n");
       flashKey(n.pitch);
     }
     renderGrid();
@@ -1190,19 +1262,18 @@
   function pasteAtCursor() {
     if (!state.clipboard || state.clipboard.length === 0) return;
     Tone.start();
-    const anchor = Math.round(state.cursor);
+    const anchor = state.cursor;
     const ch = state.activeChannelId;
     const added = [];
     state.clipboard.forEach(c => {
       const targetStep = anchor + c.relStep;
       if (targetStep >= state.steps) return;
-      // Replace only same-channel notes at the target step
-      state.notes = state.notes.filter(n => n.channelId !== ch || n.step !== targetStep);
+      state.notes = state.notes.filter(n => n.channelId !== ch || Math.abs(n.step - targetStep) >= 1e-6);
       added.push({
         id: state.nextId++,
         step: targetStep,
         pitch: c.pitch,
-        size: Math.min(c.size, state.steps - targetStep),
+        size: c.size,
         channelId: ch,
       });
     });
@@ -1230,13 +1301,13 @@
       const n = state.notes.find(x => x.id === state.selectedId);
       if (n) {
         noteRow.classList.remove("hidden");
-        selectedLabel.textContent = n.pitch + " · " + String(n.step + 1).padStart(2, "0");
+        selectedLabel.textContent = n.pitch + " · " + formatStep(n.step);
         noteSizeEl.value = n.size;
         noteSizeValEl.textContent = n.size;
         deleteBtn.classList.remove("hidden");
-        if (Math.round(state.cursor) !== n.step) {
+        if (Math.abs(state.cursor - n.step) > 1e-6) {
           moveBtn.classList.remove("hidden");
-          moveBtn.textContent = "Move " + String(Math.round(state.cursor) + 1).padStart(2, "0");
+          moveBtn.textContent = "Move " + formatStep(state.cursor);
         }
       }
     }
@@ -1244,8 +1315,7 @@
     if (state.clipboard && state.clipboard.length > 0) {
       pasteBtn.classList.remove("hidden");
       const count = state.clipboard.length;
-      pasteBtn.textContent = "Paste " + String(Math.round(state.cursor) + 1).padStart(2, "0")
-        + " · " + count;
+      pasteBtn.textContent = "Paste " + formatStep(state.cursor) + " · " + count;
     } else {
       pasteBtn.classList.add("hidden");
     }
@@ -1281,6 +1351,7 @@
     renderChannelStrip();
     renderGrid();
     updateSelectedBar();
+    syncInsPopup();
   }
 
   function renderChannelList() {
@@ -1327,11 +1398,13 @@
     if (state.channels.length <= 1) return;
     state.notes = state.notes.filter(n => n.channelId !== id);
     state.channels = state.channels.filter(c => c.id !== id);
+    disposeChannelSynth(id);
     if (state.activeChannelId === id) {
       state.activeChannelId = state.channels[0].id;
       state.selectedId = null;
       if (state.multiSelect) { state.multiSelect = false; state.selectedIds.clear(); }
       applyActiveChannelStyle();
+      syncInsPopup();
     }
     renderChannelList();
     renderChannelStrip();
@@ -1342,14 +1415,16 @@
   function addChannel() {
     const usedColors = new Set(state.channels.map(c => c.color));
     const palette = CHANNEL_PALETTE.find(p => !usedColors.has(p.color)) || CHANNEL_PALETTE[state.channels.length % CHANNEL_PALETTE.length];
+    const presetName = PRESET_ORDER[state.channels.length % PRESET_ORDER.length];
+    const p = PRESETS[presetName];
     state.channels.push({
       id: state.nextChannelId++,
-      name: "Ch " + state.channels.length + 1,
+      name: "Channel " + (state.channels.length + 1),
       color: palette.color,
       edge: palette.edge,
+      presetName,
+      adsr: { attack: p.attack, decay: p.decay, sustain: p.sustain, release: p.release },
     });
-    // Rename more cleanly
-    state.channels[state.channels.length - 1].name = "Channel " + state.channels.length;
     renderChannelList();
     renderChannelStrip();
   }
@@ -1362,6 +1437,7 @@
     btn.addEventListener("click", () => {
       const name = btn.dataset.popup;
       if (name === "channels") renderChannelList();
+      if (name === "ins") syncInsPopup();
       document.querySelectorAll(".popup").forEach(p => p.classList.toggle("hidden", p.dataset.name !== name));
       popupLayer.classList.remove("hidden");
     });
@@ -1377,7 +1453,15 @@
       const group = seg.dataset.group;
       const value = btn.dataset.value;
       if (group === "snap") state.snap = value;
-      else if (group === "instrument") { /* preset hook for later */ }
+      else if (group === "instrument") {
+        const ch = activeChannel();
+        ch.presetName = value;
+        const p = PRESETS[value];
+        ch.adsr = { attack: p.attack, decay: p.decay, sustain: p.sustain, release: p.release };
+        disposeChannelSynth(ch.id);
+        getSynth(ch.id);
+        syncInsPopup();
+      }
       else if (group === "scaleOn") { state.scaleOn = value === "1"; refreshKeyHighlights(); }
       else if (group === "root") { state.scaleRoot = value; refreshKeyHighlights(); }
       else if (group === "scale") { state.scaleType = value; refreshKeyHighlights(); }
@@ -1416,12 +1500,11 @@
 
   moveBtn.addEventListener("click", () => {
     const n = state.notes.find(x => x.id === state.selectedId);
-    const target = Math.round(state.cursor);
-    if (!n || target === n.step) return;
-    // Only collide with notes in the same channel as the moving note
-    state.notes = state.notes.filter(x => x.id === n.id || x.channelId !== n.channelId || x.step !== target);
+    const target = state.cursor;
+    if (!n || Math.abs(target - n.step) < 1e-6) return;
+    // Replace any same-channel note at the target (epsilon match)
+    state.notes = state.notes.filter(x => x.id === n.id || x.channelId !== n.channelId || Math.abs(x.step - target) >= 1e-6);
     n.step = target;
-    n.size = Math.min(n.size, state.steps - n.step);
     renderGrid();
     updateSelectedBar();
   });
@@ -1500,10 +1583,17 @@
 
   // ---------- Transport ----------
   let scheduledId = null;
+  let currentPart = null;
   const stepTime = "8n";
+
+  function teardownPlayback() {
+    if (currentPart) { try { currentPart.dispose(); } catch (_) {} currentPart = null; }
+    if (scheduledId !== null) { Tone.Transport.clear(scheduledId); scheduledId = null; }
+    Tone.Transport.cancel(0);
+  }
+
   function play() {
     Tone.start();
-    applyADSR();
     if (state.playing) {
       Tone.Transport.pause();
       state.playing = false;
@@ -1515,41 +1605,49 @@
     playBtn.textContent = "PAUSE";
     playBtn.dataset.state = "playing";
 
-    if (scheduledId !== null) { Tone.Transport.clear(scheduledId); scheduledId = null; }
-    Tone.Transport.cancel(0);
-    Tone.Transport.position = "0:0:0";
-    state.cursor = Math.round(state.cursor); // align to step grid for playback
-    renderGrid(); positionKnobFromCursor();
+    teardownPlayback();
 
-    let i = state.cursor;
+    const stepSec = Tone.Time(stepTime).toSeconds();
+    const totalSec = state.steps * stepSec;
+
+    // Schedule every note at its exact fractional time, looping the whole pattern.
+    const events = state.notes
+      .filter(n => n.step < state.steps)
+      .map(n => [n.step * stepSec, n]);
+
+    currentPart = new Tone.Part((time, n) => {
+      const dur = Math.min(n.size, state.steps - n.step) * stepSec;
+      const s = getSynth(n.channelId);
+      if (s) s.triggerAttackRelease(n.pitch, dur, time);
+      Tone.Draw.schedule(() => {
+        const el = gridEl.querySelector('.note[data-id="' + n.id + '"]');
+        if (el) {
+          el.classList.add("playing");
+          setTimeout(() => el.classList.remove("playing"), dur * 1000);
+        }
+      }, time);
+    }, events);
+    currentPart.loop = true;
+    currentPart.loopEnd = totalSec;
+    currentPart.start(0);
+
+    // Smooth cursor animation — updates the cursor display from the transport position.
     scheduledId = Tone.Transport.scheduleRepeat((time) => {
       Tone.Draw.schedule(() => {
-        state.cursor = i % state.steps;
+        const pos = Tone.Transport.seconds % totalSec;
+        state.cursor = pos / stepSec;
         renderGrid();
         positionKnobFromCursor();
       }, time);
-      state.notes
-        .filter(n => n.step < state.steps && n.step === (i % state.steps))
-        .forEach(n => {
-          const dur = Math.min(n.size, state.steps - n.step) * Tone.Time(stepTime).toSeconds();
-          synth.triggerAttackRelease(n.pitch, dur, time);
-          Tone.Draw.schedule(() => {
-            const el = gridEl.querySelector('.note[data-id="' + n.id + '"]');
-            if (el) {
-              el.classList.add("playing");
-              setTimeout(() => el.classList.remove("playing"), dur * 1000);
-            }
-          }, time);
-        });
-      i = (i + 1) % state.steps;
-    }, stepTime);
+    }, "32n");
 
+    // Start playback at the cursor's current position.
+    Tone.Transport.seconds = state.cursor * stepSec;
     Tone.Transport.start();
   }
   function stop() {
     Tone.Transport.stop();
-    Tone.Transport.cancel(0);
-    if (scheduledId !== null) { Tone.Transport.clear(scheduledId); scheduledId = null; }
+    teardownPlayback();
     state.playing = false;
     playBtn.textContent = "PLAY";
     playBtn.dataset.state = "stopped";
