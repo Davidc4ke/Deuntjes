@@ -855,6 +855,25 @@
 
   const WHITE_KEY_H = 30; // px per white key — drives total scrollable height
 
+  const CHANNEL_PALETTE = [
+    { color: "#e9925c", edge: "#c47338" }, // coral / bass
+    { color: "#4ea6e9", edge: "#2d83c5" }, // blue / drum
+    { color: "#6dc97a", edge: "#499b56" }, // green / lead
+    { color: "#c47ccf", edge: "#985ba5" }, // magenta / chord
+    { color: "#f0c04b", edge: "#c69829" }, // amber / pad
+    { color: "#7e8dff", edge: "#5a6acc" }, // periwinkle / aux
+    { color: "#ff7e9a", edge: "#cc5772" }, // rose
+    { color: "#5cd3c6", edge: "#349a90" }, // teal
+  ];
+
+  const PRESETS = {
+    bass:  { osc: "sawtooth", attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  },
+    lead:  { osc: "square",   attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  },
+    pluck: { osc: "triangle", attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 },
+    pad:   { osc: "sine",     attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  },
+  };
+  const PRESET_ORDER = ["bass", "lead", "pluck", "pad"];
+
   const state = {
     steps: 16,
     cursor: 0,
@@ -894,25 +913,6 @@
     }
     return oneBased.toFixed(2);
   }
-
-  const CHANNEL_PALETTE = [
-    { color: "#e9925c", edge: "#c47338" }, // coral / bass
-    { color: "#4ea6e9", edge: "#2d83c5" }, // blue / drum
-    { color: "#6dc97a", edge: "#499b56" }, // green / lead
-    { color: "#c47ccf", edge: "#985ba5" }, // magenta / chord
-    { color: "#f0c04b", edge: "#c69829" }, // amber / pad
-    { color: "#7e8dff", edge: "#5a6acc" }, // periwinkle / aux
-    { color: "#ff7e9a", edge: "#cc5772" }, // rose
-    { color: "#5cd3c6", edge: "#349a90" }, // teal
-  ];
-
-  const PRESETS = {
-    bass:  { osc: "sawtooth", attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  },
-    lead:  { osc: "square",   attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  },
-    pluck: { osc: "triangle", attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 },
-    pad:   { osc: "sine",     attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  },
-  };
-  const PRESET_ORDER = ["bass", "lead", "pluck", "pad"];
 
   const SCALE_OFFSETS = {
     major: [0,2,4,5,7,9,11],
