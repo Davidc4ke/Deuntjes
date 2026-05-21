@@ -957,7 +957,10 @@
   function getSynth(channelId) {
     if (!channelSynths[channelId]) {
       const ch = state.channels.find(c => c.id === channelId);
-      if (ch) channelSynths[channelId] = makeSynth(ch);
+      if (ch) {
+        try { channelSynths[channelId] = makeSynth(ch); }
+        catch (err) { console.error("Synth init failed for channel", channelId, err); return null; }
+      }
     }
     return channelSynths[channelId];
   }
@@ -1667,7 +1670,7 @@
   }
 
   function init() {
-    applyADSR();
+    syncInsPopup(); // display-only; doesn't create a synth
     applyActiveChannelStyle();
     renderChannelStrip();
     renderKeys();
