@@ -376,22 +376,23 @@
   .hidden { display: none !important; }
 
   /* Transport */
-  .transport { display: grid; grid-template-rows: auto 1fr 1fr; gap: 8px; }
+  .transport { display: grid; grid-template-rows: 1fr 1fr; gap: 8px; }
+
+  /* Paste row */
+  .paste-row { display: flex; }
   .paste-btn {
-    appearance: none;
+    appearance: none; flex: 1;
     background: var(--cursor); color: #fff;
     border: 1px solid var(--cursor-strong);
     border-radius: 10px;
-    padding: 8px 4px;
-    font: 700 10px var(--ui);
+    padding: 9px 12px;
+    font: 700 12px var(--ui);
     letter-spacing: 0.08em;
-    line-height: 1.2;
     cursor: pointer;
     font-variant-numeric: tabular-nums;
     box-shadow: 0 1px 0 rgba(255,255,255,0.18) inset, 0 1px 3px rgba(0,0,0,0.2);
   }
   .paste-btn:hover { background: var(--cursor-strong); }
-  .paste-btn .count { display: block; font: 700 14px var(--mono); margin-top: 2px; }
   .transport button {
     appearance: none; border: 1px solid rgba(0,0,0,0.08);
     background: #fff; color: #1d1d1f;
@@ -517,6 +518,11 @@
             </div>
           </div>
 
+          <!-- Paste row (visible when clipboard non-empty) -->
+          <div class="paste-row hidden" id="pasteRow">
+            <button class="paste-btn" id="pasteBtn" type="button">PASTE @ 02 · 0 notes</button>
+          </div>
+
           <!-- ADSR -->
           <div class="adsr">
             <label class="knob-cell">A
@@ -538,7 +544,6 @@
           </div>
         </div>
         <div class="transport">
-          <button id="pasteBtn" class="paste-btn hidden" type="button">PASTE</button>
           <button id="playBtn" type="button" data-state="stopped">PLAY</button>
           <button id="stopBtn" type="button">STOP</button>
         </div>
@@ -730,6 +735,13 @@
   }
 
   function enterMultiSelectWith(noteId) {
+    if (state.multiSelect && state.selectedIds.has(noteId)) {
+      // Long-press on an already-selected note removes it from the set.
+      state.selectedIds.delete(noteId);
+      renderGrid();
+      updateSelectedBar();
+      return;
+    }
     if (!state.multiSelect) {
       state.multiSelect = true;
       state.selectedIds.clear();
@@ -866,12 +878,14 @@
       }
     }
 
+    const pasteRow = $("pasteRow");
     if (state.clipboard && state.clipboard.length > 0) {
-      pasteBtn.classList.remove("hidden");
-      pasteBtn.innerHTML = "PASTE @ " + String(state.cursor + 1).padStart(2, "0") +
-                          '<span class="count">' + state.clipboard.length + ' note' + (state.clipboard.length === 1 ? '' : 's') + '</span>';
+      pasteRow.classList.remove("hidden");
+      const count = state.clipboard.length;
+      pasteBtn.textContent = "PASTE @ " + String(state.cursor + 1).padStart(2, "0")
+        + " · " + count + " note" + (count === 1 ? "" : "s");
     } else {
-      pasteBtn.classList.add("hidden");
+      pasteRow.classList.add("hidden");
     }
   }
 
