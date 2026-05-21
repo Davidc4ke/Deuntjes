@@ -189,12 +189,15 @@
   .row.cursor .num {
     color: var(--cursor-strong); font-weight: 700;
   }
-  .row.cursor::after {
-    content: ""; position: absolute;
-    left: 36px; right: 8px; top: 50%;
+  .cursor-line {
+    position: absolute; left: 36px; right: 8px;
     height: 1.5px; background: var(--cursor);
     box-shadow: 0 0 0 2px rgba(107,95,217,0.12);
+    pointer-events: none;
+    z-index: 3;
+    transform: translateY(-0.75px);
   }
+  .cursor-line.fractional { background: var(--cursor); opacity: 0.85; }
 
   .note {
     position: absolute; left: 38px; right: 14px;
@@ -897,9 +900,10 @@
     const h = gridEl.clientHeight || 580;
     const rowH = h / state.steps;
 
+    const cursorInt = Math.round(state.cursor);
     for (let i = 0; i < state.steps; i++) {
       const row = document.createElement("div");
-      row.className = "row" + (i % 4 === 0 ? " beat" : "") + (i === state.cursor ? " cursor" : "");
+      row.className = "row" + (i % 4 === 0 ? " beat" : "") + (i === cursorInt ? " cursor" : "");
       row.style.top = (i * rowH) + "px";
       row.style.height = rowH + "px";
       const num = document.createElement("span");
@@ -908,6 +912,12 @@
       row.appendChild(num);
       gridEl.appendChild(row);
     }
+
+    // Cursor line — floats at the cursor's exact Y so half/off snap reads visually
+    const cursorLine = document.createElement("div");
+    cursorLine.className = "cursor-line" + (state.cursor !== Math.round(state.cursor) ? " fractional" : "");
+    cursorLine.style.top = ((state.cursor + 0.5) * rowH) + "px";
+    gridEl.appendChild(cursorLine);
 
     // notes (only those within visible range; others kept in state)
     const isSel = (id) => state.multiSelect ? state.selectedIds.has(id) : (id === state.selectedId);
@@ -991,14 +1001,15 @@
     Tone.start();
     synth.triggerAttackRelease(pitch, "8n");
 
-    // If a note already exists at the cursor step, replace its pitch instead of creating a new one
-    const existing = state.notes.find(n => n.step === state.cursor && n.step < state.steps);
+    // Notes snap to integer steps; the cursor may be fractional for visual finesse.
+    const targetStep = Math.round(state.cursor);
+    const existing = state.notes.find(n => n.step === targetStep && n.step < state.steps);
     if (existing) {
       existing.pitch = pitch;
       state.selectedId = existing.id;
     } else {
-      const size = Math.min(state.defaultSize, state.steps - state.cursor);
-      const note = { id: state.nextId++, step: state.cursor, size, pitch };
+      const size = Math.min(state.defaultSize, state.steps - targetStep);
+      const note = { id: state.nextId++, step: targetStep, size, pitch };
       state.notes.push(note);
       state.selectedId = note.id;
     }
@@ -1068,9 +1079,10 @@
   function pasteAtCursor() {
     if (!state.clipboard || state.clipboard.length === 0) return;
     Tone.start();
+    const anchor = Math.round(state.cursor);
     const added = [];
     state.clipboard.forEach(c => {
-      const targetStep = state.cursor + c.relStep;
+      const targetStep = anchor + c.relStep;
       if (targetStep >= state.steps) return;
       state.notes = state.notes.filter(n => n.step !== targetStep);
       added.push({
@@ -1108,9 +1120,9 @@
         noteSizeEl.value = n.size;
         noteSizeValEl.textContent = n.size;
         deleteBtn.classList.remove("hidden");
-        if (state.cursor !== n.step) {
+        if (Math.round(state.cursor) !== n.step) {
           moveBtn.classList.remove("hidden");
-          moveBtn.textContent = "Move " + String(state.cursor + 1).padStart(2, "0");
+          moveBtn.textContent = "Move " + String(Math.round(state.cursor) + 1).padStart(2, "0");
         }
       }
     }
@@ -1118,7 +1130,7 @@
     if (state.clipboard && state.clipboard.length > 0) {
       pasteBtn.classList.remove("hidden");
       const count = state.clipboard.length;
-      pasteBtn.textContent = "Paste " + String(state.cursor + 1).padStart(2, "0")
+      pasteBtn.textContent = "Paste " + String(Math.round(state.cursor) + 1).padStart(2, "0")
         + " · " + count;
     } else {
       pasteBtn.classList.add("hidden");
@@ -1184,8 +1196,8 @@
 
   moveBtn.addEventListener("click", () => {
     const n = state.notes.find(x => x.id === state.selectedId);
-    if (!n || state.cursor === n.step) return;
-    const target = state.cursor;
+    const target = Math.round(state.cursor);
+    if (!n || target === n.step) return;
     state.notes = state.notes.filter(x => x.id === n.id || x.step !== target);
     n.step = target;
     n.size = Math.min(n.size, state.steps - n.step);
@@ -1225,15 +1237,22 @@
     const frac = state.cursor / Math.max(1, state.steps - 1);
     knobEl.style.top = (pad + frac * usable) + "px";
   }
+  function snapCursor(raw) {
+    const clamped = Math.max(0, Math.min(state.steps - 1, raw));
+    if (state.snap === "step") return Math.round(clamped);
+    if (state.snap === "half") return Math.round(clamped * 2) / 2;
+    return Math.round(clamped * 100) / 100; // "off" — keep some quantization for sanity
+  }
+
   function setCursorFromClientY(clientY) {
     const r = scrollerEl.getBoundingClientRect();
     const pad = 10;
     const usable = r.height - pad * 2;
     const y = Math.max(0, Math.min(usable, clientY - r.top - pad));
     const frac = y / usable;
-    const step = Math.round(frac * (state.steps - 1));
-    if (step !== state.cursor) {
-      state.cursor = step;
+    const next = snapCursor(frac * (state.steps - 1));
+    if (Math.abs(next - state.cursor) > 1e-6) {
+      state.cursor = next;
       renderGrid();
       updateSelectedBar();
     }
@@ -1278,6 +1297,7 @@
     if (scheduledId !== null) { Tone.Transport.clear(scheduledId); scheduledId = null; }
     Tone.Transport.cancel(0);
     Tone.Transport.position = "0:0:0";
+    state.cursor = Math.round(state.cursor); // align to step grid for playback
     renderGrid(); positionKnobFromCursor();
 
     let i = state.cursor;
