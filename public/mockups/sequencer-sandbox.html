@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Sequencer Sandbox — Mockup</title>
+<style>
+  :root {
+    --bg: #0f0f10;
+    --panel: #ffffff;
+    --panel-2: #f3f3f3;
+    --grey: #b3b3b6;
+    --grey-2: #9a9a9d;
+    --orange: #f4ab78;
+    --orange-strong: #ec8c4e;
+    --purple: #7e74e0;
+    --purple-strong: #5b50d6;
+    --text: #e7e7ea;
+    --text-mute: #9d9da3;
+    --line: #d8d8db;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; }
+  body { display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .app {
+    width: min(960px, 100%);
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 12px;
+  }
+  .title { color: var(--text-mute); font-size: 16px; text-align: center; }
+  .topbar {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    background: var(--grey);
+    border-radius: 8px;
+    padding: 12px;
+    gap: 12px;
+    align-items: center;
+  }
+  .topbar .left, .topbar .right { display: flex; gap: 8px; align-items: center; }
+  .pill {
+    background: white; border: none; border-radius: 999px; padding: 8px 18px;
+    font-weight: 600; color: #222; cursor: pointer; font-size: 14px;
+  }
+  .pill.orange { background: var(--orange); color: #2a1d0e; }
+  .pill:hover { filter: brightness(0.97); }
+
+  .stage {
+    display: grid;
+    grid-template-columns: 240px 1fr 28px;
+    background: var(--panel);
+    border-radius: 0;
+    min-height: 560px;
+    position: relative;
+  }
+  /* Piano roll */
+  .piano {
+    position: relative;
+    background: #fff;
+    border-right: 1px solid var(--line);
+    overflow: hidden;
+    user-select: none;
+  }
+  .piano .keys { position: relative; height: 100%; }
+  .key {
+    position: absolute; left: 0; right: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 10px; font-weight: 700; color: #222;
+  }
+  .key.white { background: #fff; border-bottom: 1px solid #e3e3e3; }
+  .key.black {
+    background: #1c1c1f; right: 40%; left: 0; border-bottom: 1px solid #000;
+    z-index: 2; color: #fff;
+  }
+  .key.highlight { background: var(--orange) !important; color: #2a1d0e !important; }
+  .key:active { filter: brightness(0.85); }
+  .key.flash { background: var(--orange-strong) !important; color: white !important; transition: background 80ms; }
+
+  /* Sequencer grid */
+  .grid {
+    position: relative;
+    background: #fff;
+    overflow: hidden;
+  }
+  .row {
+    position: absolute; left: 0; right: 0;
+    border-top: 1px solid var(--line);
+    display: flex; align-items: center;
+    padding-left: 14px; gap: 12px;
+  }
+  .row .num {
+    font-size: 12px; color: #767679; width: 18px; text-align: right;
+  }
+  .row.cursor::before {
+    content: ""; position: absolute; left: 38px; right: 6px; top: 50%;
+    height: 1px; background: var(--purple-strong);
+  }
+  .row.cursor .num {
+    background: var(--purple-strong); color: white; border-radius: 999px;
+    width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700;
+  }
+
+  .note {
+    position: absolute;
+    background: var(--orange); color: #2a1d0e;
+    border-radius: 6px;
+    font-weight: 700; font-size: 12px;
+    display: flex; align-items: flex-start; justify-content: flex-start;
+    padding: 6px 8px;
+    cursor: pointer;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.03) inset;
+  }
+  .note.selected { outline: 2px solid var(--purple-strong); outline-offset: 1px; }
+  .note.playing { background: var(--orange-strong); color: white; }
+
+  /* Right scroller */
+  .scroller {
+    position: relative;
+    background: var(--grey);
+    margin-left: 4px;
+    border-radius: 6px;
+    overflow: visible;
+  }
+  .scroller .track {
+    position: absolute; top: 8px; bottom: 8px; left: 50%; transform: translateX(-50%);
+    width: 8px; background: var(--grey-2); border-radius: 4px;
+  }
+  .knob {
+    position: absolute; left: 50%; transform: translate(-50%, -50%);
+    width: 28px; height: 28px; background: var(--purple); border-radius: 50%;
+    cursor: grab; box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  }
+  .knob:active { cursor: grabbing; background: var(--purple-strong); }
+
+  /* Bottom bar */
+  .bottom {
+    background: #8c84e6;
+    border-radius: 0 0 6px 6px;
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 1fr 120px;
+    gap: 14px;
+    color: white;
+    align-items: stretch;
+  }
+  .bottom .col-left { display: grid; gap: 10px; }
+  .row1 { display: flex; align-items: center; gap: 12px; }
+  .row1 label { font-size: 12px; opacity: 0.9; }
+  input[type="range"] { -webkit-appearance: none; appearance: none; background: transparent; }
+  input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: rgba(255,255,255,0.5); border-radius: 2px; }
+  input[type="range"]::-moz-range-track { height: 4px; background: rgba(255,255,255,0.5); border-radius: 2px; }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    margin-top: -8px;
+    width: 20px; height: 20px; background: var(--orange); border-radius: 50%;
+    border: 2px solid white;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 20px; height: 20px; background: var(--orange); border-radius: 50%;
+    border: 2px solid white;
+  }
+  .adsr { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .adsr label { display: grid; gap: 4px; font-size: 11px; opacity: 0.95; }
+  .selected-bar { display: flex; gap: 16px; align-items: center; min-height: 26px; }
+  .selected-bar.hidden { opacity: 0.4; }
+  .selected-bar button {
+    background: rgba(0,0,0,0.25); color: white; border: none;
+    padding: 6px 12px; border-radius: 6px; font-weight: 600; cursor: pointer;
+  }
+  .selected-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .transport { display: grid; grid-template-rows: 1fr 1fr; gap: 10px; }
+  .transport button {
+    background: white; color: #222; border: none; border-radius: 12px;
+    font-weight: 800; letter-spacing: 0.5px; cursor: pointer; font-size: 14px;
+  }
+  .transport button:hover { filter: brightness(0.97); }
+
+  .hint {
+    position: fixed; top: 16px; left: 16px; max-width: 220px; font-size: 12px; color: #c8c8cc;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px; padding: 10px 12px; line-height: 1.45;
+  }
+  .hint h4 { margin: 0 0 6px; font-size: 12px; color: #fff; letter-spacing: 0.4px; text-transform: uppercase; }
+  .hint kbd { background: #2a2a2e; border-radius: 4px; padding: 1px 5px; font-size: 11px; }
+</style>
+</head>
+<body>
+  <div class="hint">
+    <h4>How to play</h4>
+    1. Drag the purple knob (right) to move the cursor.<br/>
+    2. Click a piano key to place a note at the cursor step.<br/>
+    3. Click a note to select → Delete / Size in bottom bar.<br/>
+    4. PLAY / PAUSE / STOP at bottom right.
+  </div>
+
+  <div class="app">
+    <div class="title">Pattern — Single Instrument — Piano Mode</div>
+
+    <div class="topbar">
+      <div class="left">
+        <button class="pill">Back</button>
+        <button class="pill">Input</button>
+      </div>
+      <div class="right">
+        <button class="pill orange">Bass</button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="piano" id="piano"><div class="keys" id="keys"></div></div>
+      <div class="grid" id="grid"></div>
+      <div class="scroller" id="scroller">
+        <div class="track"></div>
+        <div class="knob" id="knob"></div>
+      </div>
+    </div>
+
+    <div class="bottom">
+      <div class="col-left">
+        <div class="row1">
+          <label style="min-width:50px">Length</label>
+          <input type="range" id="length" min="4" max="32" value="16" step="1" style="flex:1" />
+          <span id="lengthVal" style="font-weight:700; min-width:24px; text-align:right">16</span>
+        </div>
+        <div class="adsr">
+          <label>A <input type="range" id="attack" min="0" max="1" step="0.01" value="0.02"></label>
+          <label>D <input type="range" id="decay" min="0" max="1" step="0.01" value="0.15"></label>
+          <label>S <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.7"></label>
+          <label>R <input type="range" id="release" min="0" max="2" step="0.01" value="0.4"></label>
+        </div>
+        <div class="selected-bar hidden" id="selectedBar">
+          <span>Selected: <span id="selectedLabel">—</span></span>
+          <label>Size <input type="range" id="noteSize" min="1" max="8" value="1" step="1" disabled></label>
+          <span id="noteSizeVal">1</span>
+          <button id="deleteBtn" disabled>Delete</button>
+        </div>
+      </div>
+      <div class="transport">
+        <button id="playBtn">PLAY</button>
+        <button id="stopBtn">STOP</button>
+      </div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/tone@15.0.4/build/Tone.js"></script>
+<script>
+  // ---------- Constants ----------
+  const PITCHES = []; // C2..C5 (37 keys), low -> high
+  const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+  for (let o = 2; o <= 5; o++) {
+    for (let i = 0; i < 12; i++) {
+      PITCHES.push({ name: NOTE_NAMES[i] + o, isBlack: NOTE_NAMES[i].includes("#") });
+      if (o === 5 && i === 0) break; // stop after C5
+    }
+  }
+  PITCHES.reverse(); // top-of-piano (highest) first for vertical layout
+
+  // ---------- State ----------
+  const state = {
+    steps: 16,
+    cursor: 0, // 0-indexed step
+    notes: [], // { id, step, size, pitch }
+    selectedId: null,
+    playing: false,
+    nextId: 1,
+  };
+
+  // ---------- DOM ----------
+  const keysEl = document.getElementById("keys");
+  const gridEl = document.getElementById("grid");
+  const knobEl = document.getElementById("knob");
+  const scrollerEl = document.getElementById("scroller");
+  const lengthEl = document.getElementById("length");
+  const lengthValEl = document.getElementById("lengthVal");
+  const playBtn = document.getElementById("playBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const selectedBar = document.getElementById("selectedBar");
+  const selectedLabel = document.getElementById("selectedLabel");
+  const noteSizeEl = document.getElementById("noteSize");
+  const noteSizeValEl = document.getElementById("noteSizeVal");
+  const deleteBtn = document.getElementById("deleteBtn");
+  const attackEl = document.getElementById("attack");
+  const decayEl = document.getElementById("decay");
+  const sustainEl = document.getElementById("sustain");
+  const releaseEl = document.getElementById("release");
+
+  // ---------- Audio ----------
+  const synth = new Tone.MonoSynth({
+    oscillator: { type: "sawtooth" },
+    envelope: {
+      attack: parseFloat(attackEl.value),
+      decay: parseFloat(decayEl.value),
+      sustain: parseFloat(sustainEl.value),
+      release: parseFloat(releaseEl.value),
+    },
+    filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.5, baseFrequency: 200, octaves: 3 },
+  }).toDestination();
+  synth.volume.value = -8;
+
+  function applyADSR() {
+    synth.envelope.attack = parseFloat(attackEl.value);
+    synth.envelope.decay = parseFloat(decayEl.value);
+    synth.envelope.sustain = parseFloat(sustainEl.value);
+    synth.envelope.release = parseFloat(releaseEl.value);
+  }
+  [attackEl, decayEl, sustainEl, releaseEl].forEach(el => el.addEventListener("input", applyADSR));
+
+  // ---------- Render piano keys ----------
+  function renderKeys() {
+    keysEl.innerHTML = "";
+    // Place WHITE keys first (positioned by white-key index), then BLACK on top
+    const whites = PITCHES.filter(p => !p.isBlack);
+    const totalWhites = whites.length;
+    const pianoHeight = keysEl.clientHeight || 560;
+    const whiteH = pianoHeight / totalWhites;
+
+    // Map each pitch -> { top, height, white }
+    const layout = {};
+    let whiteIndex = 0;
+    PITCHES.forEach((p, idx) => {
+      if (!p.isBlack) {
+        layout[p.name] = { top: whiteIndex * whiteH, height: whiteH, isBlack: false };
+        whiteIndex++;
+      }
+    });
+    // Black keys: position between adjacent whites (above the upper white in our top-to-bottom layout)
+    PITCHES.forEach((p, idx) => {
+      if (p.isBlack) {
+        // The black key sits between the white below it (idx+1) and the white above it (idx-1) in the array.
+        const prev = PITCHES[idx - 1]; // higher white
+        if (prev && !prev.isBlack) {
+          const prevLayout = layout[prev.name];
+          layout[p.name] = {
+            top: prevLayout.top + prevLayout.height * 0.65,
+            height: whiteH * 0.7,
+            isBlack: true,
+          };
+        }
+      }
+    });
+
+    // Render
+    PITCHES.forEach(p => {
+      if (p.isBlack) return; // black on top later
+      const el = document.createElement("div");
+      el.className = "key white";
+      el.dataset.pitch = p.name;
+      const L = layout[p.name];
+      el.style.top = L.top + "px";
+      el.style.height = L.height + "px";
+      if (p.name.startsWith("C") && !p.name.includes("#")) {
+        el.textContent = p.name;
+      }
+      el.addEventListener("click", () => onKeyPress(p.name, el));
+      keysEl.appendChild(el);
+    });
+    PITCHES.forEach(p => {
+      if (!p.isBlack) return;
+      const L = layout[p.name];
+      if (!L) return;
+      const el = document.createElement("div");
+      el.className = "key black";
+      el.dataset.pitch = p.name;
+      el.style.top = L.top + "px";
+      el.style.height = L.height + "px";
+      el.addEventListener("click", (e) => { e.stopPropagation(); onKeyPress(p.name, el); });
+      keysEl.appendChild(el);
+    });
+  }
+
+  // ---------- Render sequencer rows + notes ----------
+  function renderGrid() {
+    gridEl.innerHTML = "";
+    const h = gridEl.clientHeight || 560;
+    const rowH = h / state.steps;
+    for (let i = 0; i < state.steps; i++) {
+      const row = document.createElement("div");
+      row.className = "row" + (i === state.cursor ? " cursor" : "");
+      row.style.top = (i * rowH) + "px";
+      row.style.height = rowH + "px";
+      const num = document.createElement("span");
+      num.className = "num";
+      num.textContent = i + 1;
+      row.appendChild(num);
+      gridEl.appendChild(row);
+    }
+    // Notes
+    state.notes.forEach(n => {
+      const noteEl = document.createElement("div");
+      noteEl.className = "note" + (n.id === state.selectedId ? " selected" : "");
+      noteEl.dataset.id = n.id;
+      noteEl.textContent = n.pitch;
+      noteEl.style.top = (n.step * rowH + 4) + "px";
+      noteEl.style.height = (n.size * rowH - 8) + "px";
+      noteEl.style.left = "50px";
+      noteEl.style.width = "80px";
+      noteEl.addEventListener("click", (e) => { e.stopPropagation(); selectNote(n.id); });
+      gridEl.appendChild(noteEl);
+    });
+  }
+
+  // ---------- Interactions ----------
+  function onKeyPress(pitch, el) {
+    el && el.classList.add("flash");
+    setTimeout(() => el && el.classList.remove("flash"), 120);
+    Tone.start();
+    synth.triggerAttackRelease(pitch, "8n");
+    // Place note at current cursor
+    const note = { id: state.nextId++, step: state.cursor, size: 1, pitch };
+    state.notes.push(note);
+    state.selectedId = note.id;
+    renderGrid();
+    updateSelectedBar();
+  }
+
+  function selectNote(id) {
+    state.selectedId = id;
+    renderGrid();
+    updateSelectedBar();
+  }
+
+  function updateSelectedBar() {
+    const note = state.notes.find(n => n.id === state.selectedId);
+    if (!note) {
+      selectedBar.classList.add("hidden");
+      selectedLabel.textContent = "—";
+      noteSizeEl.disabled = true;
+      deleteBtn.disabled = true;
+      return;
+    }
+    selectedBar.classList.remove("hidden");
+    selectedLabel.textContent = note.pitch + " @ step " + (note.step + 1);
+    noteSizeEl.disabled = false;
+    deleteBtn.disabled = false;
+    noteSizeEl.value = note.size;
+    noteSizeValEl.textContent = note.size;
+  }
+
+  noteSizeEl.addEventListener("input", () => {
+    const note = state.notes.find(n => n.id === state.selectedId);
+    if (!note) return;
+    const newSize = parseInt(noteSizeEl.value, 10);
+    note.size = Math.min(newSize, state.steps - note.step);
+    noteSizeValEl.textContent = note.size;
+    renderGrid();
+  });
+
+  deleteBtn.addEventListener("click", () => {
+    state.notes = state.notes.filter(n => n.id !== state.selectedId);
+    state.selectedId = null;
+    renderGrid();
+    updateSelectedBar();
+  });
+
+  // Click empty grid area to deselect
+  gridEl.addEventListener("click", () => {
+    state.selectedId = null;
+    renderGrid();
+    updateSelectedBar();
+  });
+
+  // ---------- Length slider ----------
+  lengthEl.addEventListener("input", () => {
+    state.steps = parseInt(lengthEl.value, 10);
+    lengthValEl.textContent = state.steps;
+    state.cursor = Math.min(state.cursor, state.steps - 1);
+    state.notes = state.notes.filter(n => n.step < state.steps);
+    state.notes.forEach(n => { n.size = Math.min(n.size, state.steps - n.step); });
+    renderGrid();
+    positionKnobFromCursor();
+  });
+
+  // ---------- Scroller knob (drag to move cursor) ----------
+  function knobRange() {
+    const r = scrollerEl.getBoundingClientRect();
+    return { top: r.top + 14, bottom: r.bottom - 14 };
+  }
+  function positionKnobFromCursor() {
+    const r = scrollerEl.getBoundingClientRect();
+    const usable = r.height - 28; // 14px padding top+bottom
+    const frac = state.cursor / Math.max(1, state.steps - 1);
+    const y = 14 + frac * usable;
+    knobEl.style.top = y + "px";
+  }
+  function setCursorFromClientY(clientY) {
+    const r = scrollerEl.getBoundingClientRect();
+    const usable = r.height - 28;
+    const y = Math.max(0, Math.min(usable, clientY - r.top - 14));
+    const frac = y / usable;
+    const step = Math.round(frac * (state.steps - 1));
+    if (step !== state.cursor) {
+      state.cursor = step;
+      renderGrid();
+    }
+    positionKnobFromCursor();
+  }
+  let dragging = false;
+  knobEl.addEventListener("mousedown", (e) => { dragging = true; e.preventDefault(); });
+  window.addEventListener("mousemove", (e) => { if (dragging) setCursorFromClientY(e.clientY); });
+  window.addEventListener("mouseup", () => { dragging = false; });
+  scrollerEl.addEventListener("click", (e) => { if (e.target === knobEl) return; setCursorFromClientY(e.clientY); });
+
+  // ---------- Playback ----------
+  let scheduledId = null;
+  let stepTime = "8n";
+  function play() {
+    Tone.start();
+    applyADSR();
+    if (state.playing) {
+      // pause
+      Tone.Transport.pause();
+      state.playing = false;
+      playBtn.textContent = "PLAY";
+      return;
+    }
+    state.playing = true;
+    playBtn.textContent = "PAUSE";
+
+    if (scheduledId !== null) {
+      Tone.Transport.clear(scheduledId);
+      scheduledId = null;
+    }
+    Tone.Transport.cancel(0);
+    Tone.Transport.position = "0:0:0";
+    state.cursor = 0; renderGrid(); positionKnobFromCursor();
+
+    // Schedule: every step, advance cursor and trigger notes whose step == cursor
+    let i = 0;
+    scheduledId = Tone.Transport.scheduleRepeat((time) => {
+      Tone.Draw.schedule(() => {
+        state.cursor = i % state.steps;
+        renderGrid();
+        positionKnobFromCursor();
+        document.querySelectorAll(".note.playing").forEach(el => el.classList.remove("playing"));
+      }, time);
+      state.notes.filter(n => n.step === (i % state.steps)).forEach(n => {
+        const dur = n.size * Tone.Time(stepTime).toSeconds();
+        synth.triggerAttackRelease(n.pitch, dur, time);
+        Tone.Draw.schedule(() => {
+          const el = gridEl.querySelector('.note[data-id="' + n.id + '"]');
+          if (el) el.classList.add("playing");
+        }, time);
+      });
+      i++;
+      if (i >= state.steps) i = 0; // loop
+    }, stepTime);
+
+    Tone.Transport.start();
+  }
+
+  function stop() {
+    Tone.Transport.stop();
+    Tone.Transport.cancel(0);
+    if (scheduledId !== null) { Tone.Transport.clear(scheduledId); scheduledId = null; }
+    state.playing = false;
+    playBtn.textContent = "PLAY";
+    state.cursor = 0;
+    renderGrid();
+    positionKnobFromCursor();
+    document.querySelectorAll(".note.playing").forEach(el => el.classList.remove("playing"));
+  }
+
+  playBtn.addEventListener("click", play);
+  stopBtn.addEventListener("click", stop);
+
+  // ---------- Init ----------
+  function init() {
+    renderKeys();
+    renderGrid();
+    positionKnobFromCursor();
+    updateSelectedBar();
+    window.addEventListener("resize", () => { renderKeys(); renderGrid(); positionKnobFromCursor(); });
+  }
+  // Wait for layout
+  requestAnimationFrame(init);
+</script>
+</body>
+</html>
