@@ -127,8 +127,20 @@
   }
 
   /* Piano */
-  .piano { position: relative; background: #fff; border-right: 1px solid var(--stage-line-strong); overflow: hidden; user-select: none; }
-  .piano-inner { position: relative; height: 100%; }
+  .piano {
+    position: relative; background: #fff;
+    border-right: 1px solid var(--stage-line-strong);
+    overflow-y: auto; overflow-x: hidden;
+    user-select: none;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--stage-line-strong) transparent;
+  }
+  .piano::-webkit-scrollbar { width: 4px; }
+  .piano::-webkit-scrollbar-track { background: transparent; }
+  .piano::-webkit-scrollbar-thumb { background: var(--stage-line-strong); border-radius: 2px; }
+  .piano-inner { position: relative; }
   .key {
     position: absolute; left: 0; right: 0; cursor: pointer;
     display: flex; align-items: flex-end; justify-content: flex-end;
@@ -164,7 +176,10 @@
     content: ""; position: absolute; left: 0; right: 0; top: 0;
     height: 1px; background: var(--stage-line);
   }
-  .row.beat::before { background: var(--stage-line-strong); }
+  .row.beat::before {
+    height: 2px;
+    background: #9d9d99;
+  }
   .row .num {
     font: 600 10px var(--mono);
     color: var(--stage-text-mute);
@@ -201,6 +216,40 @@
       0 2px 8px rgba(107,95,217,0.25);
   }
   .note.playing { background: var(--accent-edge); color: #fff; }
+
+  /* Long-press charging animation */
+  .note.charging {
+    animation: chargeScale 450ms ease-out forwards;
+    z-index: 4;
+  }
+  .note.charging::before {
+    content: ""; position: absolute; inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(to right, rgba(107,95,217,0.25), rgba(107,95,217,0.25)) left center / 0% 100% no-repeat;
+    box-shadow: inset 0 0 0 0 var(--cursor);
+    animation: chargeFill 450ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .note.charge-complete::after {
+    content: ""; position: absolute; inset: -2px;
+    border-radius: 8px;
+    pointer-events: none;
+    box-shadow: 0 0 0 2px var(--cursor);
+    animation: chargeBurst 360ms ease-out forwards;
+    z-index: 5;
+  }
+  @keyframes chargeScale {
+    0%   { transform: scale(1);    }
+    100% { transform: scale(1.04); }
+  }
+  @keyframes chargeFill {
+    0%   { background-size: 0%   100%; box-shadow: inset 0 0 0 0 rgba(107,95,217,0); }
+    100% { background-size: 100% 100%; box-shadow: inset 0 0 0 2px var(--cursor); }
+  }
+  @keyframes chargeBurst {
+    0%   { transform: scale(1);   opacity: 1; box-shadow: 0 0 0 2px var(--cursor); }
+    100% { transform: scale(1.5); opacity: 0; box-shadow: 0 0 0 14px rgba(107,95,217,0); }
+  }
 
   /* Scroller */
   .scroller {
@@ -450,7 +499,6 @@
               <input type="range" id="noteSize" min="1" max="8" value="1" step="1" />
             </div>
             <div class="note-buttons">
-              <button class="move-btn" id="selectMoreBtn" type="button">+ Select</button>
               <button class="move-btn hidden" id="moveBtn" type="button">Move 02</button>
               <button class="delete-btn" id="deleteBtn" type="button">Delete</button>
             </div>
@@ -500,16 +548,18 @@
 
 <script src="https://cdn.jsdelivr.net/npm/tone@15.0.4/build/Tone.js"></script>
 <script>
-  // ---------- Pitches C2..C5 ----------
+  // ---------- Pitches C0..C8 ----------
   const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
   const PITCHES = []; // built low -> high
-  for (let o = 2; o <= 5; o++) {
+  for (let o = 0; o <= 8; o++) {
     for (let i = 0; i < 12; i++) {
       PITCHES.push({ name: NOTE_NAMES[i] + o, isBlack: NOTE_NAMES[i].includes("#") });
-      if (o === 5 && i === 0) break;
+      if (o === 8 && i === 0) break;
     }
   }
   PITCHES.reverse(); // top of piano = highest
+
+  const WHITE_KEY_H = 30; // px per white key — drives total scrollable height
 
   const state = {
     steps: 16,
@@ -529,7 +579,6 @@
   const lengthEl = $("length"), lengthValEl = $("lengthVal"), lengthRow = $("lengthRow");
   const noteRow = $("noteRow"), noteSizeEl = $("noteSize"), noteSizeValEl = $("noteSizeVal");
   const selectedLabel = $("selectedLabel"), deleteBtn = $("deleteBtn"), moveBtn = $("moveBtn");
-  const selectMoreBtn = $("selectMoreBtn");
   const multiRow = $("multiRow"), multiCount = $("multiCount");
   const copyBtn = $("copyBtn"), multiDeleteBtn = $("multiDeleteBtn"), doneBtn = $("doneBtn");
   const pasteBtn = $("pasteBtn");
@@ -564,8 +613,8 @@
   function renderKeys() {
     keysEl.innerHTML = "";
     const whites = PITCHES.filter(p => !p.isBlack);
-    const h = keysEl.clientHeight || 580;
-    const wh = h / whites.length;
+    const wh = WHITE_KEY_H;
+    keysEl.style.height = (whites.length * wh) + "px";
     const layout = {};
     let wi = 0;
     PITCHES.forEach(p => {
@@ -635,9 +684,62 @@
       el.style.top = (n.step * rowH + 3) + "px";
       const visibleSize = Math.min(n.size, state.steps - n.step);
       el.style.height = (visibleSize * rowH - 6) + "px";
-      el.addEventListener("click", (e) => { e.stopPropagation(); selectNote(n.id); });
+      attachNoteGesture(el, n.id);
       gridEl.appendChild(el);
     });
+  }
+
+  const LONG_PRESS_MS = 450;
+  let suppressNextClick = false;
+
+  function attachNoteGesture(el, noteId) {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (suppressNextClick) { suppressNextClick = false; return; }
+      selectNote(noteId);
+    });
+    el.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      e.stopPropagation();
+      const sx = e.clientX, sy = e.clientY;
+      el.classList.add("charging");
+      let timer = setTimeout(() => {
+        timer = null;
+        el.classList.remove("charging");
+        el.classList.add("charge-complete");
+        setTimeout(() => el.classList.remove("charge-complete"), 360);
+        suppressNextClick = true;
+        enterMultiSelectWith(noteId);
+      }, LONG_PRESS_MS);
+      const cancel = () => {
+        if (timer) { clearTimeout(timer); timer = null; el.classList.remove("charging"); }
+      };
+      const onMove = (ev) => {
+        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) cancel();
+      };
+      const onUp = () => {
+        cancel();
+        el.removeEventListener("pointermove", onMove);
+        el.removeEventListener("pointerup", onUp);
+        el.removeEventListener("pointercancel", onUp);
+      };
+      el.addEventListener("pointermove", onMove);
+      el.addEventListener("pointerup", onUp);
+      el.addEventListener("pointercancel", onUp);
+    });
+  }
+
+  function enterMultiSelectWith(noteId) {
+    if (!state.multiSelect) {
+      state.multiSelect = true;
+      state.selectedIds.clear();
+      state.selectedId = null;
+    }
+    state.selectedIds.add(noteId);
+    const n = state.notes.find(x => x.id === noteId);
+    if (n) { Tone.start(); synth.triggerAttackRelease(n.pitch, "8n"); flashKey(n.pitch); }
+    renderGrid();
+    updateSelectedBar();
   }
 
   // ---------- Interactions ----------
@@ -773,7 +875,6 @@
     }
   }
 
-  selectMoreBtn.addEventListener("click", enterMultiSelect);
   copyBtn.addEventListener("click", copySelection);
   multiDeleteBtn.addEventListener("click", deleteSelection);
   doneBtn.addEventListener("click", exitMultiSelect);
@@ -932,12 +1033,20 @@
   stopBtn.addEventListener("click", stop);
 
   // ---------- Init ----------
+  function scrollPianoTo(pitch) {
+    const el = keysEl.querySelector('.key[data-pitch="' + pitch + '"]');
+    const piano = keysEl.parentElement;
+    if (!el || !piano) return;
+    piano.scrollTop = el.offsetTop - piano.clientHeight / 2 + el.offsetHeight / 2;
+  }
+
   function init() {
     applyADSR();
     renderKeys();
     renderGrid();
     positionKnobFromCursor();
     updateSelectedBar();
+    scrollPianoTo("C4");
     window.addEventListener("resize", () => {
       renderKeys(); renderGrid(); positionKnobFromCursor();
     });
