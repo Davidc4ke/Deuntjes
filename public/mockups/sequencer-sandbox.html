@@ -293,10 +293,19 @@
 
   .note-controls {
     display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 10px;
-    align-items: center;
+    gap: 8px;
   }
+  .note-buttons {
+    display: flex; gap: 8px; justify-content: flex-end; align-items: center;
+  }
+  .move-btn {
+    appearance: none; border: 1px solid var(--cursor);
+    background: rgba(107,95,217,0.18); color: #e0dcff;
+    padding: 7px 12px; border-radius: 8px;
+    font: 600 12px var(--ui); cursor: pointer;
+    font-variant-numeric: tabular-nums;
+  }
+  .move-btn:hover { background: rgba(107,95,217,0.32); color: #fff; }
   .selected-meta {
     font: 600 12px var(--ui);
     color: rgba(233,232,255,0.85);
@@ -318,7 +327,22 @@
   .hidden { display: none !important; }
 
   /* Transport */
-  .transport { display: grid; grid-template-rows: 1fr 1fr; gap: 8px; }
+  .transport { display: grid; grid-template-rows: auto 1fr 1fr; gap: 8px; }
+  .paste-btn {
+    appearance: none;
+    background: var(--cursor); color: #fff;
+    border: 1px solid var(--cursor-strong);
+    border-radius: 10px;
+    padding: 8px 4px;
+    font: 700 10px var(--ui);
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.18) inset, 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .paste-btn:hover { background: var(--cursor-strong); }
+  .paste-btn .count { display: block; font: 700 14px var(--mono); margin-top: 2px; }
   .transport button {
     appearance: none; border: 1px solid rgba(0,0,0,0.08);
     background: #fff; color: #1d1d1f;
@@ -425,7 +449,24 @@
               </div>
               <input type="range" id="noteSize" min="1" max="8" value="1" step="1" />
             </div>
-            <button class="delete-btn" id="deleteBtn" type="button">Delete</button>
+            <div class="note-buttons">
+              <button class="move-btn" id="selectMoreBtn" type="button">+ Select</button>
+              <button class="move-btn hidden" id="moveBtn" type="button">Move 02</button>
+              <button class="delete-btn" id="deleteBtn" type="button">Delete</button>
+            </div>
+          </div>
+
+          <!-- Multi-select row -->
+          <div class="note-controls hidden" id="multiRow">
+            <div class="row-label">
+              <span>Selection · <span id="multiCount">0</span> notes</span>
+              <span class="val" id="multiHint">tap notes to toggle</span>
+            </div>
+            <div class="note-buttons">
+              <button class="move-btn" id="copyBtn" type="button">Copy</button>
+              <button class="delete-btn" id="multiDeleteBtn" type="button">Delete</button>
+              <button class="move-btn" id="doneBtn" type="button">Done</button>
+            </div>
           </div>
 
           <!-- ADSR -->
@@ -449,6 +490,7 @@
           </div>
         </div>
         <div class="transport">
+          <button id="pasteBtn" class="paste-btn hidden" type="button">PASTE</button>
           <button id="playBtn" type="button" data-state="stopped">PLAY</button>
           <button id="stopBtn" type="button">STOP</button>
         </div>
@@ -472,8 +514,11 @@
   const state = {
     steps: 16,
     cursor: 0,
-    notes: [],          // {id, step, size, pitch}
+    notes: [],                // {id, step, size, pitch}
     selectedId: null,
+    multiSelect: false,
+    selectedIds: new Set(),   // active in multi-select mode
+    clipboard: null,          // [{relStep, pitch, size}] anchored at top-most copied step
     playing: false,
     nextId: 1,
   };
@@ -483,7 +528,11 @@
   const keysEl = $("keys"), gridEl = $("grid"), knobEl = $("knob"), scrollerEl = $("scroller");
   const lengthEl = $("length"), lengthValEl = $("lengthVal"), lengthRow = $("lengthRow");
   const noteRow = $("noteRow"), noteSizeEl = $("noteSize"), noteSizeValEl = $("noteSizeVal");
-  const selectedLabel = $("selectedLabel"), deleteBtn = $("deleteBtn");
+  const selectedLabel = $("selectedLabel"), deleteBtn = $("deleteBtn"), moveBtn = $("moveBtn");
+  const selectMoreBtn = $("selectMoreBtn");
+  const multiRow = $("multiRow"), multiCount = $("multiCount");
+  const copyBtn = $("copyBtn"), multiDeleteBtn = $("multiDeleteBtn"), doneBtn = $("doneBtn");
+  const pasteBtn = $("pasteBtn");
   const playBtn = $("playBtn"), stopBtn = $("stopBtn");
   const attackEl = $("attack"), decayEl = $("decay"), sustainEl = $("sustain"), releaseEl = $("release");
   const adsrV = { attack: $("attackV"), decay: $("decayV"), sustain: $("sustainV"), release: $("releaseV") };
@@ -576,10 +625,11 @@
     }
 
     // notes (only those within visible range; others kept in state)
+    const isSel = (id) => state.multiSelect ? state.selectedIds.has(id) : (id === state.selectedId);
     state.notes.forEach(n => {
       if (n.step >= state.steps) return;
       const el = document.createElement("div");
-      el.className = "note" + (n.id === state.selectedId ? " selected" : "");
+      el.className = "note" + (isSel(n.id) ? " selected" : "");
       el.dataset.id = n.id;
       el.textContent = n.pitch;
       el.style.top = (n.step * rowH + 3) + "px";
@@ -610,25 +660,124 @@
     updateSelectedBar();
   }
 
+  function flashKey(pitch) {
+    const keyEl = keysEl.querySelector('.key[data-pitch="' + pitch + '"]');
+    if (keyEl) { keyEl.classList.add("flash"); setTimeout(() => keyEl.classList.remove("flash"), 120); }
+  }
+
   function selectNote(id) {
+    if (state.multiSelect) {
+      if (state.selectedIds.has(id)) {
+        state.selectedIds.delete(id);
+      } else {
+        state.selectedIds.add(id);
+        const n = state.notes.find(x => x.id === id);
+        if (n) { Tone.start(); synth.triggerAttackRelease(n.pitch, "8n"); flashKey(n.pitch); }
+      }
+      renderGrid();
+      updateSelectedBar();
+      return;
+    }
     state.selectedId = id;
+    const n = state.notes.find(x => x.id === id);
+    if (n) {
+      Tone.start();
+      synth.triggerAttackRelease(n.pitch, "8n");
+      flashKey(n.pitch);
+    }
+    renderGrid();
+    updateSelectedBar();
+  }
+
+  function enterMultiSelect() {
+    state.multiSelect = true;
+    state.selectedIds.clear();
+    if (state.selectedId !== null) state.selectedIds.add(state.selectedId);
+    state.selectedId = null;
+    renderGrid();
+    updateSelectedBar();
+  }
+  function exitMultiSelect() {
+    state.multiSelect = false;
+    state.selectedIds.clear();
+    state.selectedId = null;
+    renderGrid();
+    updateSelectedBar();
+  }
+  function copySelection() {
+    if (state.selectedIds.size === 0) { exitMultiSelect(); return; }
+    const notes = state.notes.filter(n => state.selectedIds.has(n.id));
+    const minStep = Math.min(...notes.map(n => n.step));
+    state.clipboard = notes.map(n => ({
+      relStep: n.step - minStep,
+      pitch: n.pitch,
+      size: n.size,
+    }));
+    exitMultiSelect();
+  }
+  function deleteSelection() {
+    state.notes = state.notes.filter(n => !state.selectedIds.has(n.id));
+    exitMultiSelect();
+  }
+  function pasteAtCursor() {
+    if (!state.clipboard || state.clipboard.length === 0) return;
+    Tone.start();
+    const added = [];
+    state.clipboard.forEach(c => {
+      const targetStep = state.cursor + c.relStep;
+      if (targetStep >= state.steps) return;
+      state.notes = state.notes.filter(n => n.step !== targetStep);
+      added.push({
+        id: state.nextId++,
+        step: targetStep,
+        pitch: c.pitch,
+        size: Math.min(c.size, state.steps - targetStep),
+      });
+    });
+    state.notes.push(...added);
     renderGrid();
     updateSelectedBar();
   }
 
   function updateSelectedBar() {
-    const n = state.notes.find(x => x.id === state.selectedId);
-    if (!n) {
-      lengthRow.classList.remove("hidden");
-      noteRow.classList.add("hidden");
-      return;
-    }
     lengthRow.classList.add("hidden");
-    noteRow.classList.remove("hidden");
-    selectedLabel.textContent = n.pitch + " · step " + String(n.step + 1).padStart(2, "0");
-    noteSizeEl.value = n.size;
-    noteSizeValEl.textContent = n.size;
+    noteRow.classList.add("hidden");
+    multiRow.classList.add("hidden");
+    moveBtn.classList.add("hidden");
+
+    if (state.multiSelect) {
+      multiRow.classList.remove("hidden");
+      multiCount.textContent = state.selectedIds.size;
+    } else {
+      const n = state.notes.find(x => x.id === state.selectedId);
+      if (n) {
+        noteRow.classList.remove("hidden");
+        selectedLabel.textContent = n.pitch + " · step " + String(n.step + 1).padStart(2, "0");
+        noteSizeEl.value = n.size;
+        noteSizeValEl.textContent = n.size;
+        if (state.cursor !== n.step) {
+          moveBtn.classList.remove("hidden");
+          moveBtn.textContent = "Move " + String(state.cursor + 1).padStart(2, "0");
+        }
+      } else {
+        lengthRow.classList.remove("hidden");
+      }
+    }
+
+    if (state.clipboard && state.clipboard.length > 0) {
+      pasteBtn.classList.remove("hidden");
+      pasteBtn.innerHTML = "PASTE @ " + String(state.cursor + 1).padStart(2, "0") +
+                          '<span class="count">' + state.clipboard.length + ' note' + (state.clipboard.length === 1 ? '' : 's') + '</span>';
+    } else {
+      pasteBtn.classList.add("hidden");
+    }
   }
+
+  selectMoreBtn.addEventListener("click", enterMultiSelect);
+  copyBtn.addEventListener("click", copySelection);
+  multiDeleteBtn.addEventListener("click", deleteSelection);
+  doneBtn.addEventListener("click", exitMultiSelect);
+  pasteBtn.addEventListener("click", pasteAtCursor);
 
   noteSizeEl.addEventListener("input", () => {
     const n = state.notes.find(x => x.id === state.selectedId);
@@ -645,8 +794,20 @@
     updateSelectedBar();
   });
 
-  // click empty area deselects
+  moveBtn.addEventListener("click", () => {
+    const n = state.notes.find(x => x.id === state.selectedId);
+    if (!n || state.cursor === n.step) return;
+    const target = state.cursor;
+    state.notes = state.notes.filter(x => x.id === n.id || x.step !== target);
+    n.step = target;
+    n.size = Math.min(n.size, state.steps - n.step);
+    renderGrid();
+    updateSelectedBar();
+  });
+
+  // click empty area deselects (single-select only; in multi-select mode you must press Done)
   gridEl.addEventListener("click", () => {
+    if (state.multiSelect) return;
     state.selectedId = null;
     renderGrid();
     updateSelectedBar();
@@ -660,6 +821,7 @@
     // do NOT remove out-of-range notes — they stay in state and reappear when length grows again
     renderGrid();
     positionKnobFromCursor();
+    updateSelectedBar();
   });
 
   // ---------- Scroller knob ----------
@@ -680,6 +842,7 @@
     if (step !== state.cursor) {
       state.cursor = step;
       renderGrid();
+      updateSelectedBar();
     }
     positionKnobFromCursor();
   }
