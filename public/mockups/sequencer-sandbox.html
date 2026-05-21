@@ -95,26 +95,110 @@
   .status .right { display: flex; gap: 6px; align-items: center; opacity: 0.85; }
   .status svg { width: 16px; height: 11px; }
 
-  /* ---- Top bar (settings) ---- */
+  /* ---- Top bar ---- */
   .topbar {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 14px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 10px;
     background: var(--bar);
     border-bottom: 1px solid var(--frame-line);
   }
-  .topbar .group { display: flex; gap: 6px; align-items: center; }
-  .topbar .spacer { flex: 1; }
   .pill {
     appearance: none; border: 1px solid rgba(255,255,255,0.08);
     background: #404049; color: var(--bar-text);
-    padding: 7px 14px; border-radius: 10px;
+    padding: 7px 12px; border-radius: 10px;
     font: 600 13px var(--ui); cursor: pointer;
     letter-spacing: -0.005em;
+    flex-shrink: 0;
   }
   .pill:hover { background: #4a4a55; }
-  .pill.accent { background: var(--accent); color: #2a1a0d; border-color: rgba(0,0,0,0.12); }
-  .pill.accent:hover { background: #ec9d6e; }
   .pill.ghost { background: transparent; color: var(--bar-text-mute); }
+
+  .channel-strip {
+    flex: 1;
+    display: flex; gap: 6px;
+    overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 2px 2px;
+    scroll-snap-type: x proximity;
+  }
+  .channel-strip::-webkit-scrollbar { display: none; }
+  .channel-chip {
+    appearance: none;
+    background: transparent;
+    color: var(--ch, #e9925c);
+    border: 1px solid var(--ch, #e9925c);
+    border-radius: 999px;
+    padding: 5px 14px;
+    font: 700 12px var(--ui);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+  .channel-chip.active {
+    background: var(--ch, #e9925c);
+    color: #1a1a1f;
+  }
+
+  /* Channels popup card list */
+  .channel-list { display: grid; gap: 10px; margin-bottom: 14px; }
+  .channel-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-left: 4px solid var(--ch, var(--accent));
+    border-radius: 10px;
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+  }
+  .channel-card-header {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .channel-card .name {
+    flex: 1;
+    background: transparent; border: none; color: #fff;
+    font: 700 13px var(--ui); padding: 4px 0;
+    outline: none;
+    border-bottom: 1px dashed rgba(255,255,255,0.1);
+  }
+  .channel-card .name:focus { border-bottom-color: rgba(255,255,255,0.4); }
+  .channel-card .remove {
+    appearance: none; background: rgba(255,80,90,0.10); color: #ff9c9c;
+    border: 1px solid rgba(255,80,90,0.3); border-radius: 8px;
+    width: 30px; height: 30px;
+    font: 600 16px var(--ui); cursor: pointer; line-height: 1;
+    flex-shrink: 0;
+  }
+  .channel-card .remove:hover { background: rgba(255,80,90,0.2); color: #fff; }
+  .channel-card .remove:disabled { opacity: 0.3; cursor: not-allowed; }
+  .channel-card .swatches {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .channel-card .swatch {
+    width: 24px; height: 24px; border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    padding: 0;
+    appearance: none;
+  }
+  .channel-card .swatch.active {
+    border-color: rgba(255,255,255,0.7);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.3);
+  }
+  .add-channel {
+    appearance: none; width: 100%;
+    background: rgba(255,255,255,0.03);
+    color: var(--bar-text);
+    border: 1px dashed rgba(255,255,255,0.18);
+    border-radius: 10px;
+    padding: 11px;
+    font: 700 11px var(--ui); cursor: pointer;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .add-channel:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.3); }
 
   /* ---- Stage (piano + grid + scroller) ---- */
   .stage {
@@ -201,13 +285,13 @@
 
   .note {
     position: absolute; left: 38px; right: 14px;
-    background: var(--accent);
-    color: #2a1a0d;
+    background: var(--ch-color, var(--accent));
+    color: #1a1a1f;
     border-radius: 5px;
     font: 600 11px var(--mono);
     display: flex; align-items: flex-start; padding: 5px 7px;
     cursor: pointer;
-    border: 1px solid var(--accent-edge);
+    border: 1px solid var(--ch-edge, var(--accent-edge));
     box-shadow:
       0 1px 0 rgba(255,255,255,0.4) inset,
       0 1px 2px rgba(0,0,0,0.06);
@@ -218,7 +302,7 @@
       0 1px 0 rgba(255,255,255,0.4) inset,
       0 2px 8px rgba(107,95,217,0.25);
   }
-  .note.playing { background: var(--accent-edge); color: #fff; }
+  .note.playing { background: var(--ch-edge, var(--accent-edge)); color: #fff; }
 
   /* Long-press charging animation */
   .note.charging {
@@ -578,14 +662,9 @@
 
       <!-- top bar -->
       <div class="topbar">
-        <div class="group">
-          <button class="pill ghost" type="button">Back</button>
-          <button class="pill" type="button">Input</button>
-        </div>
-        <div class="spacer"></div>
-        <div class="group">
-          <button class="pill accent" type="button">Bass</button>
-        </div>
+        <button class="pill ghost" type="button">Back</button>
+        <div class="channel-strip" id="channelStrip"></div>
+        <button class="pill" data-popup="channels" type="button" title="Channels">CH +</button>
       </div>
 
       <!-- stage -->
@@ -708,6 +787,15 @@
           </div>
         </div>
 
+        <div class="popup hidden" data-name="channels">
+          <header class="popup-header">
+            <h3>Channels</h3>
+            <button class="popup-close" type="button">Done</button>
+          </header>
+          <div class="channel-list" id="channelList"></div>
+          <button class="add-channel" id="addChannelBtn" type="button">+ Add channel</button>
+        </div>
+
         <div class="popup hidden" data-name="key">
           <header class="popup-header">
             <h3>Key &amp; Scale</h3>
@@ -782,7 +870,29 @@
     scaleOn: false,
     scaleRoot: "C",
     scaleType: "major",
+    channels: [
+      { id: 1, name: "Bass",  color: CHANNEL_PALETTE[0].color, edge: CHANNEL_PALETTE[0].edge },
+      { id: 2, name: "Drum",  color: CHANNEL_PALETTE[1].color, edge: CHANNEL_PALETTE[1].edge },
+      { id: 3, name: "Lead",  color: CHANNEL_PALETTE[2].color, edge: CHANNEL_PALETTE[2].edge },
+      { id: 4, name: "Chord", color: CHANNEL_PALETTE[3].color, edge: CHANNEL_PALETTE[3].edge },
+    ],
+    activeChannelId: 1,
+    nextChannelId: 5,
   };
+
+  function activeChannel() { return state.channels.find(c => c.id === state.activeChannelId) || state.channels[0]; }
+  function activeNotes() { return state.notes.filter(n => n.channelId === state.activeChannelId); }
+
+  const CHANNEL_PALETTE = [
+    { color: "#e9925c", edge: "#c47338" }, // coral / bass
+    { color: "#4ea6e9", edge: "#2d83c5" }, // blue / drum
+    { color: "#6dc97a", edge: "#499b56" }, // green / lead
+    { color: "#c47ccf", edge: "#985ba5" }, // magenta / chord
+    { color: "#f0c04b", edge: "#c69829" }, // amber / pad
+    { color: "#7e8dff", edge: "#5a6acc" }, // periwinkle / aux
+    { color: "#ff7e9a", edge: "#cc5772" }, // rose
+    { color: "#5cd3c6", edge: "#349a90" }, // teal
+  ];
 
   const SCALE_OFFSETS = {
     major: [0,2,4,5,7,9,11],
@@ -919,9 +1029,9 @@
     cursorLine.style.top = ((state.cursor + 0.5) * rowH) + "px";
     gridEl.appendChild(cursorLine);
 
-    // notes (only those within visible range; others kept in state)
+    // notes (active channel only; out-of-range kept in state)
     const isSel = (id) => state.multiSelect ? state.selectedIds.has(id) : (id === state.selectedId);
-    state.notes.forEach(n => {
+    activeNotes().forEach(n => {
       if (n.step >= state.steps) return;
       const el = document.createElement("div");
       el.className = "note" + (isSel(n.id) ? " selected" : "");
@@ -1003,13 +1113,14 @@
 
     // Notes snap to integer steps; the cursor may be fractional for visual finesse.
     const targetStep = Math.round(state.cursor);
-    const existing = state.notes.find(n => n.step === targetStep && n.step < state.steps);
+    const ch = state.activeChannelId;
+    const existing = state.notes.find(n => n.channelId === ch && n.step === targetStep && n.step < state.steps);
     if (existing) {
       existing.pitch = pitch;
       state.selectedId = existing.id;
     } else {
       const size = Math.min(state.defaultSize, state.steps - targetStep);
-      const note = { id: state.nextId++, step: targetStep, size, pitch };
+      const note = { id: state.nextId++, step: targetStep, size, pitch, channelId: ch };
       state.notes.push(note);
       state.selectedId = note.id;
     }
@@ -1080,16 +1191,19 @@
     if (!state.clipboard || state.clipboard.length === 0) return;
     Tone.start();
     const anchor = Math.round(state.cursor);
+    const ch = state.activeChannelId;
     const added = [];
     state.clipboard.forEach(c => {
       const targetStep = anchor + c.relStep;
       if (targetStep >= state.steps) return;
-      state.notes = state.notes.filter(n => n.step !== targetStep);
+      // Replace only same-channel notes at the target step
+      state.notes = state.notes.filter(n => n.channelId !== ch || n.step !== targetStep);
       added.push({
         id: state.nextId++,
         step: targetStep,
         pitch: c.pitch,
         size: Math.min(c.size, state.steps - targetStep),
+        channelId: ch,
       });
     });
     state.notes.push(...added);
@@ -1137,11 +1251,117 @@
     }
   }
 
+  // ---------- Channels ----------
+  function applyActiveChannelStyle() {
+    const ch = activeChannel();
+    gridEl.style.setProperty("--ch-color", ch.color);
+    gridEl.style.setProperty("--ch-edge", ch.edge);
+  }
+
+  function renderChannelStrip() {
+    const strip = $("channelStrip");
+    strip.innerHTML = "";
+    state.channels.forEach(ch => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "channel-chip" + (ch.id === state.activeChannelId ? " active" : "");
+      chip.style.setProperty("--ch", ch.color);
+      chip.textContent = ch.name;
+      chip.addEventListener("click", () => setActiveChannel(ch.id));
+      strip.appendChild(chip);
+    });
+  }
+
+  function setActiveChannel(id) {
+    if (id === state.activeChannelId) return;
+    state.activeChannelId = id;
+    state.selectedId = null;
+    if (state.multiSelect) { state.multiSelect = false; state.selectedIds.clear(); }
+    applyActiveChannelStyle();
+    renderChannelStrip();
+    renderGrid();
+    updateSelectedBar();
+  }
+
+  function renderChannelList() {
+    const list = $("channelList");
+    list.innerHTML = "";
+    state.channels.forEach(ch => {
+      const card = document.createElement("div");
+      card.className = "channel-card";
+      card.style.setProperty("--ch", ch.color);
+
+      const header = document.createElement("div");
+      header.className = "channel-card-header";
+      const nameEl = document.createElement("input");
+      nameEl.type = "text"; nameEl.className = "name"; nameEl.value = ch.name; nameEl.maxLength = 16;
+      nameEl.addEventListener("input", () => { ch.name = nameEl.value || "Untitled"; renderChannelStrip(); });
+      const rm = document.createElement("button");
+      rm.type = "button"; rm.className = "remove"; rm.textContent = "×";
+      rm.disabled = state.channels.length <= 1;
+      rm.addEventListener("click", () => removeChannel(ch.id));
+      header.appendChild(nameEl); header.appendChild(rm);
+      card.appendChild(header);
+
+      const swatches = document.createElement("div");
+      swatches.className = "swatches";
+      CHANNEL_PALETTE.forEach(p => {
+        const s = document.createElement("button");
+        s.type = "button"; s.className = "swatch" + (p.color === ch.color ? " active" : "");
+        s.style.background = p.color;
+        s.addEventListener("click", () => {
+          ch.color = p.color; ch.edge = p.edge;
+          renderChannelList();
+          renderChannelStrip();
+          if (ch.id === state.activeChannelId) { applyActiveChannelStyle(); renderGrid(); }
+        });
+        swatches.appendChild(s);
+      });
+      card.appendChild(swatches);
+
+      list.appendChild(card);
+    });
+  }
+
+  function removeChannel(id) {
+    if (state.channels.length <= 1) return;
+    state.notes = state.notes.filter(n => n.channelId !== id);
+    state.channels = state.channels.filter(c => c.id !== id);
+    if (state.activeChannelId === id) {
+      state.activeChannelId = state.channels[0].id;
+      state.selectedId = null;
+      if (state.multiSelect) { state.multiSelect = false; state.selectedIds.clear(); }
+      applyActiveChannelStyle();
+    }
+    renderChannelList();
+    renderChannelStrip();
+    renderGrid();
+    updateSelectedBar();
+  }
+
+  function addChannel() {
+    const usedColors = new Set(state.channels.map(c => c.color));
+    const palette = CHANNEL_PALETTE.find(p => !usedColors.has(p.color)) || CHANNEL_PALETTE[state.channels.length % CHANNEL_PALETTE.length];
+    state.channels.push({
+      id: state.nextChannelId++,
+      name: "Ch " + state.channels.length + 1,
+      color: palette.color,
+      edge: palette.edge,
+    });
+    // Rename more cleanly
+    state.channels[state.channels.length - 1].name = "Channel " + state.channels.length;
+    renderChannelList();
+    renderChannelStrip();
+  }
+
+  $("addChannelBtn").addEventListener("click", addChannel);
+
   // ---------- Popups ----------
   const popupLayer = $("popupLayer");
   document.querySelectorAll("[data-popup]").forEach(btn => {
     btn.addEventListener("click", () => {
       const name = btn.dataset.popup;
+      if (name === "channels") renderChannelList();
       document.querySelectorAll(".popup").forEach(p => p.classList.toggle("hidden", p.dataset.name !== name));
       popupLayer.classList.remove("hidden");
     });
@@ -1198,7 +1418,8 @@
     const n = state.notes.find(x => x.id === state.selectedId);
     const target = Math.round(state.cursor);
     if (!n || target === n.step) return;
-    state.notes = state.notes.filter(x => x.id === n.id || x.step !== target);
+    // Only collide with notes in the same channel as the moving note
+    state.notes = state.notes.filter(x => x.id === n.id || x.channelId !== n.channelId || x.step !== target);
     n.step = target;
     n.size = Math.min(n.size, state.steps - n.step);
     renderGrid();
@@ -1349,6 +1570,8 @@
 
   function init() {
     applyADSR();
+    applyActiveChannelStyle();
+    renderChannelStrip();
     renderKeys();
     renderGrid();
     positionKnobFromCursor();
