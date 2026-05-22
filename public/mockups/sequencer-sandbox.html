@@ -1952,6 +1952,23 @@
     updateSelectedBar();
   }
 
+  // If the cursor has landed on a step in the input channel that already holds
+  // a chord (≥ 2 notes), arm chord mode automatically so the user can edit it
+  // by tapping piano keys. Skipped during playback so the moving playhead
+  // doesn't flap into chord mode on every chord step.
+  function autoEnterChordIfOnChord() {
+    if (state.playing || state.chordMode) return;
+    const channel = state.channels.find(c => c.id === state.activeChannelId);
+    if (!channel || !isPolyPreset(channel.presetName)) return;
+    const step = effectivePlacementStep();
+    const here = state.notes.filter(n =>
+      n.channelId === channel.id && Math.abs(n.step - step) < 1e-6);
+    if (here.length >= 2) {
+      state.chordMode = true;
+      state.chordStep = step;
+    }
+  }
+
   function flashKey(pitch) {
     const keyEl = keysEl.querySelector('.key[data-pitch="' + pitch + '"]');
     if (keyEl) { keyEl.classList.add("flash"); setTimeout(() => keyEl.classList.remove("flash"), 120); }
@@ -2383,6 +2400,7 @@
     if (state.multiSelect) { state.multiSelect = false; state.selectedIds.clear(); }
     state.rangeSelectAnchor = null;
     if (state.chordMode) exitChordMode();
+    autoEnterChordIfOnChord();
     applyActiveChannelStyle();
     renderChannelStrip();
     renderGrid();
@@ -2577,6 +2595,7 @@
     state.cursor = snapCursor(raw);
     if (state.rangeSelectAnchor === null && !state.multiSelect) state.selectedId = null;
     if (state.chordMode && Math.abs(state.cursor - state.chordStep) > 1e-6) exitChordMode();
+    autoEnterChordIfOnChord();
     updateRangeSelection();
     renderGrid();
     positionKnobFromCursor();
@@ -2619,6 +2638,7 @@
     if (Math.abs(next - state.cursor) > 1e-6) {
       state.cursor = next;
       if (state.chordMode) exitChordMode();
+      autoEnterChordIfOnChord();
       updateRangeSelection();
       renderGrid();
       updateSelectedBar();
