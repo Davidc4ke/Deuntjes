@@ -276,7 +276,38 @@
   .piano::-webkit-scrollbar { width: 4px; }
   .piano::-webkit-scrollbar-track { background: transparent; }
   .piano::-webkit-scrollbar-thumb { background: var(--stage-line-strong); border-radius: 2px; }
-  .piano-inner { position: relative; }
+  .piano-inner {
+    position: relative;
+    /* Leaves space at the bottom of the scroll so the floating delete
+       button never covers the lowest key when scrolled all the way down. */
+    padding-bottom: 60px;
+  }
+
+  /* Floating red delete: sits over the bottom-left of the piano column,
+     pinned to .stage so it doesn't scroll with the keys. Tapping deletes
+     all notes in the active channel whose duration the cursor sits inside. */
+  .floating-delete {
+    position: absolute;
+    left: 10px; bottom: 10px;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: #e94c5c;
+    color: #fff;
+    border: 1px solid rgba(0,0,0,0.06);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.18) inset;
+    z-index: 5;
+    transition: background 120ms, opacity 120ms, transform 120ms;
+  }
+  .floating-delete svg { width: 20px; height: 20px; }
+  .floating-delete:hover { background: #d93b4b; }
+  .floating-delete:active { transform: scale(0.94); }
+  .floating-delete:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
   .key {
     position: absolute; left: 0; right: 0; cursor: pointer;
     display: flex; align-items: flex-end; justify-content: flex-end;
@@ -1192,6 +1223,9 @@
       <!-- stage -->
       <div class="stage">
         <div class="piano"><div class="piano-inner" id="keys"></div></div>
+        <button class="floating-delete" id="floatingDelete" type="button" aria-label="Delete notes at cursor" title="Delete notes at cursor">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+        </button>
         <div class="grid" id="grid"></div>
         <div class="scroller" id="scroller">
           <div class="track"></div>
@@ -1707,6 +1741,7 @@
   const playBtn = $("playBtn"), stopBtn = $("stopBtn");
   const undoBtn = $("undoBtn"), redoBtn = $("redoBtn");
   const stackScroller = $("stackScroller"), stackNav = $("stackNav");
+  const floatingDelete = $("floatingDelete");
   const attackEl = $("attack"), decayEl = $("decay"), sustainEl = $("sustain"), releaseEl = $("release");
   const volumeEl = $("volume"), volumeV = $("volumeV");
   // EQ + FX slider refs (Instrument popup, EQ + FX tabs).
@@ -2417,6 +2452,7 @@
 
     // Keep the keyboard's pitch highlights in sync with wherever the cursor is now.
     refreshKeyHighlights();
+    updateFloatingDelete();
   }
 
   // Tapping a chord block (or any note on a poly channel) opens chord mode at
@@ -2724,6 +2760,33 @@
     state.notes = state.notes.filter(n => !state.selectedIds.has(n.id));
     exitMultiSelect();
   }
+  // "The cursor is inside this note" = note.step ≤ cursor < note.step + size.
+  function notesAtCursor() {
+    const ch = state.activeChannelId;
+    const cur = state.cursor;
+    return state.notes.filter(n =>
+      n.channelId === ch
+      && n.step <= cur + 1e-6
+      && cur < n.step + n.size - 1e-6
+    );
+  }
+  function deleteNotesAtCursor() {
+    const victims = notesAtCursor();
+    if (victims.length === 0) return;
+    pushUndo();
+    const ids = new Set(victims.map(n => n.id));
+    state.notes = state.notes.filter(n => !ids.has(n.id));
+    state.selectedId = null;
+    if (state.multiSelect) { state.multiSelect = false; state.selectedIds.clear(); }
+    if (state.chordMode) exitChordMode();
+    renderGrid();
+    updateSelectedBar();
+  }
+  function updateFloatingDelete() {
+    if (!floatingDelete) return;
+    floatingDelete.disabled = notesAtCursor().length === 0;
+  }
+  floatingDelete.addEventListener("click", deleteNotesAtCursor);
   function pasteAtCursor() {
     if (!state.clipboard || state.clipboard.length === 0) return;
     pushUndo();
