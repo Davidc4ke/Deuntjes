@@ -1216,6 +1216,17 @@
     }
   }
 
+  function previewNote(n) {
+    Tone.start();
+    const s = getSynth(n.channelId);
+    if (!s) return;
+    s.envelope.attack  = effectiveProp(n, "attack");
+    s.envelope.decay   = effectiveProp(n, "decay");
+    s.envelope.sustain = effectiveProp(n, "sustain");
+    s.envelope.release = effectiveProp(n, "release");
+    s.triggerAttackRelease(n.pitch, "8n", undefined, effectiveProp(n, "volume"));
+  }
+
   function applyADSR() {
     const ch = activeChannel();
     ch.adsr.attack  = +attackEl.value;
@@ -1570,12 +1581,7 @@
     }
     state.selectedIds.add(noteId);
     const n = state.notes.find(x => x.id === noteId);
-    if (n) {
-      Tone.start();
-      const s = getSynth(n.channelId);
-      if (s) s.triggerAttackRelease(n.pitch, "8n");
-      flashKey(n.pitch);
-    }
+    if (n) { previewNote(n); flashKey(n.pitch); }
     renderGrid();
     updateSelectedBar();
   }
@@ -1628,12 +1634,7 @@
       } else {
         state.selectedIds.add(id);
         const n = state.notes.find(x => x.id === id);
-        if (n) {
-          Tone.start();
-          const s = getSynth(n.channelId);
-          if (s) s.triggerAttackRelease(n.pitch, "8n");
-          flashKey(n.pitch);
-        }
+        if (n) { previewNote(n); flashKey(n.pitch); }
       }
       renderGrid();
       updateSelectedBar();
@@ -1641,12 +1642,7 @@
     }
     state.selectedId = id;
     const n = state.notes.find(x => x.id === id);
-    if (n) {
-      Tone.start();
-      const s = getSynth(n.channelId);
-      if (s) s.triggerAttackRelease(n.pitch, "8n");
-      flashKey(n.pitch);
-    }
+    if (n) { previewNote(n); flashKey(n.pitch); }
     renderGrid();
     updateSelectedBar();
   }
