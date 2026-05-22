@@ -3025,6 +3025,25 @@
     Tone.Transport.cancel(0);
   }
 
+  // Move just the playhead line without rebuilding the rest of the grid.
+  // Called from the playback scheduleRepeat tick — keeping DOM churn out of
+  // the hot path is what lets the grid stay clickable while playing.
+  function updatePlayheadOnly() {
+    let ph = gridEl.querySelector(".playhead-line");
+    if (state.playhead === null || !state.playing) {
+      if (ph) ph.remove();
+      return;
+    }
+    const h = gridEl.clientHeight || 580;
+    const rowH = h / state.steps;
+    if (!ph) {
+      ph = document.createElement("div");
+      ph.className = "playhead-line";
+      gridEl.appendChild(ph);
+    }
+    ph.style.top = (state.playhead * rowH) + "px";
+  }
+
   function play() {
     Tone.start();
     if (state.playing) {
@@ -3082,14 +3101,16 @@
     currentPart.start(0);
 
     // Smooth playhead animation — updates the playhead display from the transport
-    // position. The user's cursor is left alone so editing can continue.
+    // position. The user's cursor is left alone so editing can continue. We
+    // deliberately do NOT call renderGrid() on every tick: rebuilding the
+    // whole grid DOM 16x/sec dropped mousedown/up pairs and made the grid feel
+    // unclickable during playback. Instead we move the playhead element only.
     scheduledId = Tone.Transport.scheduleRepeat((time) => {
       Tone.Draw.schedule(() => {
-        // After pause/stop, drain any in-flight Draw callbacks instead of overwriting state.
         if (!state.playing) return;
         const pos = Tone.Transport.seconds % totalSec;
         state.playhead = pos / stepSec;
-        renderGrid();
+        updatePlayheadOnly();
       }, time);
     }, "32n");
 
