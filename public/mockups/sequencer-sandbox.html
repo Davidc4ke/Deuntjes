@@ -1047,7 +1047,17 @@
     overflow-y: auto;
     color: var(--bar-text);
     box-shadow: 0 -12px 28px rgba(0,0,0,0.55);
+    /* Slim, dark scrollbar — matches .piano. The default chunky bar covered
+       slider value labels on the right edge. */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.16) transparent;
   }
+  .popup::-webkit-scrollbar { width: 4px; }
+  .popup::-webkit-scrollbar-track { background: transparent; }
+  .popup::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.16); border-radius: 2px;
+  }
+  .popup::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); }
   .popup-header {
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 16px;
@@ -1346,6 +1356,7 @@
           <div class="ins-tabs" id="insTabs">
             <button data-tab="inst"  class="ins-tab active" type="button">Preset</button>
             <button data-tab="voice" class="ins-tab" type="button">Voice</button>
+            <button data-tab="tone"  class="ins-tab" type="button">Tone</button>
             <button data-tab="eq"    class="ins-tab" type="button">EQ</button>
             <button data-tab="fx"    class="ins-tab" type="button">FX</button>
           </div>
@@ -1374,6 +1385,29 @@
             <div class="field">
               <label>Release <span class="val" id="releaseV">0.40</span></label>
               <input type="range" id="release" min="0" max="2" step="0.01" value="0.4">
+            </div>
+          </div>
+
+          <div class="ins-tab-pane hidden" data-pane="tone">
+            <div class="field">
+              <label>Cutoff <span class="val" id="cutoffV">12k Hz</span></label>
+              <input type="range" id="cutoff" min="80" max="12000" step="10" value="12000">
+            </div>
+            <div class="field">
+              <label>Resonance <span class="val" id="resV">1.0</span></label>
+              <input type="range" id="res" min="0.1" max="20" step="0.1" value="1">
+            </div>
+            <div class="field">
+              <label>Filter env <span class="val" id="filterEnvV">3.0 oct</span></label>
+              <input type="range" id="filterEnv" min="0" max="7" step="0.1" value="3">
+            </div>
+            <div class="field">
+              <label>Pan <span class="val" id="panV">C</span></label>
+              <input type="range" id="pan" min="-1" max="1" step="0.02" value="0">
+            </div>
+            <div class="field">
+              <label>Glide <span class="val" id="glideV">0 ms</span></label>
+              <input type="range" id="glide" min="0" max="0.3" step="0.005" value="0">
             </div>
           </div>
 
@@ -1785,6 +1819,12 @@
   const chorusDepthEl = $("chorusDepth"), chorusDepthV = $("chorusDepthV");
   const distWetEl   = $("distWet"),     distWetV     = $("distWetV");
   const distAmtEl   = $("distAmt"),     distAmtV     = $("distAmtV");
+  // Tone tab sliders (cutoff, resonance, filter envelope depth, pan, glide).
+  const cutoffEl    = $("cutoff"),      cutoffV      = $("cutoffV");
+  const resEl       = $("res"),         resV         = $("resV");
+  const filterEnvEl = $("filterEnv"),   filterEnvV   = $("filterEnvV");
+  const panEl       = $("pan"),         panV         = $("panV");
+  const glideEl     = $("glide"),       glideV       = $("glideV");
   const adsrV = { attack: $("attackV"), decay: $("decayV"), sustain: $("sustainV"), release: $("releaseV") };
 
   // ---------- Audio (per-channel synths) ----------
@@ -2105,6 +2145,28 @@
     el.addEventListener("input", scheduleAdsrPreview);
   });
 
+  // --- Tone slider inputs ---
+  function applyToneInputs() {
+    const ch = activeChannel();
+    ch.tone.cutoff    = +cutoffEl.value;
+    ch.tone.resonance = +resEl.value;
+    ch.tone.filterEnv = +filterEnvEl.value;
+    ch.tone.pan       = +panEl.value;
+    ch.tone.glide     = +glideEl.value;
+    cutoffV.textContent    = fmtHz(ch.tone.cutoff) + " Hz";
+    resV.textContent       = ch.tone.resonance.toFixed(1);
+    filterEnvV.textContent = ch.tone.filterEnv.toFixed(1) + " oct";
+    panV.textContent       = fmtPan(ch.tone.pan);
+    glideV.textContent     = fmtGlide(ch.tone.glide);
+    applyChannelTone(channelSynths[ch.id], channelChains[ch.id], ch.tone);
+    syncTonePills();
+  }
+  [cutoffEl, resEl, filterEnvEl, panEl, glideEl].forEach(el => {
+    el.addEventListener("input", () => beginSliderSession(el));
+    el.addEventListener("input", applyToneInputs);
+    el.addEventListener("input", scheduleAdsrPreview);
+  });
+
   function syncInsPopup() {
     const ch = ensureChannelDefaults(activeChannel());
     attackEl.value  = ch.adsr.attack;
@@ -2134,6 +2196,13 @@
     chorusDepthEl.value = ch.fx.chorus.depth;    chorusDepthV.textContent = ch.fx.chorus.depth.toFixed(2);
     distWetEl.value    = ch.fx.distortion.wet;   distWetV.textContent     = fmtPct(ch.fx.distortion.wet);
     distAmtEl.value    = ch.fx.distortion.amount;distAmtV.textContent     = ch.fx.distortion.amount.toFixed(2);
+
+    // Tone
+    cutoffEl.value    = ch.tone.cutoff;    cutoffV.textContent    = fmtHz(ch.tone.cutoff) + " Hz";
+    resEl.value       = ch.tone.resonance; resV.textContent       = ch.tone.resonance.toFixed(1);
+    filterEnvEl.value = ch.tone.filterEnv; filterEnvV.textContent = ch.tone.filterEnv.toFixed(1) + " oct";
+    panEl.value       = ch.tone.pan;       panV.textContent       = fmtPan(ch.tone.pan);
+    glideEl.value     = ch.tone.glide;     glideV.textContent     = fmtGlide(ch.tone.glide);
 
     syncEqFxPills();
     // The preset segments live in #presetGroups now; renderPresetButtons sets
@@ -3211,6 +3280,19 @@
         } else {
           ch.tone[spec.key] = num;
           applyChannelTone(channelSynths[ch.id], channelChains[ch.id], ch.tone);
+          // Mirror into the Instrument popup's Tone tab so its sliders stay
+          // in sync if the user opens it after dragging the pill.
+          const popMap = {
+            cutoff:    [cutoffEl,    cutoffV,    (v) => fmtHz(v) + " Hz"],
+            resonance: [resEl,       resV,       (v) => v.toFixed(1)],
+            filterEnv: [filterEnvEl, filterEnvV, (v) => v.toFixed(1) + " oct"],
+            pan:       [panEl,       panV,       (v) => fmtPan(v)],
+            glide:     [glideEl,     glideV,     (v) => fmtGlide(v)],
+          }[spec.key];
+          if (popMap) {
+            popMap[0].value = ch.tone[spec.key];
+            popMap[1].textContent = popMap[2](ch.tone[spec.key]);
+          }
         }
         syncTonePills();
       };
