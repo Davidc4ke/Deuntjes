@@ -1392,10 +1392,19 @@
     s.volume.value = -10;
     return s;
   }
-  // Broadcasts an envelope to whatever synth class is at hand. set() silently
-  // ignores unknown properties (e.g. MetalSynth has no .sustain), so we wrap
-  // it in try/catch for synths that don't expose a top-level envelope at all.
-  function setSynthEnvelope(s, env) { try { s.set({ envelope: env }); } catch (_) {} }
+  // Broadcasts an envelope to whatever synth class is at hand. Drum-class
+  // synths (MetalSynth, NoiseSynth, MembraneSynth) are deliberately skipped:
+  // their preset envelopes are tuned at construction and forcing sustain=0
+  // (the channel default for unpitched presets) collapses MetalSynth hits to
+  // silence before the decay actually plays. Per-note ADSR pills therefore
+  // don't apply to drum channels — acceptable trade-off since drums sound off
+  // their built-in envelope shape anyway.
+  function setSynthEnvelope(s, env) {
+    if (s instanceof Tone.MetalSynth
+        || s instanceof Tone.NoiseSynth
+        || s instanceof Tone.MembraneSynth) return;
+    try { s.set({ envelope: env }); } catch (_) {}
+  }
 
   // NoiseSynth and MetalSynth don't take a pitch argument the way MonoSynth /
   // FMSynth / MembraneSynth do. This helper normalises the call so the rest of
