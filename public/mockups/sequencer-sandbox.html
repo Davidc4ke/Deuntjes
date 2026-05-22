@@ -360,6 +360,17 @@
     z-index: 0;
   }
 
+  /* Ghost preview: shows the size of the note that would be placed at the cursor. */
+  .cursor-ghost {
+    position: absolute;
+    background: var(--ch-color, var(--cursor));
+    border: 1.5px dashed var(--ch-edge, var(--cursor));
+    border-radius: 5px;
+    opacity: 0.28;
+    pointer-events: none;
+    z-index: 2;
+  }
+
   /* Long-press charging animation */
   .note.charging {
     animation: chargeScale 450ms ease-out forwards;
@@ -1208,6 +1219,25 @@
       div.className = "col-divider";
       div.style.left = (colLeft + i * colW) + "px";
       gridEl.appendChild(div);
+    }
+
+    // Ghost note in the input channel column — previews where a key-press will land.
+    const inputIdx = state.channels.findIndex(c => c.id === state.activeChannelId);
+    if (inputIdx >= 0) {
+      const inputCh = state.channels[inputIdx];
+      const ghostStep = Math.min(state.cursor, state.steps - 1);
+      const ghostSize = Math.min(state.defaultSize, state.steps - ghostStep);
+      if (ghostSize > 0) {
+        const ghost = document.createElement("div");
+        ghost.className = "cursor-ghost";
+        ghost.style.left  = (colLeft + inputIdx * colW + 2) + "px";
+        ghost.style.width = (colW - 4) + "px";
+        ghost.style.top    = (ghostStep * rowH + 3) + "px";
+        ghost.style.height = Math.max(6, ghostSize * rowH - 6) + "px";
+        ghost.style.setProperty("--ch-color", inputCh.color);
+        ghost.style.setProperty("--ch-edge", inputCh.edge);
+        gridEl.appendChild(ghost);
+      }
     }
 
     state.notes.forEach(n => {
