@@ -1239,7 +1239,7 @@
     const inputIdx = visibleChannels.findIndex(c => c.id === state.activeChannelId);
     if (inputIdx >= 0) {
       const inputCh = visibleChannels[inputIdx];
-      const ghostStep = Math.min(state.cursor, state.steps - 1);
+      const ghostStep = effectivePlacementStep();
       const ghostSize = Math.min(state.defaultSize, state.steps - ghostStep);
       if (ghostSize > 0) {
         const ghost = document.createElement("div");
@@ -1270,9 +1270,8 @@
       // If there's no room above the note (it's right at the top of the grid),
       // tuck the label inside the note instead of hanging it above where it'd be clipped.
       if (n.step < 0.5) label.classList.add("inside");
-      // Flag the note that a piano-tap would overwrite (same input channel + same step as the cursor).
-      const cursorStep = Math.min(state.cursor, state.steps - 1);
-      if (n.channelId === state.activeChannelId && Math.abs(n.step - cursorStep) < 1e-6) {
+      // Flag the note that a piano-tap would overwrite (same input channel + same effective step).
+      if (n.channelId === state.activeChannelId && Math.abs(n.step - effectivePlacementStep()) < 1e-6) {
         label.classList.add("will-overwrite");
       }
       el.appendChild(label);
@@ -1355,6 +1354,13 @@
   }
 
   // ---------- Interactions ----------
+  // Where a piano-tap would actually land: the cursor's step, shifted up if a
+  // full default-size note wouldn't otherwise fit before the end of the grid.
+  function effectivePlacementStep() {
+    const maxStart = state.steps - state.defaultSize;
+    return Math.max(0, Math.min(state.cursor, maxStart));
+  }
+
   function onKeyPress(pitch, el) {
     if (el) { el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 120); }
     Tone.start();
@@ -1362,9 +1368,7 @@
     const s = getSynth(ch);
     if (s) s.triggerAttackRelease(pitch, "8n");
 
-    // Notes inherit the cursor's exact fractional step (snap is applied to the cursor itself).
-    // If the cursor is sitting at the very bottom edge (cursor === state.steps), clamp into the last row.
-    const targetStep = Math.min(state.cursor, state.steps - 1);
+    const targetStep = effectivePlacementStep();
     const existing = state.notes.find(n => n.channelId === ch && Math.abs(n.step - targetStep) < 1e-6 && n.step < state.steps);
     if (existing) {
       existing.pitch = pitch;
