@@ -693,7 +693,7 @@
             <span class="pitch" id="selectedLabel">—</span>
             <div class="size-control">
               <span style="font: 600 10px var(--ui); letter-spacing: 0.12em; text-transform: uppercase; color: rgba(233,232,255,0.55);">Size</span>
-              <input type="range" id="noteSize" min="1" max="8" value="1" step="1" />
+              <input type="range" id="noteSize" min="0" max="9" value="2" step="1" />
               <span class="size-val"><span id="noteSizeVal">1</span>×</span>
             </div>
           </div>
@@ -733,7 +733,7 @@
           </div>
           <div class="field">
             <label>Default note size <span class="val"><span id="defaultSizeVal">1</span>×</span></label>
-            <input type="range" id="defaultSize" min="1" max="8" value="1" step="1">
+            <input type="range" id="defaultSize" min="0" max="9" value="2" step="1">
           </div>
           <div class="field">
             <label>Cursor snap</label>
@@ -873,6 +873,22 @@
     pad:   { osc: "sine",     attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  },
   };
   const PRESET_ORDER = ["bass", "lead", "pluck", "pad"];
+
+  // Size slider values: index → multiplier
+  const SIZE_STEPS = [0.25, 0.5, 1, 2, 3, 4, 5, 6, 7, 8];
+  function sizeIndex(size) {
+    let best = 0, bestDiff = Infinity;
+    for (let i = 0; i < SIZE_STEPS.length; i++) {
+      const d = Math.abs(SIZE_STEPS[i] - size);
+      if (d < bestDiff) { bestDiff = d; best = i; }
+    }
+    return best;
+  }
+  function formatSize(size) {
+    if (size === 0.25) return "¼";
+    if (size === 0.5)  return "½";
+    return String(size);
+  }
 
   const state = {
     steps: 16,
@@ -1103,7 +1119,7 @@
       el.textContent = n.pitch;
       el.style.top = (n.step * rowH + 3) + "px";
       const visibleSize = Math.min(n.size, state.steps - n.step);
-      el.style.height = (visibleSize * rowH - 6) + "px";
+      el.style.height = Math.max(6, visibleSize * rowH - 6) + "px";
       attachNoteGesture(el, n.id);
       gridEl.appendChild(el);
     });
@@ -1305,8 +1321,8 @@
       if (n) {
         noteRow.classList.remove("hidden");
         selectedLabel.textContent = n.pitch + " · " + formatStep(n.step);
-        noteSizeEl.value = n.size;
-        noteSizeValEl.textContent = n.size;
+        noteSizeEl.value = sizeIndex(n.size);
+        noteSizeValEl.textContent = formatSize(n.size);
         deleteBtn.classList.remove("hidden");
         if (Math.abs(state.cursor - n.step) > 1e-6) {
           moveBtn.classList.remove("hidden");
@@ -1472,8 +1488,8 @@
   });
 
   defaultSizeEl.addEventListener("input", () => {
-    state.defaultSize = parseInt(defaultSizeEl.value, 10);
-    defaultSizeValEl.textContent = state.defaultSize;
+    state.defaultSize = SIZE_STEPS[parseInt(defaultSizeEl.value, 10)];
+    defaultSizeValEl.textContent = formatSize(state.defaultSize);
   });
   zoomEl.addEventListener("input", () => {
     state.keyboardZoom = parseInt(zoomEl.value, 10) / 100;
@@ -1489,8 +1505,8 @@
   noteSizeEl.addEventListener("input", () => {
     const n = state.notes.find(x => x.id === state.selectedId);
     if (!n) return;
-    n.size = Math.min(parseInt(noteSizeEl.value, 10), state.steps - n.step);
-    noteSizeValEl.textContent = n.size;
+    n.size = Math.min(SIZE_STEPS[parseInt(noteSizeEl.value, 10)], state.steps - n.step);
+    noteSizeValEl.textContent = formatSize(n.size);
     renderGrid();
   });
 
