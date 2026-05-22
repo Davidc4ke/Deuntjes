@@ -721,6 +721,8 @@
   .stack-nav button[data-stack="edit"]  { --stack-c: #6b5fd9; }  /* cursor purple */
   .stack[data-stack="voice"],
   .stack-nav button[data-stack="voice"] { --stack-c: #e9925c; }  /* warm coral */
+  .stack[data-stack="tone"],
+  .stack-nav button[data-stack="tone"]  { --stack-c: #d6c25a; }  /* warm gold */
   .stack[data-stack="eq"],
   .stack-nav button[data-stack="eq"]    { --stack-c: #5cd3c6; }  /* mint teal */
   .stack[data-stack="fx"],
@@ -1242,6 +1244,7 @@
           <div class="stack-nav" id="stackNav">
             <button data-stack="edit"  class="active" type="button" aria-label="Edit"><span class="dot"></span></button>
             <button data-stack="voice" type="button" aria-label="Voice"><span class="dot"></span></button>
+            <button data-stack="tone"  type="button" aria-label="Tone"><span class="dot"></span></button>
             <button data-stack="eq"    type="button" aria-label="EQ"><span class="dot"></span></button>
             <button data-stack="fx"    type="button" aria-label="FX"><span class="dot"></span></button>
           </div>
@@ -1272,7 +1275,18 @@
                 <button class="param-pill" data-param="r"   type="button">R <span class="val" id="rVal">.40</span></button>
               </div>
             </div>
-            <!-- Stack 3: EQ -->
+            <!-- Stack 3: Tone — filter, panner, glide -->
+            <div class="stack" data-stack="tone">
+              <div class="stack-label">Tone</div>
+              <div class="stack-row params-row">
+                <button class="param-pill" data-param="tone-cutoff" type="button">Cut <span class="val" id="cutoffPill">12k</span></button>
+                <button class="param-pill" data-param="tone-res"    type="button">Res <span class="val" id="resPill">1.0</span></button>
+                <button class="param-pill" data-param="tone-env"    type="button">Env <span class="val" id="envPill">3.0</span></button>
+                <button class="param-pill" data-param="tone-pan"    type="button">Pan <span class="val" id="panPill">C</span></button>
+                <button class="param-pill" data-param="tone-glide"  type="button">Gld <span class="val" id="glidePill">0ms</span></button>
+              </div>
+            </div>
+            <!-- Stack 4: EQ -->
             <div class="stack" data-stack="eq">
               <div class="stack-label">EQ</div>
               <div class="stack-row params-row">
@@ -1281,7 +1295,7 @@
                 <button class="param-pill" data-param="eq-high" type="button">Hi <span class="val" id="eqHighPill">+0</span></button>
               </div>
             </div>
-            <!-- Stack 4: FX -->
+            <!-- Stack 5: FX -->
             <div class="stack" data-stack="fx">
               <div class="stack-label">FX</div>
               <div class="stack-row params-row">
@@ -1583,6 +1597,13 @@
       distortion: { wet: 0, amount: 0.4 },
     };
   }
+  // Voice timbre: external lowpass filter (cutoff/resonance), MonoSynth filter
+  // envelope depth (filterEnv, octaves of upward sweep), stereo pan, and glide
+  // (portamento time, in seconds, for synths that support it).
+  // Defaults are "transparent": cutoff wide open, Q low, no pan, no glide.
+  function defaultTone() {
+    return { cutoff: 12000, resonance: 1, filterEnv: 3, pan: 0, glide: 0 };
+  }
   // Fills in any missing eq/fx fields on a channel object (e.g. ones restored
   // from a snapshot created before these existed, or returned from clone).
   function ensureChannelDefaults(ch) {
@@ -1596,6 +1617,8 @@
         else for (const k in d[e]) if (ch.fx[e][k] === undefined) ch.fx[e][k] = d[e][k];
       }
     }
+    if (!ch.tone) ch.tone = defaultTone();
+    else { const d = defaultTone(); for (const k in d) if (ch.tone[k] === undefined) ch.tone[k] = d[k]; }
     return ch;
   }
 
@@ -1620,10 +1643,10 @@
     scaleRoot: "C",
     scaleType: "major",
     channels: [
-      { id: 1, name: "Bass",  color: CHANNEL_PALETTE[0].color, edge: CHANNEL_PALETTE[0].edge, presetName: "bass",  muted: false, volume: 0.8, adsr: { attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  }, eq: defaultEQ(), fx: defaultFX() },
-      { id: 2, name: "Drum",  color: CHANNEL_PALETTE[1].color, edge: CHANNEL_PALETTE[1].edge, presetName: "pluck", muted: false, volume: 0.8, adsr: { attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 }, eq: defaultEQ(), fx: defaultFX() },
-      { id: 3, name: "Lead",  color: CHANNEL_PALETTE[2].color, edge: CHANNEL_PALETTE[2].edge, presetName: "lead",  muted: false, volume: 0.8, adsr: { attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  }, eq: defaultEQ(), fx: defaultFX() },
-      { id: 4, name: "Chord", color: CHANNEL_PALETTE[3].color, edge: CHANNEL_PALETTE[3].edge, presetName: "pad",   muted: false, volume: 0.8, adsr: { attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  }, eq: defaultEQ(), fx: defaultFX() },
+      { id: 1, name: "Bass",  color: CHANNEL_PALETTE[0].color, edge: CHANNEL_PALETTE[0].edge, presetName: "bass",  muted: false, volume: 0.8, adsr: { attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  }, eq: defaultEQ(), fx: defaultFX(), tone: defaultTone() },
+      { id: 2, name: "Drum",  color: CHANNEL_PALETTE[1].color, edge: CHANNEL_PALETTE[1].edge, presetName: "pluck", muted: false, volume: 0.8, adsr: { attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 }, eq: defaultEQ(), fx: defaultFX(), tone: defaultTone() },
+      { id: 3, name: "Lead",  color: CHANNEL_PALETTE[2].color, edge: CHANNEL_PALETTE[2].edge, presetName: "lead",  muted: false, volume: 0.8, adsr: { attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  }, eq: defaultEQ(), fx: defaultFX(), tone: defaultTone() },
+      { id: 4, name: "Chord", color: CHANNEL_PALETTE[3].color, edge: CHANNEL_PALETTE[3].edge, presetName: "pad",   muted: false, volume: 0.8, adsr: { attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  }, eq: defaultEQ(), fx: defaultFX(), tone: defaultTone() },
     ],
     activeChannelId: 1,
     nextChannelId: 5,
@@ -1739,6 +1762,8 @@
   const eqLowPill  = $("eqLowPill"),  eqMidPill = $("eqMidPill"),  eqHighPill = $("eqHighPill");
   const reverbPill = $("reverbPill"), delayPill = $("delayPill"),
         chorusPill = $("chorusPill"), distPill  = $("distPill");
+  const cutoffPill = $("cutoffPill"), resPill   = $("resPill"),
+        envPill    = $("envPill"),    panPill   = $("panPill"), glidePill = $("glidePill");
   const copyBtn = $("copyBtn"), multiDeleteBtn = $("multiDeleteBtn"), doneBtn = $("doneBtn");
   const pasteBtn = $("pasteBtn");
   const playBtn = $("playBtn"), stopBtn = $("stopBtn");
@@ -1839,20 +1864,44 @@
     // Build the effects chain. All effects start fully dry (wet=0) so the
     // default sound is unchanged; the user only hears effects once they
     // dial up the wet knob in the popup or the FX stack.
+    // An external lowpass Filter + stereo Panner give every channel a Tone
+    // surface (cutoff/res/pan) regardless of which synth class it uses.
+    const filter     = new Tone.Filter(channel.tone.cutoff, "lowpass");
+    filter.Q.value   = channel.tone.resonance;
     const eq         = new Tone.EQ3(0, 0, 0);
     const distortion = new Tone.Distortion(channel.fx.distortion.amount);
     const chorus     = new Tone.Chorus(channel.fx.chorus.freq, 2.5, channel.fx.chorus.depth).start();
     const delay      = new Tone.FeedbackDelay(channel.fx.delay.time, channel.fx.delay.feedback);
     const reverb     = new Tone.Reverb(channel.fx.reverb.decay);
+    const panner     = new Tone.Panner(channel.tone.pan);
     distortion.wet.value = channel.fx.distortion.wet;
     chorus.wet.value     = channel.fx.chorus.wet;
     delay.wet.value      = channel.fx.delay.wet;
     reverb.wet.value     = channel.fx.reverb.wet;
-    s.chain(eq, distortion, chorus, delay, reverb, Tone.Destination);
-    const chain = { eq, distortion, chorus, delay, reverb };
+    s.chain(filter, eq, distortion, chorus, delay, reverb, panner, Tone.Destination);
+    const chain = { filter, eq, distortion, chorus, delay, reverb, panner };
     channelChains[channel.id] = chain;
     applyChannelEQ(chain, channel.eq);
+    applyChannelTone(s, chain, channel.tone);
     return s;
+  }
+  // Apply the channel's Tone settings to both the external filter+panner
+  // (universal — works on any synth class) and the synth-internal bits that
+  // only MonoSynth-family voices respond to (filterEnvelope.octaves, glide).
+  function applyChannelTone(synth, chain, tone) {
+    if (chain) {
+      if (chain.filter) {
+        chain.filter.frequency.value = tone.cutoff;
+        chain.filter.Q.value         = tone.resonance;
+      }
+      if (chain.panner) chain.panner.pan.value = tone.pan;
+    }
+    if (!synth) return;
+    // filterEnvelope.octaves only exists on MonoSynth (incl. PolySynth(MonoSynth)).
+    try { synth.set({ filterEnvelope: { octaves: tone.filterEnv } }); } catch (_) {}
+    // Portamento works on MonoSynth / FMSynth / DuoSynth; harmless to set even
+    // when ignored, but guard against synths that lack the field.
+    try { if ("portamento" in synth) synth.portamento = tone.glide; } catch (_) {}
   }
   function applyChannelEQ(chain, eq) {
     if (!chain || !eq) return;
@@ -1948,6 +1997,7 @@
     if (chain) {
       applyChannelEQ(chain, effectiveEQ(n));
       applyChannelFX(chain, effectiveFX(n));
+      applyChannelTone(s, chain, effectiveTone(n));
     }
     triggerSynth(s, n.pitch, "8n", undefined, effectiveProp(n, "volume"));
   }
@@ -3014,6 +3064,40 @@
   }
   function effectiveEQVal(note, band) { return effectiveEQ(note)[band]; }
   function effectiveFXVal(note, fx, prop) { return effectiveFX(note)[fx][prop]; }
+  function effectiveTone(note) {
+    const ch = state.channels.find(c => c.id === note.channelId);
+    const chTone = ch ? ch.tone : defaultTone();
+    if (!note.tone) return chTone;
+    return {
+      cutoff:    note.tone.cutoff    ?? chTone.cutoff,
+      resonance: note.tone.resonance ?? chTone.resonance,
+      filterEnv: note.tone.filterEnv ?? chTone.filterEnv,
+      pan:       note.tone.pan       ?? chTone.pan,
+      glide:     note.tone.glide     ?? chTone.glide,
+    };
+  }
+  function effectiveToneVal(note, key) { return effectiveTone(note)[key]; }
+  // Pretty-printers for the Tone params.
+  function fmtHz(v) {
+    v = Number(v);
+    if (v >= 1000) return (v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k";
+    return Math.round(v) + "";
+  }
+  function fmtPan(v) {
+    v = Number(v);
+    if (Math.abs(v) < 0.01) return "C";
+    const n = Math.round(Math.abs(v) * 100);
+    return (v < 0 ? "L" : "R") + n;
+  }
+  function fmtGlide(v) { return Math.round(Number(v) * 1000) + "ms"; }
+  function fmtToneVal(key, v) {
+    if (key === "cutoff")    return fmtHz(v);
+    if (key === "resonance") return Number(v).toFixed(1);
+    if (key === "filterEnv") return Number(v).toFixed(1);
+    if (key === "pan")       return fmtPan(v);
+    if (key === "glide")     return fmtGlide(v);
+    return String(v);
+  }
   function formatAdsr(v) { return Number(v).toFixed(2).replace(/^0\./, "."); }
   function formatVol(v)  { return Math.round(Number(v) * 100) + "%"; }
   function syncParamPills() {
@@ -3070,6 +3154,22 @@
     delayPill.textContent  = fxVal("delay");
     chorusPill.textContent = fxVal("chorus");
     distPill.textContent   = fxVal("distortion");
+    syncTonePills();
+  }
+  function syncTonePills() {
+    const sel = selectedNotes();
+    const ch = activeChannel();
+    ensureChannelDefaults(ch);
+    const tVal = (key) => {
+      if (sel.length === 0) return fmtToneVal(key, ch.tone[key]);
+      const vals = new Set(sel.map(n => effectiveToneVal(n, key).toFixed(4)));
+      return vals.size === 1 ? fmtToneVal(key, effectiveToneVal(sel[0], key)) : "mixed";
+    };
+    cutoffPill.textContent = tVal("cutoff");
+    resPill.textContent    = tVal("resonance");
+    envPill.textContent    = tVal("filterEnv");
+    panPill.textContent    = tVal("pan");
+    glidePill.textContent  = tVal("glide");
   }
 
   function openParamPopover(pillEl, paramName) {
@@ -3079,7 +3179,42 @@
     // EQ / FX pills control channel-level state; open a popover with the
     // primary slider (gain for EQ, wet for FX). Use the popup tab for the
     // full multi-knob editor.
-    if (paramName.startsWith("eq-") || paramName.startsWith("fx-")) {
+    if (paramName.startsWith("tone-")) {
+      const ch = activeChannel();
+      ensureChannelDefaults(ch);
+      // Map pill suffix → tone key + slider config. Same per-note-override
+      // pattern as EQ/FX: with a selection, write n.tone[key]; without one,
+      // write ch.tone[key] and update the live audio nodes.
+      const spec = {
+        "tone-cutoff": { key: "cutoff",    label: "Tone · Cutoff",     min: 80,  max: 12000, step: 10,
+                         fmt: (v) => fmtHz(+v) + " Hz" },
+        "tone-res":    { key: "resonance", label: "Tone · Resonance",  min: 0.1, max: 20,    step: 0.1,
+                         fmt: (v) => Number(v).toFixed(1) },
+        "tone-env":    { key: "filterEnv", label: "Tone · Filter Env", min: 0,   max: 7,     step: 0.1,
+                         fmt: (v) => Number(v).toFixed(1) + " oct" },
+        "tone-pan":    { key: "pan",       label: "Tone · Pan",        min: -1,  max: 1,     step: 0.02,
+                         fmt: (v) => fmtPan(+v) },
+        "tone-glide":  { key: "glide",     label: "Tone · Glide",      min: 0,   max: 0.3,   step: 0.005,
+                         fmt: (v) => fmtGlide(+v) },
+      }[paramName];
+      label = spec.label; min = spec.min; max = spec.max; step = spec.step; fmt = spec.fmt;
+      value = sel.length ? effectiveToneVal(sel[0], spec.key) : ch.tone[spec.key];
+      onChange = (v) => {
+        beginSliderSession(pillEl);
+        const num = parseFloat(v);
+        const targets = selectedNotes();
+        if (targets.length > 0) {
+          targets.forEach(n => {
+            if (!n.tone) n.tone = {};
+            n.tone[spec.key] = num;
+          });
+        } else {
+          ch.tone[spec.key] = num;
+          applyChannelTone(channelSynths[ch.id], channelChains[ch.id], ch.tone);
+        }
+        syncTonePills();
+      };
+    } else if (paramName.startsWith("eq-") || paramName.startsWith("fx-")) {
       const ch = activeChannel();
       ensureChannelDefaults(ch);
       // With a selection, EQ + FX changes write per-note overrides (just
@@ -3420,6 +3555,7 @@
       adsr: { attack: p.attack, decay: p.decay, sustain: p.sustain, release: p.release },
       eq: defaultEQ(),
       fx: defaultFX(),
+      tone: defaultTone(),
     });
     renderChannelList();
     renderChannelStrip();
@@ -3743,6 +3879,7 @@
         if (chain) {
           applyChannelEQ(chain, effectiveEQ(n));
           applyChannelFX(chain, effectiveFX(n));
+          applyChannelTone(s, chain, effectiveTone(n));
         }
         triggerSynth(s, n.pitch, dur, time, effectiveProp(n, "volume"));
       }
