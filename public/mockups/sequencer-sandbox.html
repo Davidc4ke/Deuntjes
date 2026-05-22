@@ -647,6 +647,11 @@
     line-height: 1.2;
   }
   .chip:hover { background: #3a3760; color: #fff; }
+  .chip:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .chip:disabled:hover { background: #2f2c4d; color: #d8d4ff; }
   .chip.settings {
     background: rgba(255,255,255,0.04);
     color: #aaa6d6;
@@ -1046,6 +1051,8 @@
 
           <!-- Quick actions -->
           <div class="chip-row" id="actionsRow">
+            <button class="chip" id="undoBtn" type="button" disabled>Undo</button>
+            <button class="chip" id="redoBtn" type="button" disabled>Redo</button>
             <button class="chip primary hidden" id="pasteBtn" type="button">Paste</button>
             <button class="chip hidden" id="moveBtn" type="button">Move 02</button>
             <button class="chip hidden" id="copyBtn" type="button">Copy</button>
@@ -1298,6 +1305,80 @@
   function activeChannel() { return state.channels.find(c => c.id === state.activeChannelId) || state.channels[0]; }
   function activeNotes() { return state.notes.filter(n => n.channelId === state.activeChannelId); }
 
+  // ---------- Undo / Redo ----------
+  // Snapshot-based: every mutating user action calls pushUndo() before it
+  // mutates state. Undo/Redo swap snapshots between the two stacks and
+  // re-render. ADSR/volume sliders push once per "session" (debounced).
+  const UNDO_LIMIT = 80;
+  const undoStack = [];
+  const redoStack = [];
+  function snapshotState() {
+    return JSON.stringify({
+      notes: state.notes,
+      channels: state.channels,
+      activeChannelId: state.activeChannelId,
+      steps: state.steps,
+      nextId: state.nextId,
+      nextChannelId: state.nextChannelId,
+    });
+  }
+  function applySnapshot(json) {
+    const s = JSON.parse(json);
+    state.notes = s.notes;
+    state.channels = s.channels;
+    state.activeChannelId = s.activeChannelId;
+    state.steps = s.steps;
+    state.nextId = s.nextId;
+    state.nextChannelId = s.nextChannelId;
+    // Selection / chord / range state is volatile UI state — clear so the
+    // restored grid doesn't reference notes that no longer exist.
+    state.selectedId = null;
+    state.multiSelect = false;
+    state.selectedIds.clear();
+    state.rangeSelectAnchor = null;
+    state.chordMode = false;
+    state.chordStep = null;
+    // Channel set may have changed; drop synths for channels that no longer
+    // exist so makeSynth runs fresh next time.
+    const liveIds = new Set(state.channels.map(c => c.id));
+    Object.keys(channelSynths).forEach(id => {
+      if (!liveIds.has(+id)) disposeChannelSynth(+id);
+    });
+    // Per-channel synths whose preset/adsr might have changed need rebuilding.
+    state.channels.forEach(ch => disposeChannelSynth(ch.id));
+    if (lengthEl) { lengthEl.value = state.steps; lengthValEl.textContent = state.steps; }
+    applyActiveChannelStyle();
+    renderChannelStrip();
+    renderPresetButtons();
+    syncInsPopup();
+    renderGrid();
+    positionKnobFromCursor();
+    updateSelectedBar();
+    refreshKeyHighlights();
+  }
+  function pushUndo() {
+    undoStack.push(snapshotState());
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    redoStack.length = 0;
+    updateUndoButtons();
+  }
+  function undo() {
+    if (undoStack.length === 0) return;
+    redoStack.push(snapshotState());
+    applySnapshot(undoStack.pop());
+    updateUndoButtons();
+  }
+  function redo() {
+    if (redoStack.length === 0) return;
+    undoStack.push(snapshotState());
+    applySnapshot(redoStack.pop());
+    updateUndoButtons();
+  }
+  function updateUndoButtons() {
+    if (undoBtn) undoBtn.disabled = undoStack.length === 0;
+    if (redoBtn) redoBtn.disabled = redoStack.length === 0;
+  }
+
   function formatStep(stepFloat) {
     const oneBased = stepFloat + 1;
     if (Math.abs(oneBased - Math.round(oneBased)) < 1e-6) {
@@ -1331,6 +1412,7 @@
   const copyBtn = $("copyBtn"), multiDeleteBtn = $("multiDeleteBtn"), doneBtn = $("doneBtn");
   const pasteBtn = $("pasteBtn");
   const playBtn = $("playBtn"), stopBtn = $("stopBtn");
+  const undoBtn = $("undoBtn"), redoBtn = $("redoBtn");
   const attackEl = $("attack"), decayEl = $("decay"), sustainEl = $("sustain"), releaseEl = $("release");
   const volumeEl = $("volume"), volumeV = $("volumeV");
   const adsrV = { attack: $("attackV"), decay: $("decayV"), sustain: $("sustainV"), release: $("releaseV") };
@@ -1501,7 +1583,20 @@
       triggerSynth(s, "C4", "8n", undefined, ch.volume ?? 0.8);
     }, 150);
   }
+  // Continuous sliders fire `input` on every tick — one undo entry per tick
+  // would let the user "undo" twenty times to step back through one drag.
+  // beginSliderSession() pushes ONE snapshot on first input, then waits for
+  // ~800ms of silence before considering the next drag a fresh undo step.
+  const sliderSessions = new WeakMap();
+  function beginSliderSession(key) {
+    const sess = sliderSessions.get(key) || { active: false, timer: null };
+    if (!sess.active) { pushUndo(); sess.active = true; }
+    if (sess.timer) clearTimeout(sess.timer);
+    sess.timer = setTimeout(() => { sess.active = false; sess.timer = null; }, 800);
+    sliderSessions.set(key, sess);
+  }
   [attackEl, decayEl, sustainEl, releaseEl, volumeEl].forEach(el => {
+    el.addEventListener("input", () => beginSliderSession(el));
     el.addEventListener("input", applyADSR);
     el.addEventListener("input", scheduleAdsrPreview);
   });
@@ -2033,6 +2128,9 @@
     const s = getSynth(ch);
     if (s) triggerSynth(s, pitch, "8n");
 
+    // Snapshot before any state mutation so this key-press is undoable.
+    pushUndo();
+
     // Chord mode: each tap toggles a pitch at the chord's step (add/remove).
     if (state.chordMode) {
       const step = state.chordStep;
@@ -2068,6 +2166,7 @@
 
   const CHORD_LONG_PRESS_MS = 600;
   function enterChordMode(initialPitch) {
+    pushUndo();
     state.chordMode = true;
     state.chordStep = effectivePlacementStep();
     const ch = state.activeChannelId;
@@ -2181,11 +2280,13 @@
     renderGrid();
   }
   function deleteSelection() {
+    pushUndo();
     state.notes = state.notes.filter(n => !state.selectedIds.has(n.id));
     exitMultiSelect();
   }
   function pasteAtCursor() {
     if (!state.clipboard || state.clipboard.length === 0) return;
+    pushUndo();
     const channel = state.channels.find(c => c.id === state.activeChannelId);
 
     // If the clipboard contains a chord (multiple notes sharing a relStep), the
@@ -2532,6 +2633,7 @@
     if (!ch) return;
     // Don't allow muting the input channel — switch input elsewhere first.
     if (ch.id === state.activeChannelId) return;
+    pushUndo();
     ch.muted = !ch.muted;
     renderChannelStrip();
     renderGrid();
@@ -2623,6 +2725,7 @@
 
   function removeChannel(id) {
     if (state.channels.length <= 1) return;
+    pushUndo();
     state.notes = state.notes.filter(n => n.channelId !== id);
     state.channels = state.channels.filter(c => c.id !== id);
     disposeChannelSynth(id);
@@ -2640,6 +2743,7 @@
   }
 
   function addChannel() {
+    pushUndo();
     const usedColors = new Set(state.channels.map(c => c.color));
     const palette = CHANNEL_PALETTE.find(p => !usedColors.has(p.color)) || CHANNEL_PALETTE[state.channels.length % CHANNEL_PALETTE.length];
     const presetName = PRESET_ORDER[state.channels.length % PRESET_ORDER.length];
@@ -2681,6 +2785,7 @@
       const value = btn.dataset.value;
       if (group === "snap") state.snap = value;
       else if (group === "instrument") {
+        pushUndo();
         const ch = activeChannel();
         ch.presetName = value;
         const p = PRESETS[value];
@@ -2723,8 +2828,20 @@
   multiDeleteBtn.addEventListener("click", deleteSelection);
   doneBtn.addEventListener("click", exitMultiSelect);
   pasteBtn.addEventListener("click", pasteAtCursor);
+  undoBtn.addEventListener("click", undo);
+  redoBtn.addEventListener("click", redo);
+  // Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z (or Ctrl+Y) = redo.
+  window.addEventListener("keydown", (e) => {
+    if (e.target && (e.target.tagName === "INPUT" || e.target.isContentEditable)) return;
+    const mod = e.ctrlKey || e.metaKey;
+    if (!mod) return;
+    const k = e.key.toLowerCase();
+    if (k === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+    else if ((k === "z" && e.shiftKey) || k === "y") { e.preventDefault(); redo(); }
+  });
 
   deleteBtn.addEventListener("click", () => {
+    pushUndo();
     state.notes = state.notes.filter(n => n.id !== state.selectedId);
     state.selectedId = null;
     renderGrid();
@@ -2738,6 +2855,7 @@
     const target = Math.min(state.cursor, state.steps - 1);
     const delta = target - anchor;
     if (Math.abs(delta) < 1e-6) return;
+    pushUndo();
 
     // Skip the move if any selected note would fall off the grid.
     const wouldOverflow = sel.some(n => {
@@ -2813,6 +2931,7 @@
 
   // ---------- Length ----------
   lengthEl.addEventListener("input", () => {
+    beginSliderSession(lengthEl);
     state.steps = parseInt(lengthEl.value, 10);
     lengthValEl.textContent = state.steps;
     state.cursor = Math.min(state.cursor, state.steps);
