@@ -334,6 +334,24 @@
   .note.playing { background: var(--ch-edge, var(--accent-edge)); color: #fff; }
   .note.muted { opacity: 0.32; }
 
+  .note-label {
+    background: #fff;
+    color: #1a1a1f;
+    border: 1px solid rgba(0,0,0,0.55);
+    border-radius: 6px;
+    padding: 1px 5px;
+    font: 600 10px var(--mono);
+    line-height: 1;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+    pointer-events: none;
+  }
+  .note.playing .note-label {
+    background: #fff;
+    color: #1a1a1f;
+  }
+
   .col-divider {
     position: absolute; top: 0; bottom: 0;
     width: 1px;
@@ -1203,7 +1221,10 @@
       if (ch.muted) cls += " muted";
       el.className = cls;
       el.dataset.id = n.id;
-      el.textContent = n.pitch;
+      const label = document.createElement("span");
+      label.className = "note-label";
+      label.textContent = n.pitch;
+      el.appendChild(label);
       el.style.left  = (colLeft + colIdx * colW + 2) + "px";
       el.style.width = (colW - 4) + "px";
       el.style.right = "auto";
