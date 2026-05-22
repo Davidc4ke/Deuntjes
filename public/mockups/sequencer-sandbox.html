@@ -1081,13 +1081,7 @@
           </header>
           <div class="field">
             <label>Preset <span class="val" style="font-weight:500; text-transform:none; letter-spacing:0; color: var(--bar-text-mute);">for active channel</span></label>
-            <div class="seg seg-presets" data-group="instrument">
-              <button data-value="bass" class="active" type="button">Bass</button>
-              <button data-value="lead" type="button">Lead</button>
-              <button data-value="pluck" type="button">Pluck</button>
-              <button data-value="pad" data-poly="1" type="button">Pad</button>
-              <button data-value="keys" data-poly="1" type="button">Keys</button>
-            </div>
+            <div class="seg seg-presets" data-group="instrument" id="presetSeg"></div>
           </div>
           <div class="field">
             <label>Volume <span class="val" id="volumeV">0.80</span></label>
@@ -1196,14 +1190,52 @@
     { color: "#5cd3c6", edge: "#349a90" }, // teal
   ];
 
+  // synth: how the preset's voice is built (mono = subtractive MonoSynth, fm = FMSynth,
+  //   membrane = MembraneSynth for pitch-decay kicks/toms, metal = MetalSynth for cymbals,
+  //   noise = NoiseSynth for snare/clap/FX, duo = DuoSynth for detuned-pair sounds).
+  // poly: true → wrap the voice in Tone.PolySynth for chord-mode use.
   const PRESETS = {
-    bass:  { osc: "sawtooth", attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  },
-    lead:  { osc: "square",   attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  },
-    pluck: { osc: "triangle", attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 },
-    pad:   { osc: "sine",     attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8,  poly: true },
-    keys:  { osc: "triangle", attack: 0.005, decay: 0.20, sustain: 0.4, release: 0.8,  poly: true },
+    // -- Melodic / mono --
+    bass:    { synth: "mono", osc: "sawtooth", attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  },
+    lead:    { synth: "mono", osc: "square",   attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  },
+    pluck:   { synth: "mono", osc: "triangle", attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 },
+    sub:     { synth: "mono", osc: "sine",     attack: 0.01,  decay: 0.20, sustain: 0.8, release: 0.40 },
+    acid:    { synth: "mono", osc: "sawtooth", attack: 0.005, decay: 0.30, sustain: 0.2, release: 0.25 },
+    reese:   { synth: "duo",                    attack: 0.01,  decay: 0.20, sustain: 0.7, release: 0.40 },
+
+    // -- Melodic / poly --
+    pad:     { synth: "mono", osc: "sine",     attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8,  poly: true },
+    keys:    { synth: "mono", osc: "triangle", attack: 0.005, decay: 0.20, sustain: 0.4, release: 0.8,  poly: true },
+    bell:    { synth: "fm",   harmonicity: 8, modulationIndex: 14,
+                              attack: 0.005, decay: 0.50, sustain: 0.0, release: 1.0, poly: true },
+    marimba: { synth: "mono", osc: "sine",     attack: 0.005, decay: 0.40, sustain: 0.0, release: 0.40, poly: true },
+    organ:   { synth: "mono", osc: "square",   attack: 0.005, decay: 0.10, sustain: 0.9, release: 0.30, poly: true },
+    strings: { synth: "mono", osc: "sawtooth", attack: 0.30,  decay: 0.20, sustain: 0.7, release: 1.0,  poly: true },
+    choir:   { synth: "mono", osc: "sawtooth", attack: 0.40,  decay: 0.30, sustain: 0.8, release: 1.5,  poly: true },
+
+    // -- Drums --
+    kick:    { synth: "membrane", osc: "sine", attack: 0.001, decay: 0.40, sustain: 0.0, release: 0.30, pitchDecay: 0.05, octaves: 10 },
+    "808":   { synth: "membrane", osc: "sine", attack: 0.001, decay: 0.80, sustain: 0.0, release: 0.80, pitchDecay: 0.10, octaves: 6  },
+    snare:   { synth: "noise", noise: "white", attack: 0.001, decay: 0.15, sustain: 0.0, release: 0.05 },
+    clap:    { synth: "noise", noise: "pink",  attack: 0.001, decay: 0.20, sustain: 0.0, release: 0.10 },
+    hat:     { synth: "metal", attack: 0.001,  decay: 0.05,                  release: 0.05, resonance: 6000 },
+    ohat:    { synth: "metal", attack: 0.001,  decay: 0.30,                  release: 0.20, resonance: 6000 },
+    tom:     { synth: "membrane", osc: "sine", attack: 0.001, decay: 0.30, sustain: 0.0, release: 0.30, pitchDecay: 0.02, octaves: 4 },
+    perc:    { synth: "membrane", osc: "sine", attack: 0.001, decay: 0.15, sustain: 0.0, release: 0.10, pitchDecay: 0.005, octaves: 2 },
+    rim:     { synth: "noise", noise: "white", attack: 0.001, decay: 0.04, sustain: 0.0, release: 0.03 },
+    crash:   { synth: "metal", attack: 0.001,  decay: 1.5,                   release: 1.0, resonance: 4000 },
+    ride:    { synth: "metal", attack: 0.001,  decay: 0.40,                  release: 0.20, resonance: 6000 },
+
+    // -- FX --
+    riser:   { synth: "noise", noise: "white", attack: 1.5,   decay: 0.50, sustain: 0.8, release: 0.30 },
+    fx:      { synth: "noise", noise: "pink",  attack: 0.005, decay: 0.10, sustain: 0.0, release: 0.05 },
   };
-  const PRESET_ORDER = ["bass", "lead", "pluck", "pad", "keys"];
+  const PRESET_ORDER = [
+    "bass", "lead", "pluck", "sub", "acid", "reese",
+    "pad", "keys", "bell", "marimba", "organ", "strings", "choir",
+    "kick", "808", "snare", "clap", "hat", "ohat", "tom", "perc", "rim", "crash", "ride",
+    "riser", "fx",
+  ];
   function isPolyPreset(name) { return !!(PRESETS[name] && PRESETS[name].poly); }
   function activePresetIsPoly() { return isPolyPreset(activeChannel().presetName); }
 
@@ -1297,22 +1329,87 @@
 
   function makeSynth(channel) {
     const p = PRESETS[channel.presetName] || PRESETS.bass;
-    const voiceOpts = {
-      oscillator: { type: p.osc },
-      envelope: {
-        attack: channel.adsr.attack, decay: channel.adsr.decay,
-        sustain: channel.adsr.sustain, release: channel.adsr.release,
-      },
-      filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.5, baseFrequency: 220, octaves: 3 },
+    const env = {
+      attack:  channel.adsr.attack,
+      decay:   channel.adsr.decay,
+      sustain: channel.adsr.sustain,
+      release: channel.adsr.release,
     };
-    const s = p.poly
-      ? new Tone.PolySynth(Tone.MonoSynth, voiceOpts).toDestination()
-      : new Tone.MonoSynth(voiceOpts).toDestination();
+    let s;
+    switch (p.synth) {
+      case "membrane":
+        s = new Tone.MembraneSynth({
+          oscillator: { type: p.osc || "sine" },
+          envelope: env,
+          pitchDecay: p.pitchDecay ?? 0.05,
+          octaves: p.octaves ?? 10,
+        }).toDestination();
+        break;
+      case "metal":
+        s = new Tone.MetalSynth({
+          envelope: { attack: env.attack, decay: env.decay, release: env.release },
+          harmonicity: p.harmonicity ?? 5.1,
+          modulationIndex: p.modulationIndex ?? 16,
+          resonance: p.resonance ?? 4000,
+          octaves: p.octaves ?? 1.5,
+        }).toDestination();
+        break;
+      case "noise":
+        s = new Tone.NoiseSynth({
+          noise: { type: p.noise || "white" },
+          envelope: env,
+        }).toDestination();
+        break;
+      case "fm": {
+        const opts = {
+          harmonicity: p.harmonicity ?? 3,
+          modulationIndex: p.modulationIndex ?? 10,
+          envelope: env,
+        };
+        s = p.poly
+          ? new Tone.PolySynth(Tone.FMSynth, opts).toDestination()
+          : new Tone.FMSynth(opts).toDestination();
+        break;
+      }
+      case "duo":
+        s = new Tone.DuoSynth({
+          harmonicity: 0.99,
+          vibratoAmount: 0,
+        }).toDestination();
+        break;
+      case "mono":
+      default: {
+        const opts = {
+          oscillator: { type: p.osc || "sawtooth" },
+          envelope: env,
+          filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.5, baseFrequency: 220, octaves: 3 },
+        };
+        s = p.poly
+          ? new Tone.PolySynth(Tone.MonoSynth, opts).toDestination()
+          : new Tone.MonoSynth(opts).toDestination();
+      }
+    }
     s.volume.value = -10;
     return s;
   }
-  // Works for both MonoSynth and PolySynth — .set broadcasts to all voices.
+  // Broadcasts an envelope to whatever synth class is at hand. set() silently
+  // ignores unknown properties (e.g. MetalSynth has no .sustain), so we wrap
+  // it in try/catch for synths that don't expose a top-level envelope at all.
   function setSynthEnvelope(s, env) { try { s.set({ envelope: env }); } catch (_) {} }
+
+  // NoiseSynth and MetalSynth don't take a pitch argument the way MonoSynth /
+  // FMSynth / MembraneSynth do. This helper normalises the call so the rest of
+  // the playback / preview path can stay pitch-first.
+  function triggerSynth(s, pitch, dur, time, velocity) {
+    if (s instanceof Tone.NoiseSynth) {
+      s.triggerAttackRelease(dur, time, velocity);
+    } else if (s instanceof Tone.MetalSynth) {
+      // MetalSynth ignores pitch internally but accepts the same call shape.
+      s.triggerAttackRelease(dur, time, velocity);
+    } else {
+      s.triggerAttackRelease(pitch, dur, time, velocity);
+    }
+  }
   function getSynth(channelId) {
     if (!channelSynths[channelId]) {
       const ch = state.channels.find(c => c.id === channelId);
@@ -1340,7 +1437,7 @@
       sustain: effectiveProp(n, "sustain"),
       release: effectiveProp(n, "release"),
     });
-    s.triggerAttackRelease(n.pitch, "8n", undefined, effectiveProp(n, "volume"));
+    triggerSynth(s, n.pitch, "8n", undefined, effectiveProp(n, "volume"));
   }
 
   function applyADSR() {
@@ -1888,7 +1985,7 @@
     Tone.start();
     const ch = state.activeChannelId;
     const s = getSynth(ch);
-    if (s) s.triggerAttackRelease(pitch, "8n");
+    if (s) triggerSynth(s, pitch, "8n");
 
     // Chord mode: each tap toggles a pitch at the chord's step (add/remove).
     if (state.chordMode) {
@@ -2541,7 +2638,13 @@
         const ch = activeChannel();
         ch.presetName = value;
         const p = PRESETS[value];
-        ch.adsr = { attack: p.attack, decay: p.decay, sustain: p.sustain, release: p.release };
+        ch.adsr = {
+          attack:  p.attack  ?? 0.01,
+          decay:   p.decay   ?? 0.2,
+          sustain: p.sustain ?? 0.0,
+          release: p.release ?? 0.3,
+        };
+        renderPresetButtons(); // refresh active marker
         disposeChannelSynth(ch.id);
         getSynth(ch.id);
         // Mono preset can't sustain chords — bail out of chord mode if it was open.
@@ -2752,7 +2855,7 @@
           sustain: effectiveProp(n, "sustain"),
           release: effectiveProp(n, "release"),
         });
-        s.triggerAttackRelease(n.pitch, dur, time, effectiveProp(n, "volume"));
+        triggerSynth(s, n.pitch, dur, time, effectiveProp(n, "volume"));
       }
       Tone.Draw.schedule(() => {
         const el = gridEl.querySelector('.note[data-id="' + n.id + '"]');
@@ -2804,7 +2907,34 @@
     piano.scrollTop = el.offsetTop - piano.clientHeight / 2 + el.offsetHeight / 2;
   }
 
+  // Display label for each preset key — anything not listed falls back to a
+  // Title-Cased version of the key.
+  const PRESET_LABELS = {
+    bass: "Bass", lead: "Lead", pluck: "Pluck", sub: "Sub", acid: "Acid", reese: "Reese",
+    pad: "Pad", keys: "Keys", bell: "Bell", marimba: "Marimba",
+    organ: "Organ", strings: "Strings", choir: "Choir",
+    kick: "Kick", "808": "808", snare: "Snare", clap: "Clap",
+    hat: "Hat", ohat: "Open Hat", tom: "Tom", perc: "Perc", rim: "Rim",
+    crash: "Crash", ride: "Ride", riser: "Riser", fx: "FX",
+  };
+  function renderPresetButtons() {
+    const seg = $("presetSeg");
+    if (!seg) return;
+    seg.innerHTML = "";
+    const active = activeChannel().presetName;
+    PRESET_ORDER.forEach(name => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.dataset.value = name;
+      if (PRESETS[name] && PRESETS[name].poly) btn.dataset.poly = "1";
+      if (name === active) btn.classList.add("active");
+      btn.textContent = PRESET_LABELS[name] || (name[0].toUpperCase() + name.slice(1));
+      seg.appendChild(btn);
+    });
+  }
+
   function init() {
+    renderPresetButtons();
     syncInsPopup(); // display-only; doesn't create a synth
     applyActiveChannelStyle();
     renderChannelStrip();
