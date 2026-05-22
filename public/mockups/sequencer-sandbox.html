@@ -1291,7 +1291,8 @@
     if (s) s.triggerAttackRelease(pitch, "8n");
 
     // Notes inherit the cursor's exact fractional step (snap is applied to the cursor itself).
-    const targetStep = state.cursor;
+    // If the cursor is sitting at the very bottom edge (cursor === state.steps), clamp into the last row.
+    const targetStep = Math.min(state.cursor, state.steps - 1);
     const existing = state.notes.find(n => n.channelId === ch && Math.abs(n.step - targetStep) < 1e-6 && n.step < state.steps);
     if (existing) {
       existing.pitch = pitch;
@@ -1425,7 +1426,7 @@
         deleteBtn.classList.remove("hidden");
         if (Math.abs(state.cursor - n.step) > 1e-6) {
           moveBtn.classList.remove("hidden");
-          moveBtn.textContent = "Move " + formatStep(state.cursor);
+          moveBtn.textContent = "Move " + formatStep(Math.min(state.cursor, state.steps - 1));
         }
       }
     }
@@ -1433,7 +1434,7 @@
     if (state.clipboard && state.clipboard.length > 0) {
       pasteBtn.classList.remove("hidden");
       const count = state.clipboard.length;
-      pasteBtn.textContent = "Paste " + formatStep(state.cursor) + " · " + count;
+      pasteBtn.textContent = "Paste " + formatStep(Math.min(state.cursor, state.steps - 1)) + " · " + count;
     } else {
       pasteBtn.classList.add("hidden");
     }
@@ -1687,7 +1688,7 @@
 
   moveBtn.addEventListener("click", () => {
     const n = state.notes.find(x => x.id === state.selectedId);
-    const target = state.cursor;
+    const target = Math.min(state.cursor, state.steps - 1);
     if (!n || Math.abs(target - n.step) < 1e-6) return;
     // Replace any same-channel note at the target (epsilon match)
     state.notes = state.notes.filter(x => x.id === n.id || x.channelId !== n.channelId || Math.abs(x.step - target) >= 1e-6);
@@ -1713,7 +1714,7 @@
   lengthEl.addEventListener("input", () => {
     state.steps = parseInt(lengthEl.value, 10);
     lengthValEl.textContent = state.steps;
-    state.cursor = Math.min(state.cursor, state.steps - 1);
+    state.cursor = Math.min(state.cursor, state.steps);
     // do NOT remove out-of-range notes — they stay in state and reappear when length grows again
     renderGrid();
     positionKnobFromCursor();
@@ -1725,11 +1726,11 @@
     const r = scrollerEl.getBoundingClientRect();
     const pad = 10;
     const usable = r.height - pad * 2;
-    const frac = state.cursor / Math.max(1, state.steps - 1);
+    const frac = state.cursor / Math.max(1, state.steps);
     knobEl.style.top = (pad + frac * usable) + "px";
   }
   function snapCursor(raw) {
-    const clamped = Math.max(0, Math.min(state.steps - 1, raw));
+    const clamped = Math.max(0, Math.min(state.steps, raw));
     if (state.snap === "step") return Math.round(clamped);
     if (state.snap === "half") return Math.round(clamped * 2) / 2;
     return Math.round(clamped * 100) / 100; // "off" — keep some quantization for sanity
@@ -1741,7 +1742,7 @@
     const usable = r.height - pad * 2;
     const y = Math.max(0, Math.min(usable, clientY - r.top - pad));
     const frac = y / usable;
-    const next = snapCursor(frac * (state.steps - 1));
+    const next = snapCursor(frac * state.steps);
     if (Math.abs(next - state.cursor) > 1e-6) {
       state.cursor = next;
       renderGrid();
