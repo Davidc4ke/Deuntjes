@@ -857,9 +857,7 @@
       <div class="bottom">
         <div class="col-left">
           <!-- Settings chips -->
-          <div class="chip-row">
-            <button class="chip settings" data-popup="ins" type="button">Ins</button>
-          </div>
+          <div class="chip-row"></div>
 
           <!-- Selected note meta (single) -->
           <div class="selected-meta-row hidden" id="noteRow">
@@ -1716,6 +1714,11 @@
     document.querySelectorAll(".popup").forEach(p => p.classList.toggle("hidden", p.dataset.name !== "sqc"));
     $("popupLayer").classList.remove("hidden");
   }
+  function openInsPopup() {
+    syncInsPopup();
+    document.querySelectorAll(".popup").forEach(p => p.classList.toggle("hidden", p.dataset.name !== "ins"));
+    $("popupLayer").classList.remove("hidden");
+  }
 
   function attachChannelHeaderGesture(el, channelId) {
     let suppress = false;
@@ -1725,20 +1728,25 @@
     });
     el.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      // Long-press is a no-op on the input chip, so don't tease an animation.
-      if (channelId === state.activeChannelId) return;
       const sx = e.clientX, sy = e.clientY;
       el.classList.add("charging");
       let timer = setTimeout(() => {
         timer = null;
         el.classList.remove("charging");
         suppress = true;
-        toggleChannelMuted(channelId);
-        // toggleChannelMuted re-renders the strip; play the burst on the new chip.
-        const newChip = $("channelHeaders").querySelector('[data-channel-id="' + channelId + '"]');
-        if (newChip) {
-          newChip.classList.add("charge-complete");
-          setTimeout(() => newChip.classList.remove("charge-complete"), 360);
+        if (channelId === state.activeChannelId) {
+          // Long-press on the input chip → open the instrument settings.
+          el.classList.add("charge-complete");
+          setTimeout(() => el.classList.remove("charge-complete"), 360);
+          openInsPopup();
+        } else {
+          toggleChannelMuted(channelId);
+          // toggleChannelMuted re-renders the strip; play the burst on the new chip.
+          const newChip = $("channelHeaders").querySelector('[data-channel-id="' + channelId + '"]');
+          if (newChip) {
+            newChip.classList.add("charge-complete");
+            setTimeout(() => newChip.classList.remove("charge-complete"), 360);
+          }
         }
       }, LONG_PRESS_MS);
       const cancel = () => {
