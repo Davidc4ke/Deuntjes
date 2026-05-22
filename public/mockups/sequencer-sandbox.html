@@ -3063,6 +3063,21 @@
     range.addEventListener("input", () => {
       popVal.textContent = fmt(range.value);
       onChange(range.value);
+      // Audible preview after the slider settles, mirroring the popup
+      // sliders. For per-note pills with a single selected note we use
+      // that note's pitch; otherwise fall back to the channel preview.
+      beginSliderSession(range);
+      const selNow = selectedNotes();
+      if (selNow.length === 1 && !paramName.startsWith("eq-") && !paramName.startsWith("fx-")) {
+        // Schedule with a small debounce so we don't fire every tick.
+        if (range._previewTimer) clearTimeout(range._previewTimer);
+        range._previewTimer = setTimeout(() => {
+          range._previewTimer = 0;
+          previewNote(selNow[0]);
+        }, 150);
+      } else {
+        scheduleAdsrPreview();
+      }
     });
 
     setTimeout(() => {
@@ -3685,30 +3700,45 @@
   });
 
   // --- Bottom-bar stack navigation ---
-  // The stack-scroller snaps vertically between 4 stacks. The little column
-  // of dots on the left mirrors which stack is currently in view AND lets
-  // the user jump directly to a stack by tapping a dot.
-  function activeStackEl() {
-    // Use the visual position of each stack vs the scroller — offsetTop
-    // is relative to the nearest positioned ancestor which may not be the
-    // scroller, so it gives stale values during snap scrolling.
+  // The stack-scroller snaps vertically between 4 stacks. The dots on the
+  // left mirror which stack is currently in view AND let the user jump
+  // directly to a stack by tapping. We use IntersectionObserver instead of
+  // a scroll listener because snap-scroll doesn't reliably emit scroll
+  // events in some browsers (notably Edge on Windows).
+  function setActiveStack(name) {
+    stackNav.querySelectorAll("button").forEach(b =>
+      b.classList.toggle("active", b.dataset.stack === name)
+    );
+  }
+  function updateStackNav() {
+    // Pick the stack whose top is closest to the scroller's top — used at
+    // init and as a fallback for the IntersectionObserver.
     const stacks = [...stackScroller.querySelectorAll(".stack")];
+    if (!stacks.length) return;
     const scrollerTop = stackScroller.getBoundingClientRect().top;
     let best = stacks[0], bestDiff = Infinity;
     stacks.forEach(s => {
       const diff = Math.abs(s.getBoundingClientRect().top - scrollerTop);
       if (diff < bestDiff) { bestDiff = diff; best = s; }
     });
-    return best;
+    setActiveStack(best.dataset.stack);
   }
-  function updateStackNav() {
-    const cur = activeStackEl();
-    if (!cur) return;
-    const name = cur.dataset.stack;
-    stackNav.querySelectorAll("button").forEach(b => b.classList.toggle("active", b.dataset.stack === name));
-  }
+  // Light up the dot for whichever stack is currently filling the scroller.
+  const stackIO = new IntersectionObserver((entries) => {
+    // Prefer the entry with the largest intersectionRatio — at most one
+    // stack should be near-fully visible at a time (108px container, 108px
+    // stack height).
+    let best = null;
+    entries.forEach(e => {
+      if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
+    });
+    if (best && best.target && best.intersectionRatio > 0.55) {
+      setActiveStack(best.target.dataset.stack);
+    }
+  }, { root: stackScroller, threshold: [0.25, 0.5, 0.75, 1.0] });
+  stackScroller.querySelectorAll(".stack").forEach(s => stackIO.observe(s));
+  // Fallback in case IO doesn't fire (e.g. before first scroll).
   stackScroller.addEventListener("scroll", () => {
-    // Throttle to next frame so we don't fire updateStackNav every pixel.
     if (stackScroller._navRaf) return;
     stackScroller._navRaf = requestAnimationFrame(() => {
       stackScroller._navRaf = 0;
@@ -3720,7 +3750,11 @@
     if (!btn) return;
     const name = btn.dataset.stack;
     const target = stackScroller.querySelector('.stack[data-stack="' + name + '"]');
-    if (target) stackScroller.scrollTo({ top: target.offsetTop, behavior: "smooth" });
+    if (target) {
+      stackScroller.scrollTo({ top: target.offsetTop, behavior: "smooth" });
+      // Immediate visual feedback in case scroll/IO fire late.
+      setActiveStack(name);
+    }
   });
 
   function init() {
