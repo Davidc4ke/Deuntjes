@@ -2606,6 +2606,9 @@
       });
     });
     sel.forEach(n => { n.step += delta; });
+    // The chord (if it is one) now lives at the cursor's step — re-arm chord
+    // mode so the user can keep editing it without an extra tap.
+    autoEnterChordIfOnChord();
     renderGrid();
     updateSelectedBar();
   });
