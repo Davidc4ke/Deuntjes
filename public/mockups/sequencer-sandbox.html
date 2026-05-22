@@ -211,6 +211,19 @@
   }
   .channel-card .remove:hover { background: rgba(255,80,90,0.2); color: #fff; }
   .channel-card .remove:disabled { opacity: 0.3; cursor: not-allowed; }
+  .channel-card .reorder {
+    display: flex; gap: 4px; flex-shrink: 0;
+  }
+  .channel-card .reorder button {
+    appearance: none; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.7);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+    width: 30px; height: 30px;
+    cursor: pointer; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .channel-card .reorder button:hover { background: rgba(255,255,255,0.10); color: #fff; }
+  .channel-card .reorder button:disabled { opacity: 0.25; cursor: not-allowed; }
+  .channel-card .reorder svg { width: 16px; height: 16px; }
   .channel-card .swatches {
     display: flex; gap: 6px; flex-wrap: wrap;
   }
@@ -1995,7 +2008,7 @@
   function renderChannelList() {
     const list = $("channelList");
     list.innerHTML = "";
-    state.channels.forEach(ch => {
+    state.channels.forEach((ch, idx) => {
       const card = document.createElement("div");
       card.className = "channel-card";
       card.style.setProperty("--ch", ch.color);
@@ -2005,11 +2018,26 @@
       const nameEl = document.createElement("input");
       nameEl.type = "text"; nameEl.className = "name"; nameEl.value = ch.name; nameEl.maxLength = 16;
       nameEl.addEventListener("input", () => { ch.name = nameEl.value || "Untitled"; renderChannelStrip(); });
+
+      const reorder = document.createElement("div");
+      reorder.className = "reorder";
+      const upBtn = document.createElement("button");
+      upBtn.type = "button"; upBtn.title = "Move up";
+      upBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14l6-6 6 6"/></svg>';
+      upBtn.disabled = idx === 0;
+      upBtn.addEventListener("click", () => moveChannel(ch.id, -1));
+      const downBtn = document.createElement("button");
+      downBtn.type = "button"; downBtn.title = "Move down";
+      downBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10l6 6 6-6"/></svg>';
+      downBtn.disabled = idx === state.channels.length - 1;
+      downBtn.addEventListener("click", () => moveChannel(ch.id, +1));
+      reorder.appendChild(upBtn); reorder.appendChild(downBtn);
+
       const rm = document.createElement("button");
       rm.type = "button"; rm.className = "remove"; rm.textContent = "×";
       rm.disabled = state.channels.length <= 1;
       rm.addEventListener("click", () => removeChannel(ch.id));
-      header.appendChild(nameEl); header.appendChild(rm);
+      header.appendChild(nameEl); header.appendChild(reorder); header.appendChild(rm);
       card.appendChild(header);
 
       const swatches = document.createElement("div");
@@ -2030,6 +2058,18 @@
 
       list.appendChild(card);
     });
+  }
+
+  function moveChannel(id, delta) {
+    const i = state.channels.findIndex(c => c.id === id);
+    if (i < 0) return;
+    const j = i + delta;
+    if (j < 0 || j >= state.channels.length) return;
+    const [c] = state.channels.splice(i, 1);
+    state.channels.splice(j, 0, c);
+    renderChannelList();
+    renderChannelStrip();
+    renderGrid();
   }
 
   function removeChannel(id) {
