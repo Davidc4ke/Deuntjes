@@ -691,24 +691,27 @@
     height: 100%;
   }
   .stack-nav button {
+    /* Hit target: 22×22px transparent button. Visual is the inner .dot
+       so the dot stays a perfect circle no matter how the hit area is
+       sized. */
     appearance: none;
-    /* Visual: 8px circle. Hit area: 14×24px via padding so the dots are
-       actually tappable. background-clip: content-box paints only the
-       inner 8px circle, the padding stays transparent. */
-    width: 14px; height: 24px;
-    padding: 8px 3px;
-    box-sizing: border-box;
-    border-radius: 50%;
-    background-color: rgba(255,255,255,0.22);
-    background-clip: content-box;
+    width: 22px; height: 22px;
+    padding: 0;
+    background: transparent;
     border: 0;
     cursor: pointer;
-    transition: transform 120ms, background-color 120ms;
+    display: flex; align-items: center; justify-content: center;
   }
-  .stack-nav button:hover { background: rgba(255,255,255,0.4); }
-  .stack-nav button.active {
+  .stack-nav .dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.22);
+    transition: transform 120ms, background 120ms, box-shadow 120ms;
+  }
+  .stack-nav button:hover .dot { background: rgba(255,255,255,0.4); }
+  .stack-nav button.active .dot {
     background: var(--stack-c, var(--cursor));
-    transform: scale(1.4);
+    transform: scale(1.5);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--stack-c, var(--cursor)) 25%, transparent);
   }
   /* Each stack gets its own accent colour — picked up by the active dot,
@@ -1237,10 +1240,10 @@
       <div class="bottom">
         <div class="col-left">
           <div class="stack-nav" id="stackNav">
-            <button data-stack="edit"  class="active" type="button" aria-label="Edit"></button>
-            <button data-stack="voice" type="button" aria-label="Voice"></button>
-            <button data-stack="eq"    type="button" aria-label="EQ"></button>
-            <button data-stack="fx"    type="button" aria-label="FX"></button>
+            <button data-stack="edit"  class="active" type="button" aria-label="Edit"><span class="dot"></span></button>
+            <button data-stack="voice" type="button" aria-label="Voice"><span class="dot"></span></button>
+            <button data-stack="eq"    type="button" aria-label="EQ"><span class="dot"></span></button>
+            <button data-stack="fx"    type="button" aria-label="FX"><span class="dot"></span></button>
           </div>
           <div class="stack-scroller" id="stackScroller">
             <!-- Stack 1: Edit — undo/redo + selection actions -->
