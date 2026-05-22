@@ -675,7 +675,18 @@
     -ms-overflow-style: none;
   }
   #actionsRow::-webkit-scrollbar { display: none; }
-  #actionsRow .chip { flex-shrink: 0; }
+  /* Action chips (Paste / Copy / Delete / Reset) adopt the transport-button
+     proportions — same height, radius, font, shadow as STOP — so the bottom
+     bar reads as two parallel button rows rather than chips + transport.
+     Colours stay dark to differentiate from the white transport buttons. */
+  #actionsRow .chip {
+    flex-shrink: 0;
+    padding: 14px 16px;
+    border-radius: 12px;
+    font: 700 13px var(--ui);
+    letter-spacing: 0.1em;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 1px 3px rgba(0,0,0,0.25);
+  }
 
   /* Value-pills row (Design A) — visible during multi-select. */
   .params-row {
