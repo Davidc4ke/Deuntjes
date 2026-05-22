@@ -927,7 +927,7 @@
             <button class="chip hidden" id="copyBtn" type="button">Copy</button>
             <button class="chip danger hidden" id="deleteBtn" type="button">Delete</button>
             <button class="chip danger hidden" id="multiDeleteBtn" type="button">Delete</button>
-            <button class="chip hidden" id="doneBtn" type="button">Done</button>
+            <button class="chip hidden" id="doneBtn" type="button">Reset</button>
           </div>
         </div>
         <div class="transport">
@@ -1700,6 +1700,12 @@
   }
 
   function updateSelectedBar() {
+    // Auto-exit multi-select once it has no notes (range-select stays open
+    // even with an empty range so the user can keep extending it).
+    if (state.multiSelect && state.selectedIds.size === 0 && state.rangeSelectAnchor === null) {
+      state.multiSelect = false;
+    }
+
     paramsRow.classList.add("hidden");
     moveBtn.classList.add("hidden");
     copyBtn.classList.add("hidden");
