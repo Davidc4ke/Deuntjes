@@ -915,23 +915,7 @@
           <!-- Settings chips -->
           <div class="chip-row"></div>
 
-          <!-- Selected note meta (single) -->
-          <div class="selected-meta-row hidden" id="noteRow">
-            <span class="pitch" id="selectedLabel">—</span>
-            <div class="size-control">
-              <span style="font: 600 10px var(--ui); letter-spacing: 0.12em; text-transform: uppercase; color: rgba(233,232,255,0.55);">Size</span>
-              <input type="range" id="noteSize" min="0" max="9" value="2" step="1" />
-              <span class="size-val"><span id="noteSizeVal">1</span>×</span>
-            </div>
-          </div>
-
-          <!-- Multi-select meta -->
-          <div class="selected-meta-row hidden" id="multiRow">
-            <span>Selection · <span id="multiCount">0</span> notes</span>
-            <span style="margin-left:auto; font: 500 10px var(--ui); color: rgba(233,232,255,0.5); letter-spacing: 0.06em;">tap to toggle</span>
-          </div>
-
-          <!-- Value pills (multi-select only) -->
+          <!-- Value pills (visible whenever something is selected) -->
           <div class="params-row hidden" id="paramsRow">
             <button class="param-pill" data-param="vol" type="button">Vol <span class="val" id="volVal">80%</span></button>
             <button class="param-pill" data-param="len" type="button">Len <span class="val" id="lenVal">1×</span></button>
@@ -1176,9 +1160,7 @@
   const lengthEl = $("length"), lengthValEl = $("lengthVal");
   const defaultSizeEl = $("defaultSize"), defaultSizeValEl = $("defaultSizeVal");
   const zoomEl = $("zoom"), zoomValEl = $("zoomVal");
-  const noteRow = $("noteRow"), noteSizeEl = $("noteSize"), noteSizeValEl = $("noteSizeVal");
-  const selectedLabel = $("selectedLabel"), deleteBtn = $("deleteBtn"), moveBtn = $("moveBtn");
-  const multiRow = $("multiRow"), multiCount = $("multiCount");
+  const deleteBtn = $("deleteBtn"), moveBtn = $("moveBtn");
   const paramsRow = $("paramsRow");
   const volVal = $("volVal"), lenVal = $("lenVal");
   const aVal = $("aVal"), dVal = $("dVal"), sVal = $("sVal"), rVal = $("rVal");
@@ -1666,8 +1648,8 @@
     updateSelectedBar();
   }
   function copySelection() {
-    if (state.selectedIds.size === 0) { exitMultiSelect(); return; }
-    const notes = state.notes.filter(n => state.selectedIds.has(n.id));
+    const notes = selectedNotes();
+    if (notes.length === 0) { exitMultiSelect(); return; }
     const minStep = Math.min(...notes.map(n => n.step));
     state.clipboard = notes.map(n => ({
       relStep: n.step - minStep,
@@ -1704,8 +1686,6 @@
   }
 
   function updateSelectedBar() {
-    noteRow.classList.add("hidden");
-    multiRow.classList.add("hidden");
     paramsRow.classList.add("hidden");
     moveBtn.classList.add("hidden");
     copyBtn.classList.add("hidden");
@@ -1713,33 +1693,30 @@
     deleteBtn.classList.add("hidden");
     multiDeleteBtn.classList.add("hidden");
 
-    if (state.multiSelect) {
-      multiRow.classList.remove("hidden");
+    const hasSingle = !state.multiSelect && state.selectedId !== null
+      && state.notes.some(n => n.id === state.selectedId);
+    const hasMulti = state.multiSelect;
+
+    if (hasSingle || hasMulti) {
       paramsRow.classList.remove("hidden");
-      multiCount.textContent = state.selectedIds.size;
       copyBtn.classList.remove("hidden");
-      multiDeleteBtn.classList.remove("hidden");
       doneBtn.classList.remove("hidden");
-      syncParamPills();
-    } else {
-      const n = state.notes.find(x => x.id === state.selectedId);
-      if (n) {
-        noteRow.classList.remove("hidden");
-        selectedLabel.textContent = n.pitch + " · " + formatStep(n.step);
-        noteSizeEl.value = sizeIndex(n.size);
-        noteSizeValEl.textContent = formatSize(n.size);
+      if (hasMulti) {
+        multiDeleteBtn.classList.remove("hidden");
+      } else {
         deleteBtn.classList.remove("hidden");
-        if (Math.abs(state.cursor - n.step) > 1e-6) {
+        const n = state.notes.find(x => x.id === state.selectedId);
+        if (n && Math.abs(state.cursor - n.step) > 1e-6) {
           moveBtn.classList.remove("hidden");
           moveBtn.textContent = "Move " + formatStep(Math.min(state.cursor, state.steps - 1));
         }
       }
+      syncParamPills();
     }
 
     if (state.clipboard && state.clipboard.length > 0) {
       pasteBtn.classList.remove("hidden");
-      const count = state.clipboard.length;
-      pasteBtn.textContent = "Paste " + formatStep(Math.min(state.cursor, state.steps - 1)) + " · " + count;
+      pasteBtn.textContent = "Paste";
     } else {
       pasteBtn.classList.add("hidden");
     }
@@ -1793,9 +1770,20 @@
   }
 
   // ---------- Param pills (Design A) ----------
+  // Returns the notes currently affected by the pills — works for both single and multi.
+  function selectedNotes() {
+    if (state.multiSelect) {
+      return [...state.selectedIds].map(id => state.notes.find(n => n.id === id)).filter(Boolean);
+    }
+    if (state.selectedId !== null) {
+      const n = state.notes.find(x => x.id === state.selectedId);
+      return n ? [n] : [];
+    }
+    return [];
+  }
   function syncParamPills() {
-    // Length: show the size of the first selected note (or "—" if mixed).
-    const sel = [...state.selectedIds].map(id => state.notes.find(n => n.id === id)).filter(Boolean);
+    // Length: show the size of the first selected note (or "mixed" if multiple sizes).
+    const sel = selectedNotes();
     if (sel.length > 0) {
       const sizes = new Set(sel.map(n => n.size));
       lenVal.textContent = sizes.size === 1 ? (formatSize(sel[0].size) + "×") : "mixed";
@@ -1817,15 +1805,13 @@
     let label, min, max, step, value, fmt, onChange;
     if (paramName === "len") {
       label = "Length";
-      // Slider exposes the size index just like the per-note slider.
       min = 0; max = 9; step = 1;
-      const sel = [...state.selectedIds].map(id => state.notes.find(n => n.id === id)).filter(Boolean);
+      const sel = selectedNotes();
       value = sel.length ? sizeIndex(sel[0].size) : 2;
       fmt = (v) => formatSize(SIZE_STEPS[v]) + "×";
       onChange = (v) => {
         const size = SIZE_STEPS[v];
-        state.notes.forEach(n => {
-          if (!state.selectedIds.has(n.id)) return;
+        selectedNotes().forEach(n => {
           n.size = Math.min(size, state.steps - n.step);
         });
         lenVal.textContent = fmt(v);
@@ -2101,14 +2087,6 @@
   multiDeleteBtn.addEventListener("click", deleteSelection);
   doneBtn.addEventListener("click", exitMultiSelect);
   pasteBtn.addEventListener("click", pasteAtCursor);
-
-  noteSizeEl.addEventListener("input", () => {
-    const n = state.notes.find(x => x.id === state.selectedId);
-    if (!n) return;
-    n.size = Math.min(SIZE_STEPS[parseInt(noteSizeEl.value, 10)], state.steps - n.step);
-    noteSizeValEl.textContent = formatSize(n.size);
-    renderGrid();
-  });
 
   deleteBtn.addEventListener("click", () => {
     state.notes = state.notes.filter(n => n.id !== state.selectedId);
