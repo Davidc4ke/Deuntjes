@@ -2054,6 +2054,8 @@
     // Smooth cursor animation — updates the cursor display from the transport position.
     scheduledId = Tone.Transport.scheduleRepeat((time) => {
       Tone.Draw.schedule(() => {
+        // After pause/stop, drain any in-flight Draw callbacks instead of overwriting the cursor.
+        if (!state.playing) return;
         const pos = Tone.Transport.seconds % totalSec;
         state.cursor = pos / stepSec;
         renderGrid();
