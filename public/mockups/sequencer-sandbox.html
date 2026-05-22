@@ -1858,15 +1858,25 @@
     Tone.Transport.cancel(0);
   }
 
+  let prePlayCursor = null;
+
   function play() {
     Tone.start();
     if (state.playing) {
       Tone.Transport.pause();
+      teardownPlayback();
       state.playing = false;
       playBtn.textContent = "PLAY";
       playBtn.dataset.state = "stopped";
+      if (prePlayCursor !== null) {
+        state.cursor = prePlayCursor;
+        prePlayCursor = null;
+      }
+      renderGrid();
+      positionKnobFromCursor();
       return;
     }
+    prePlayCursor = state.cursor;
     state.playing = true;
     playBtn.textContent = "PAUSE";
     playBtn.dataset.state = "playing";
@@ -1919,6 +1929,7 @@
     playBtn.textContent = "PLAY";
     playBtn.dataset.state = "stopped";
     state.cursor = 0;
+    prePlayCursor = null;
     renderGrid();
     positionKnobFromCursor();
   }
