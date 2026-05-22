@@ -1676,6 +1676,7 @@
   const pasteBtn = $("pasteBtn");
   const playBtn = $("playBtn"), stopBtn = $("stopBtn");
   const undoBtn = $("undoBtn"), redoBtn = $("redoBtn");
+  const stackScroller = $("stackScroller"), stackNav = $("stackNav");
   const attackEl = $("attack"), decayEl = $("decay"), sustainEl = $("sustain"), releaseEl = $("release");
   const volumeEl = $("volume"), volumeV = $("volumeV");
   // EQ + FX slider refs (Instrument popup, EQ + FX tabs).
@@ -3657,8 +3658,6 @@
   // The stack-scroller snaps vertically between 4 stacks. The little column
   // of dots on the left mirrors which stack is currently in view AND lets
   // the user jump directly to a stack by tapping a dot.
-  const stackScroller = $("stackScroller");
-  const stackNav = $("stackNav");
   function activeStackEl() {
     const stacks = [...stackScroller.querySelectorAll(".stack")];
     const scrollTop = stackScroller.scrollTop;
