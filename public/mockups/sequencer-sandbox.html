@@ -1374,7 +1374,9 @@
       cursorBtn.className = "cursor-action";
       cursorBtn.textContent = "⋯";
       cursorBtn.title = "Cursor actions";
-      cursorBtn.style.top = (state.cursor * rowH - 11) + "px";
+      // Centre the button on the cursor line, but clamp inside the grid so it stays visible
+      // when the cursor is at the very top or very bottom.
+      cursorBtn.style.top = Math.max(0, Math.min(state.cursor * rowH - 11, h - 22)) + "px";
       cursorBtn.addEventListener("click", openCursorMenu);
       gridEl.appendChild(cursorBtn);
     }
