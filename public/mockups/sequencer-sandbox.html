@@ -3069,13 +3069,14 @@
     range.addEventListener("input", () => {
       popVal.textContent = fmt(range.value);
       onChange(range.value);
-      // Audible preview after the slider settles, mirroring the popup
-      // sliders. For per-note pills with a single selected note we use
-      // that note's pitch; otherwise fall back to the channel preview.
+      // Audible preview after the slider settles. If exactly one note is
+      // selected, play *that* note's pitch — it routes through the active
+      // channel's effect chain, so EQ / FX / Voice tweaks all become
+      // audible against the actual edit subject. Otherwise fall back to
+      // the channel C4 ping.
       beginSliderSession(range);
       const selNow = selectedNotes();
-      if (selNow.length === 1 && !paramName.startsWith("eq-") && !paramName.startsWith("fx-")) {
-        // Schedule with a small debounce so we don't fire every tick.
+      if (selNow.length === 1) {
         if (range._previewTimer) clearTimeout(range._previewTimer);
         range._previewTimer = setTimeout(() => {
           range._previewTimer = 0;
