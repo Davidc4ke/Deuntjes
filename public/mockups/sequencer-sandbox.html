@@ -2746,6 +2746,24 @@
     // Map the click's vertical position to a fractional step, then snap.
     const raw = (e.clientY - r.top) / rowH;
     state.cursor = snapCursor(raw);
+    // Tapping inside another channel's column switches the input channel —
+    // quick way to redirect input without going up to the header chips.
+    // Uses the same column math as renderGrid; clicks in the step-number
+    // gutter (left of colLeft) are ignored so they only move the cursor.
+    const colLeft = 38, colRight = 14;
+    const visibleChannels = state.channels.filter(c => !c.muted);
+    const N = visibleChannels.length || 1;
+    const colW = Math.max(20, (r.width - colLeft - colRight) / N);
+    const x = e.clientX - r.left;
+    if (x >= colLeft && x < colLeft + N * colW) {
+      const colIdx = Math.min(N - 1, Math.floor((x - colLeft) / colW));
+      const ch = visibleChannels[colIdx];
+      if (ch && ch.id !== state.activeChannelId) {
+        setActiveChannel(ch.id);
+        positionKnobFromCursor();
+        return; // setActiveChannel re-renders the grid; just sync the knob.
+      }
+    }
     // Selection persists across cursor moves now so the Move-to-cursor flow
     // works after a grid tap. Use the Reset button to deselect explicitly.
     if (state.chordMode && Math.abs(state.cursor - state.chordStep) > 1e-6) exitChordMode();
