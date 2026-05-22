@@ -292,7 +292,7 @@
     border-bottom: 1px solid #000;
     box-shadow: 1px 0 0 rgba(0,0,0,0.5) inset, -2px 2px 4px rgba(0,0,0,0.12);
   }
-  .key.octave-label { color: var(--stage-text-mute); }
+  .key.octave-label { color: var(--stage-text); font-weight: 700; }
   .key.flash { background: var(--accent) !important; color: #2a1a0d !important; transition: background 100ms; }
   .key.black.flash { color: #2a1a0d !important; }
   /* Key whose pitch is part of the chord currently being built. */
@@ -1440,10 +1440,8 @@
       if (p.isBlack) return;
       const el = document.createElement("div");
       el.className = "key white";
-      if (p.name.startsWith("C") && !p.name.includes("#")) {
-        el.classList.add("octave-label");
-        el.textContent = p.name;
-      }
+      if (p.name.startsWith("C") && !p.name.includes("#")) el.classList.add("octave-label");
+      el.textContent = p.name;
       el.dataset.pitch = p.name;
       const L = layout[p.name];
       el.style.top = L.top + "px"; el.style.height = L.h + "px";
@@ -1704,7 +1702,7 @@
       label.className = "note-label" + (isChord ? " chord-label" : "");
       if (isChord) {
         // Sort by pitch height (highest first reads naturally) and join with a dot.
-        const sorted = notes.slice().sort((a, b) => PITCH_INDEX[b.pitch] - PITCH_INDEX[a.pitch]);
+        const sorted = notes.slice().sort((a, b) => PITCH_INDEX[a.pitch] - PITCH_INDEX[b.pitch]);
         label.textContent = sorted.slice(0, 3).map(n => n.pitch).join("·")
           + (sorted.length > 3 ? "  +" + (sorted.length - 3) : "");
       } else {
