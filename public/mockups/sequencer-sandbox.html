@@ -376,6 +376,32 @@
     100% { transform: scale(1.5); opacity: 0; box-shadow: 0 0 0 14px rgba(107,95,217,0); }
   }
 
+  /* Long-press charging on a channel column header (pill-shaped). */
+  .channel-col-header { position: relative; }
+  .channel-col-header.charging {
+    animation: chargeScale 450ms ease-out forwards;
+    z-index: 4;
+  }
+  .channel-col-header.charging::before {
+    content: ""; position: absolute; inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(to right, rgba(107,95,217,0.30), rgba(107,95,217,0.30)) left center / 0% 100% no-repeat;
+    box-shadow: inset 0 0 0 0 var(--cursor);
+    animation: chargeFill 450ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .channel-col-header.charge-complete {
+    overflow: visible; /* let the burst ring escape the pill briefly */
+  }
+  .channel-col-header.charge-complete::after {
+    content: ""; position: absolute; inset: -2px;
+    border-radius: 999px;
+    pointer-events: none;
+    box-shadow: 0 0 0 2px var(--cursor);
+    animation: chargeBurst 360ms ease-out forwards;
+    z-index: 5;
+  }
+
   /* Scroller */
   .scroller {
     position: relative;
@@ -1430,6 +1456,7 @@
       if (ch.id === state.activeChannelId) cls += " input";
       if (ch.muted) cls += " muted";
       btn.className = cls;
+      btn.dataset.channelId = String(ch.id);
       btn.style.setProperty("--ch", ch.color);
       btn.textContent = ch.name;
       attachChannelHeaderGesture(btn, ch.id);
@@ -1458,13 +1485,25 @@
     });
     el.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
+      // Long-press is a no-op on the input chip, so don't tease an animation.
+      if (channelId === state.activeChannelId) return;
       const sx = e.clientX, sy = e.clientY;
+      el.classList.add("charging");
       let timer = setTimeout(() => {
         timer = null;
+        el.classList.remove("charging");
         suppress = true;
         toggleChannelMuted(channelId);
+        // toggleChannelMuted re-renders the strip; play the burst on the new chip.
+        const newChip = $("channelHeaders").querySelector('[data-channel-id="' + channelId + '"]');
+        if (newChip) {
+          newChip.classList.add("charge-complete");
+          setTimeout(() => newChip.classList.remove("charge-complete"), 360);
+        }
       }, LONG_PRESS_MS);
-      const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+      const cancel = () => {
+        if (timer) { clearTimeout(timer); timer = null; el.classList.remove("charging"); }
+      };
       const onMove = (ev) => { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) cancel(); };
       const onUp = () => {
         cancel();
