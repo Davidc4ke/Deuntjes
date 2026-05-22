@@ -655,19 +655,24 @@
      doubles as tap-to-jump nav. */
   .stack-nav {
     display: flex; flex-direction: column;
-    gap: 12px;
+    gap: 4px;
     justify-content: center; align-items: center;
     height: 100%;
   }
   .stack-nav button {
     appearance: none;
-    width: 8px; height: 8px;
+    /* Visual: 8px circle. Hit area: 14×24px via padding so the dots are
+       actually tappable. background-clip: content-box paints only the
+       inner 8px circle, the padding stays transparent. */
+    width: 14px; height: 24px;
+    padding: 8px 3px;
+    box-sizing: border-box;
     border-radius: 50%;
-    background: rgba(255,255,255,0.22);
+    background-color: rgba(255,255,255,0.22);
+    background-clip: content-box;
     border: 0;
-    padding: 0;
     cursor: pointer;
-    transition: background 120ms, transform 120ms;
+    transition: transform 120ms, background-color 120ms;
   }
   .stack-nav button:hover { background: rgba(255,255,255,0.4); }
   .stack-nav button.active {
@@ -687,6 +692,7 @@
   .stack[data-stack="fx"],
   .stack-nav button[data-stack="fx"]    { --stack-c: #c47ccf; }  /* magenta */
   .stack-scroller {
+    position: relative; /* so .stack.offsetTop is relative to the scroller */
     overflow-y: auto;
     overflow-x: hidden;
     scroll-snap-type: y mandatory;
