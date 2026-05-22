@@ -295,6 +295,13 @@
   .key.octave-label { color: var(--stage-text-mute); }
   .key.flash { background: var(--accent) !important; color: #2a1a0d !important; transition: background 100ms; }
   .key.black.flash { color: #2a1a0d !important; }
+  /* Key whose pitch is part of the chord currently being built. */
+  .key.chord-active {
+    background: var(--cursor) !important;
+    color: #fff !important;
+    box-shadow: inset 0 0 0 2px var(--cursor-strong);
+  }
+  .key.black.chord-active { color: #fff !important; }
 
   /* Grid */
   .grid {
@@ -377,6 +384,11 @@
   .note-label.inside {
     top: 2px;
   }
+  .note-label.chord-label {
+    font: 700 9.5px var(--mono);
+    letter-spacing: 0.02em;
+    padding: 1px 5px;
+  }
   .note-label.will-overwrite {
     background: var(--cursor);
     color: #fff;
@@ -423,6 +435,12 @@
     box-shadow: 0 2px 6px rgba(0,0,0,0.18);
   }
   .cursor-action:hover { background: var(--cursor-strong); }
+  .cursor-action.chord-mode {
+    background: var(--accent);
+    border-color: var(--accent-edge);
+    color: #2a1a0d;
+    box-shadow: 0 0 0 3px rgba(233, 146, 92, 0.35);
+  }
 
   /* Mini dropdown anchored to the cursor-action button. */
   .cursor-menu {
@@ -846,6 +864,16 @@
   .popup .seg button.active {
     background: var(--accent); color: #2a1a0d; border-color: var(--accent-edge);
   }
+  /* Tiny dot on preset buttons that produce polyphonic (chord-capable) synths. */
+  .popup .seg.seg-presets button[data-poly="1"] { position: relative; }
+  .popup .seg.seg-presets button[data-poly="1"]::after {
+    content: ""; position: absolute; top: 4px; right: 4px;
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--cursor);
+  }
+  .popup .seg.seg-presets button.active[data-poly="1"]::after {
+    background: rgba(255,255,255,0.9);
+  }
 
   /* In-scale key dot */
   .key.in-scale::after {
@@ -992,11 +1020,12 @@
           </header>
           <div class="field">
             <label>Preset <span class="val" style="font-weight:500; text-transform:none; letter-spacing:0; color: var(--bar-text-mute);">for active channel</span></label>
-            <div class="seg" data-group="instrument">
+            <div class="seg seg-presets" data-group="instrument">
               <button data-value="bass" class="active" type="button">Bass</button>
               <button data-value="lead" type="button">Lead</button>
               <button data-value="pluck" type="button">Pluck</button>
-              <button data-value="pad" type="button">Pad</button>
+              <button data-value="pad" data-poly="1" type="button">Pad</button>
+              <button data-value="keys" data-poly="1" type="button">Keys</button>
             </div>
           </div>
           <div class="field">
@@ -1089,6 +1118,9 @@
     }
   }
   PITCHES.reverse(); // top of piano = highest
+  // Pitch → numeric rank (low=0, high=N) so chord notes can be sorted high→low.
+  const PITCH_INDEX = {};
+  PITCHES.slice().reverse().forEach((p, i) => { PITCH_INDEX[p.name] = i; });
 
   const WHITE_KEY_H = 30; // px per white key — drives total scrollable height
 
@@ -1107,9 +1139,12 @@
     bass:  { osc: "sawtooth", attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  },
     lead:  { osc: "square",   attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  },
     pluck: { osc: "triangle", attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 },
-    pad:   { osc: "sine",     attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  },
+    pad:   { osc: "sine",     attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8,  poly: true },
+    keys:  { osc: "triangle", attack: 0.005, decay: 0.20, sustain: 0.4, release: 0.8,  poly: true },
   };
-  const PRESET_ORDER = ["bass", "lead", "pluck", "pad"];
+  const PRESET_ORDER = ["bass", "lead", "pluck", "pad", "keys"];
+  function isPolyPreset(name) { return !!(PRESETS[name] && PRESETS[name].poly); }
+  function activePresetIsPoly() { return isPolyPreset(activeChannel().presetName); }
 
   // Size slider values: index → multiplier
   const SIZE_STEPS = [0.25, 0.5, 1, 2, 3, 4, 5, 6, 7, 8];
@@ -1135,6 +1170,8 @@
     multiSelect: false,
     selectedIds: new Set(),   // active in multi-select mode
     rangeSelectAnchor: null,  // step where a range selection began (input channel only)
+    chordMode: false,         // true while building a multi-pitch chord at chordStep
+    chordStep: null,          // step the chord is being built at
     clipboard: null,          // [{relStep, pitch, size}] anchored at top-most copied step
     playing: false,
     nextId: 1,
@@ -1199,17 +1236,22 @@
 
   function makeSynth(channel) {
     const p = PRESETS[channel.presetName] || PRESETS.bass;
-    const s = new Tone.MonoSynth({
+    const voiceOpts = {
       oscillator: { type: p.osc },
       envelope: {
         attack: channel.adsr.attack, decay: channel.adsr.decay,
         sustain: channel.adsr.sustain, release: channel.adsr.release,
       },
       filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.5, baseFrequency: 220, octaves: 3 },
-    }).toDestination();
+    };
+    const s = p.poly
+      ? new Tone.PolySynth(Tone.MonoSynth, voiceOpts).toDestination()
+      : new Tone.MonoSynth(voiceOpts).toDestination();
     s.volume.value = -10;
     return s;
   }
+  // Works for both MonoSynth and PolySynth — .set broadcasts to all voices.
+  function setSynthEnvelope(s, env) { try { s.set({ envelope: env }); } catch (_) {} }
   function getSynth(channelId) {
     if (!channelSynths[channelId]) {
       const ch = state.channels.find(c => c.id === channelId);
@@ -1231,10 +1273,12 @@
     Tone.start();
     const s = getSynth(n.channelId);
     if (!s) return;
-    s.envelope.attack  = effectiveProp(n, "attack");
-    s.envelope.decay   = effectiveProp(n, "decay");
-    s.envelope.sustain = effectiveProp(n, "sustain");
-    s.envelope.release = effectiveProp(n, "release");
+    setSynthEnvelope(s, {
+      attack:  effectiveProp(n, "attack"),
+      decay:   effectiveProp(n, "decay"),
+      sustain: effectiveProp(n, "sustain"),
+      release: effectiveProp(n, "release"),
+    });
     s.triggerAttackRelease(n.pitch, "8n", undefined, effectiveProp(n, "volume"));
   }
 
@@ -1246,12 +1290,7 @@
     ch.adsr.release = +releaseEl.value;
     ch.volume       = +volumeEl.value;
     const s = getSynth(ch.id);
-    if (s) {
-      s.envelope.attack  = ch.adsr.attack;
-      s.envelope.decay   = ch.adsr.decay;
-      s.envelope.sustain = ch.adsr.sustain;
-      s.envelope.release = ch.adsr.release;
-    }
+    if (s) setSynthEnvelope(s, ch.adsr);
     adsrV.attack.textContent  = ch.adsr.attack.toFixed(2);
     adsrV.decay.textContent   = ch.adsr.decay.toFixed(2);
     adsrV.sustain.textContent = ch.adsr.sustain.toFixed(2);
@@ -1287,13 +1326,26 @@
   }
 
   function refreshKeyHighlights() {
-    keysEl.querySelectorAll(".key").forEach(k => k.classList.remove("in-scale"));
-    if (!state.scaleOn) return;
-    const inScale = getInScaleClasses();
     keysEl.querySelectorAll(".key").forEach(k => {
-      const cls = k.dataset.pitch.replace(/[0-9]/g, "");
-      if (inScale.has(cls)) k.classList.add("in-scale");
+      k.classList.remove("in-scale");
+      k.classList.remove("chord-active");
     });
+    if (state.scaleOn) {
+      const inScale = getInScaleClasses();
+      keysEl.querySelectorAll(".key").forEach(k => {
+        const cls = k.dataset.pitch.replace(/[0-9]/g, "");
+        if (inScale.has(cls)) k.classList.add("in-scale");
+      });
+    }
+    if (state.chordMode) {
+      const ch = state.activeChannelId;
+      const pitches = new Set(state.notes
+        .filter(n => n.channelId === ch && Math.abs(n.step - state.chordStep) < 1e-6)
+        .map(n => n.pitch));
+      keysEl.querySelectorAll(".key").forEach(k => {
+        if (pitches.has(k.dataset.pitch)) k.classList.add("chord-active");
+      });
+    }
   }
 
   function renderKeys() {
@@ -1326,7 +1378,7 @@
       el.dataset.pitch = p.name;
       const L = layout[p.name];
       el.style.top = L.top + "px"; el.style.height = L.h + "px";
-      el.addEventListener("click", () => onKeyPress(p.name, el));
+      attachPianoKeyGesture(el, p.name, false);
       keysEl.appendChild(el);
     });
     PITCHES.forEach(p => {
@@ -1336,10 +1388,45 @@
       el.dataset.pitch = p.name;
       const L = layout[p.name];
       el.style.top = L.top + "px"; el.style.height = L.h + "px";
-      el.addEventListener("click", (e) => { e.stopPropagation(); onKeyPress(p.name, el); });
+      attachPianoKeyGesture(el, p.name, true);
       keysEl.appendChild(el);
     });
     refreshKeyHighlights();
+  }
+
+  function attachPianoKeyGesture(el, pitch, isBlack) {
+    let suppress = false;
+    el.addEventListener("click", (e) => {
+      if (isBlack) e.stopPropagation();
+      if (suppress) { suppress = false; return; }
+      onKeyPress(pitch, el);
+    });
+    el.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      // Long-press on a poly-channel key arms chord mode at the cursor.
+      if (state.chordMode || !activePresetIsPoly()) return;
+      const sx = e.clientX, sy = e.clientY;
+      el.classList.add("charging");
+      let timer = setTimeout(() => {
+        timer = null;
+        el.classList.remove("charging");
+        el.classList.add("charge-complete");
+        setTimeout(() => el.classList.remove("charge-complete"), 360);
+        suppress = true;
+        enterChordMode(pitch);
+      }, CHORD_LONG_PRESS_MS);
+      const cancel = () => { if (timer) { clearTimeout(timer); timer = null; el.classList.remove("charging"); } };
+      const onMove = (ev) => { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) cancel(); };
+      const onUp = () => {
+        cancel();
+        el.removeEventListener("pointermove", onMove);
+        el.removeEventListener("pointerup", onUp);
+        el.removeEventListener("pointercancel", onUp);
+      };
+      el.addEventListener("pointermove", onMove);
+      el.addEventListener("pointerup", onUp);
+      el.addEventListener("pointercancel", onUp);
+    });
   }
 
   // ---------- Cursor mini-menu + range selection ----------
@@ -1359,6 +1446,25 @@
       else cancelRangeSelect();
     });
     menu.appendChild(selBtn);
+
+    // "Chord" entry — only meaningful on poly channels (a MonoSynth can't play chords).
+    if (activePresetIsPoly()) {
+      const chordBtn = document.createElement("button");
+      chordBtn.type = "button";
+      chordBtn.textContent = state.chordMode ? "Exit chord" : "Chord";
+      chordBtn.addEventListener("click", () => {
+        closeCursorMenu();
+        if (state.chordMode) exitChordMode();
+        else {
+          state.chordMode = true;
+          state.chordStep = effectivePlacementStep();
+          refreshKeyHighlights();
+          renderGrid();
+          updateSelectedBar();
+        }
+      });
+      menu.appendChild(chordBtn);
+    }
 
     const settingsBtn = document.createElement("button");
     settingsBtn.type = "button";
@@ -1462,9 +1568,9 @@
     if (!state.playing) {
       const cursorBtn = document.createElement("button");
       cursorBtn.type = "button";
-      cursorBtn.className = "cursor-action";
-      cursorBtn.textContent = "⋯";
-      cursorBtn.title = "Cursor actions";
+      cursorBtn.className = "cursor-action" + (state.chordMode ? " chord-mode" : "");
+      cursorBtn.textContent = state.chordMode ? "♪" : "⋯";
+      cursorBtn.title = state.chordMode ? "Chord mode (tap keys to toggle pitches)" : "Cursor actions";
       // Centre the button on the cursor line, but clamp inside the grid so it stays visible
       // when the cursor is at the very top or very bottom.
       cursorBtn.style.top = Math.max(0, Math.min(state.cursor * rowH - 11, h - 22)) + "px";
@@ -1478,7 +1584,7 @@
       const inputCh = visibleChannels[inputIdx];
       const ghostStep = effectivePlacementStep();
       const ghostSize = Math.min(state.defaultSize, state.steps - ghostStep);
-      if (ghostSize > 0 && state.rangeSelectAnchor === null) {
+      if (ghostSize > 0 && state.rangeSelectAnchor === null && !state.chordMode) {
         const ghost = document.createElement("div");
         ghost.className = "cursor-ghost";
         ghost.style.left  = (colLeft + inputIdx * colW + 2) + "px";
@@ -1503,37 +1609,77 @@
       }
     }
 
+    // Group notes that share step+channel into a single chord block.
+    const groups = new Map();
     state.notes.forEach(n => {
       if (n.step >= state.steps) return;
-      const colIdx = visibleChannels.findIndex(c => c.id === n.channelId);
-      if (colIdx < 0) return; // channel is muted — skip rendering its notes
+      const k = n.step.toFixed(4) + ":" + n.channelId;
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(n);
+    });
+
+    groups.forEach((notes) => {
+      const first = notes[0];
+      const colIdx = visibleChannels.findIndex(c => c.id === first.channelId);
+      if (colIdx < 0) return; // channel muted — skip rendering its notes
       const ch = visibleChannels[colIdx];
+      const isChord = notes.length > 1;
       const el = document.createElement("div");
       let cls = "note";
-      if (isSel(n.id)) cls += " selected";
+      if (notes.some(n => isSel(n.id))) cls += " selected";
+      if (isChord) cls += " chord";
       el.className = cls;
-      el.dataset.id = n.id;
+      el.dataset.id = first.id;
+
       const label = document.createElement("span");
-      label.className = "note-label";
-      label.textContent = n.pitch;
-      // If there's no room above the note (it's right at the top of the grid),
-      // tuck the label inside the note instead of hanging it above where it'd be clipped.
-      if (n.step < 0.5) label.classList.add("inside");
-      // Flag the note that a piano-tap would overwrite (same input channel + same effective step).
-      if (n.channelId === state.activeChannelId && Math.abs(n.step - effectivePlacementStep()) < 1e-6) {
+      label.className = "note-label" + (isChord ? " chord-label" : "");
+      if (isChord) {
+        // Sort by pitch height (highest first reads naturally) and join with a dot.
+        const sorted = notes.slice().sort((a, b) => PITCH_INDEX[b.pitch] - PITCH_INDEX[a.pitch]);
+        label.textContent = sorted.slice(0, 3).map(n => n.pitch).join("·")
+          + (sorted.length > 3 ? "  +" + (sorted.length - 3) : "");
+      } else {
+        label.textContent = first.pitch;
+      }
+      if (first.step < 0.5) label.classList.add("inside");
+      // Will-overwrite flag — only meaningful for single notes in normal mode.
+      if (!isChord && !state.chordMode &&
+          first.channelId === state.activeChannelId &&
+          Math.abs(first.step - effectivePlacementStep()) < 1e-6) {
         label.classList.add("will-overwrite");
       }
       el.appendChild(label);
+
       el.style.left  = (colLeft + colIdx * colW + 2) + "px";
       el.style.width = (colW - 4) + "px";
       el.style.right = "auto";
-      el.style.top = (n.step * rowH + 3) + "px";
-      const visibleSize = Math.min(n.size, state.steps - n.step);
+      el.style.top = (first.step * rowH + 3) + "px";
+      const groupSize = Math.max(...notes.map(n => n.size));
+      const visibleSize = Math.min(groupSize, state.steps - first.step);
       el.style.height = Math.max(6, visibleSize * rowH - 6) + "px";
       el.style.setProperty("--ch-color", ch.color);
       el.style.setProperty("--ch-edge", ch.edge);
-      attachNoteGesture(el, n.id);
+
+      if (isChord) attachChordGesture(el, notes);
+      else attachNoteGesture(el, first.id);
       gridEl.appendChild(el);
+    });
+  }
+
+  // Tap a chord block → select every note inside it (multi-select).
+  function attachChordGesture(el, notes) {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (suppressNextClick) { suppressNextClick = false; return; }
+      state.multiSelect = true;
+      state.selectedId = null;
+      state.selectedIds = new Set(notes.map(n => n.id));
+      state.cursor = notes[0].step;
+      positionKnobFromCursor();
+      // Preview each note (poly synth makes this audible as a chord).
+      notes.forEach(n => { previewNote(n); flashKey(n.pitch); });
+      renderGrid();
+      updateSelectedBar();
     });
   }
 
@@ -1612,6 +1758,25 @@
     const s = getSynth(ch);
     if (s) s.triggerAttackRelease(pitch, "8n");
 
+    // Chord mode: each tap toggles a pitch at the chord's step (add/remove).
+    if (state.chordMode) {
+      const step = state.chordStep;
+      const existing = state.notes.find(n => n.channelId === ch
+        && Math.abs(n.step - step) < 1e-6 && n.pitch === pitch);
+      if (existing) {
+        state.notes = state.notes.filter(n => n !== existing);
+        // If no notes remain at this step+channel, exit chord mode automatically.
+        const stillHas = state.notes.some(n => n.channelId === ch && Math.abs(n.step - step) < 1e-6);
+        if (!stillHas) exitChordMode();
+      } else {
+        state.notes.push({ id: state.nextId++, step, size: state.defaultSize, pitch, channelId: ch });
+      }
+      renderGrid();
+      refreshKeyHighlights();
+      return;
+    }
+
+    // Normal mode: a single note per step in the input channel; tap overwrites pitch.
     const targetStep = effectivePlacementStep();
     const existing = state.notes.find(n => n.channelId === ch && Math.abs(n.step - targetStep) < 1e-6 && n.step < state.steps);
     if (existing) {
@@ -1622,6 +1787,35 @@
       state.notes.push(note);
       state.selectedId = note.id;
     }
+    renderGrid();
+    updateSelectedBar();
+  }
+
+  const CHORD_LONG_PRESS_MS = 600;
+  function enterChordMode(initialPitch) {
+    state.chordMode = true;
+    state.chordStep = effectivePlacementStep();
+    const ch = state.activeChannelId;
+    // Seed the chord with the initial pitch (unless it's already there).
+    const already = state.notes.find(n => n.channelId === ch
+      && Math.abs(n.step - state.chordStep) < 1e-6 && n.pitch === initialPitch);
+    if (!already) {
+      state.notes.push({
+        id: state.nextId++, step: state.chordStep, size: state.defaultSize,
+        pitch: initialPitch, channelId: ch
+      });
+    }
+    state.selectedId = null;
+    if (state.multiSelect) { state.multiSelect = false; state.selectedIds.clear(); }
+    renderGrid();
+    refreshKeyHighlights();
+    updateSelectedBar();
+  }
+  function exitChordMode() {
+    if (!state.chordMode) return;
+    state.chordMode = false;
+    state.chordStep = null;
+    refreshKeyHighlights();
     renderGrid();
     updateSelectedBar();
   }
@@ -2011,6 +2205,7 @@
     state.selectedId = null;
     if (state.multiSelect) { state.multiSelect = false; state.selectedIds.clear(); }
     state.rangeSelectAnchor = null;
+    if (state.chordMode) exitChordMode();
     applyActiveChannelStyle();
     renderChannelStrip();
     renderGrid();
@@ -2151,6 +2346,8 @@
         ch.adsr = { attack: p.attack, decay: p.decay, sustain: p.sustain, release: p.release };
         disposeChannelSynth(ch.id);
         getSynth(ch.id);
+        // Mono preset can't sustain chords — bail out of chord mode if it was open.
+        if (state.chordMode && !isPolyPreset(value)) exitChordMode();
         syncInsPopup();
       }
       else if (group === "scaleOn") { state.scaleOn = value === "1"; refreshKeyHighlights(); }
@@ -2202,6 +2399,7 @@
     const raw = (e.clientY - r.top) / rowH;
     state.cursor = snapCursor(raw);
     if (state.rangeSelectAnchor === null && !state.multiSelect) state.selectedId = null;
+    if (state.chordMode && Math.abs(state.cursor - state.chordStep) > 1e-6) exitChordMode();
     updateRangeSelection();
     renderGrid();
     positionKnobFromCursor();
@@ -2243,6 +2441,7 @@
     const next = snapCursor(frac * state.steps);
     if (Math.abs(next - state.cursor) > 1e-6) {
       state.cursor = next;
+      if (state.chordMode) exitChordMode();
       updateRangeSelection();
       renderGrid();
       updateSelectedBar();
@@ -2321,11 +2520,12 @@
       const dur = Math.min(n.size, state.steps - n.step) * stepSec;
       const s = getSynth(n.channelId);
       if (s) {
-        // Apply per-note envelope + velocity, falling back to channel defaults.
-        s.envelope.attack  = effectiveProp(n, "attack");
-        s.envelope.decay   = effectiveProp(n, "decay");
-        s.envelope.sustain = effectiveProp(n, "sustain");
-        s.envelope.release = effectiveProp(n, "release");
+        setSynthEnvelope(s, {
+          attack:  effectiveProp(n, "attack"),
+          decay:   effectiveProp(n, "decay"),
+          sustain: effectiveProp(n, "sustain"),
+          release: effectiveProp(n, "release"),
+        });
         s.triggerAttackRelease(n.pitch, dur, time, effectiveProp(n, "volume"));
       }
       Tone.Draw.schedule(() => {
