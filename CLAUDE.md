@@ -4,9 +4,11 @@ Operating notes for Claude working on this repo.
 
 ## When you finish a testable change, tell the user what to test.
 
+Current work is on a **static HTML mockup** under `public/mockups/`. The user opens the file directly in a browser — there's no Railway preview, no build step, no server-side anything. Don't tell them to wait for Railway or open a preview URL.
+
 After every commit that produces user-visible behavior, end the turn with a short **"Test this"** section that lists:
 
-- The URL/path to open — the **Railway PR preview env** for this branch (not the prod URL, which tracks `main`). Railway needs ~1-2 minutes to build the preview after a push, so tell the user to wait a moment before opening it.
+- The mockup path to open (e.g. `public/mockups/sequencer-sandbox.html`)
 - The exact action(s) to perform
 - The expected outcome — what they should see or what should *not* happen
 - Any known-stub paths to avoid (so they don't report "broken" on things that aren't built yet)
@@ -14,8 +16,8 @@ After every commit that produces user-visible behavior, end the turn with a shor
 Format:
 
 ```
-**Test this** (give Railway ~1-2 min to build the PR preview first)
-- Open the Railway PR preview URL for this branch
+**Test this**
+- Open `public/mockups/<file>.html`
 - Do <action>
 - Expect: <observable outcome>
 - Stubs (not built yet): <list>
