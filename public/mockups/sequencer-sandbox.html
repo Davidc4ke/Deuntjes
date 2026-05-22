@@ -1409,12 +1409,20 @@
   // NoiseSynth and MetalSynth don't take a pitch argument the way MonoSynth /
   // FMSynth / MembraneSynth do. This helper normalises the call so the rest of
   // the playback / preview path can stay pitch-first.
+  //
+  // Drum-class synths (MembraneSynth, MetalSynth, NoiseSynth) ignore the grid
+  // duration: their tuned envelope IS the sound, and gating triggerAttackRelease
+  // to a single 16n step (~0.125s at 120 BPM) cuts the natural decay off
+  // mid-hit — that's why short perc/hat/snare hits sounded silent or clipped
+  // during playback while previews (which pass "8n") sounded fine.
   function triggerSynth(s, pitch, dur, time, velocity) {
     if (s instanceof Tone.NoiseSynth) {
-      s.triggerAttackRelease(dur, time, velocity);
+      s.triggerAttackRelease("8n", time, velocity);
     } else if (s instanceof Tone.MetalSynth) {
       // MetalSynth ignores pitch internally but accepts the same call shape.
-      s.triggerAttackRelease(dur, time, velocity);
+      s.triggerAttackRelease("8n", time, velocity);
+    } else if (s instanceof Tone.MembraneSynth) {
+      s.triggerAttackRelease(pitch, "8n", time, velocity);
     } else {
       s.triggerAttackRelease(pitch, dur, time, velocity);
     }
