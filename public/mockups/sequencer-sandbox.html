@@ -586,6 +586,16 @@
   .chip-row {
     display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
   }
+  /* Action chips (Move / Copy / Delete / Reset / Paste) stay on one row and
+     scroll horizontally — same behaviour as the param pills above. */
+  #actionsRow {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  #actionsRow::-webkit-scrollbar { display: none; }
+  #actionsRow .chip { flex-shrink: 0; }
 
   /* Value-pills row (Design A) — visible during multi-select. */
   .params-row {
