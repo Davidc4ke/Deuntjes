@@ -302,6 +302,15 @@
     box-shadow: inset 0 0 0 2px var(--cursor-strong);
   }
   .key.black.chord-active { color: #fff !important; }
+  /* Softer hint: a key the cursor is currently sitting on in the input channel. */
+  .key.cursor-pitch {
+    background: rgba(107,95,217,0.18) !important;
+    box-shadow: inset 0 0 0 2px var(--cursor);
+  }
+  .key.black.cursor-pitch {
+    background: rgba(107,95,217,0.55) !important;
+    color: #fff !important;
+  }
 
   /* Long-press to enter chord mode — 600ms fill sweep + burst on commit. */
   .key.charging {
@@ -1351,6 +1360,7 @@
     keysEl.querySelectorAll(".key").forEach(k => {
       k.classList.remove("in-scale");
       k.classList.remove("chord-active");
+      k.classList.remove("cursor-pitch");
     });
     if (state.scaleOn) {
       const inScale = getInScaleClasses();
@@ -1359,13 +1369,24 @@
         if (inScale.has(cls)) k.classList.add("in-scale");
       });
     }
+    const ch = state.activeChannelId;
     if (state.chordMode) {
-      const ch = state.activeChannelId;
+      // Chord mode: strong purple highlight on every pitch currently in the chord.
       const pitches = new Set(state.notes
         .filter(n => n.channelId === ch && Math.abs(n.step - state.chordStep) < 1e-6)
         .map(n => n.pitch));
       keysEl.querySelectorAll(".key").forEach(k => {
         if (pitches.has(k.dataset.pitch)) k.classList.add("chord-active");
+      });
+    } else {
+      // Normal mode: softer "cursor-pitch" hint on any pitch the cursor is sitting on
+      // in the input channel — accounts for a note's full duration (step → step + size).
+      const c = state.cursor;
+      const pitches = new Set(state.notes
+        .filter(n => n.channelId === ch && c >= n.step - 1e-6 && c < n.step + n.size - 1e-6)
+        .map(n => n.pitch));
+      keysEl.querySelectorAll(".key").forEach(k => {
+        if (pitches.has(k.dataset.pitch)) k.classList.add("cursor-pitch");
       });
     }
   }
@@ -1686,6 +1707,9 @@
       else attachNoteGesture(el, first.id);
       gridEl.appendChild(el);
     });
+
+    // Keep the keyboard's pitch highlights in sync with wherever the cursor is now.
+    refreshKeyHighlights();
   }
 
   // Tap a chord block → select every note inside it (multi-select).
