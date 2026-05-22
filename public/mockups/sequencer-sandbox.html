@@ -1205,12 +1205,14 @@
     cursorLine.style.top = (state.cursor * rowH) + "px";
     gridEl.appendChild(cursorLine);
 
-    // Notes from every channel, each in its own column.
+    // Only unmuted channels claim grid columns; muted channels keep their (dimmed)
+    // header but drop their column entirely so the remaining columns get more room.
     const isSel = (id) => state.multiSelect ? state.selectedIds.has(id) : (id === state.selectedId);
     const gw = gridEl.clientWidth || 360;
     const colLeft = 38;       // matches existing note left-offset
     const colRight = 14;      // matches existing note right-offset
-    const N = state.channels.length || 1;
+    const visibleChannels = state.channels.filter(c => !c.muted);
+    const N = visibleChannels.length || 1;
     const colW = Math.max(20, (gw - colLeft - colRight) / N);
 
     // Faint vertical dividers between channel columns
@@ -1222,9 +1224,9 @@
     }
 
     // Ghost note in the input channel column — previews where a key-press will land.
-    const inputIdx = state.channels.findIndex(c => c.id === state.activeChannelId);
+    const inputIdx = visibleChannels.findIndex(c => c.id === state.activeChannelId);
     if (inputIdx >= 0) {
-      const inputCh = state.channels[inputIdx];
+      const inputCh = visibleChannels[inputIdx];
       const ghostStep = Math.min(state.cursor, state.steps - 1);
       const ghostSize = Math.min(state.defaultSize, state.steps - ghostStep);
       if (ghostSize > 0) {
@@ -1242,13 +1244,12 @@
 
     state.notes.forEach(n => {
       if (n.step >= state.steps) return;
-      const colIdx = state.channels.findIndex(c => c.id === n.channelId);
-      if (colIdx < 0) return;
-      const ch = state.channels[colIdx];
+      const colIdx = visibleChannels.findIndex(c => c.id === n.channelId);
+      if (colIdx < 0) return; // channel is muted — skip rendering its notes
+      const ch = visibleChannels[colIdx];
       const el = document.createElement("div");
       let cls = "note";
       if (isSel(n.id)) cls += " selected";
-      if (ch.muted) cls += " muted";
       el.className = cls;
       el.dataset.id = n.id;
       const label = document.createElement("span");
