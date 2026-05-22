@@ -3593,7 +3593,13 @@
     state.playhead = null;
     playBtn.textContent = "PLAY";
     playBtn.dataset.state = "stopped";
+    // STOP rewinds the cursor to the top — that's the classic transport
+    // behaviour. PAUSE (handled in play()) leaves the cursor alone.
+    state.cursor = 0;
+    if (state.chordMode) exitChordMode();
     renderGrid();
+    positionKnobFromCursor();
+    updateSelectedBar();
   }
   playBtn.addEventListener("click", play);
   stopBtn.addEventListener("click", stop);
