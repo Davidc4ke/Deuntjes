@@ -1475,7 +1475,25 @@
     // selected notes that don't have their own override.
     if (state.multiSelect || state.selectedId !== null) syncParamPills();
   }
-  [attackEl, decayEl, sustainEl, releaseEl, volumeEl].forEach(el => el.addEventListener("input", applyADSR));
+  // Debounced preview tick so the user hears the new envelope/volume right
+  // after they finish moving a slider. Firing on every `input` event would
+  // overlap dozens of hits during a single drag.
+  let adsrPreviewTimer = null;
+  function scheduleAdsrPreview() {
+    if (adsrPreviewTimer) clearTimeout(adsrPreviewTimer);
+    adsrPreviewTimer = setTimeout(() => {
+      adsrPreviewTimer = null;
+      const ch = activeChannel();
+      const s = getSynth(ch.id);
+      if (!s) return;
+      Tone.start();
+      triggerSynth(s, "C4", "8n", undefined, ch.volume ?? 0.8);
+    }, 150);
+  }
+  [attackEl, decayEl, sustainEl, releaseEl, volumeEl].forEach(el => {
+    el.addEventListener("input", applyADSR);
+    el.addEventListener("input", scheduleAdsrPreview);
+  });
 
   function syncInsPopup() {
     const ch = activeChannel();
