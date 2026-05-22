@@ -2744,8 +2744,16 @@
     const r = gridEl.getBoundingClientRect();
     const rowH = r.height / state.steps;
     // Map the click's vertical position to a fractional step, then snap.
+    // For step-snap, a tap inside row N should land the cursor on row N
+    // (floor) — round-to-nearest would jump the cursor a row down whenever
+    // the user taps the lower half of a row. The knob uses snapCursor's
+    // round-to-nearest still, which is correct for continuous dragging.
     const raw = (e.clientY - r.top) / rowH;
-    state.cursor = snapCursor(raw);
+    if (state.snap === "step") {
+      state.cursor = Math.max(0, Math.min(state.steps, Math.floor(raw)));
+    } else {
+      state.cursor = snapCursor(raw);
+    }
     // Tapping inside another channel's column switches the input channel —
     // quick way to redirect input without going up to the header chips.
     // Uses the same column math as renderGrid; clicks in the step-number
