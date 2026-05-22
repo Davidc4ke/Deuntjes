@@ -1736,21 +1736,71 @@
     refreshKeyHighlights();
   }
 
-  // Tap a chord block → select every note inside it (multi-select).
+  // Tapping a chord block (or any note on a poly channel) opens chord mode at
+  // that step so the user can directly add or remove pitches. Long-press still
+  // enters multi-select so the chord can be copied / deleted as a group.
   function attachChordGesture(el, notes) {
+    let suppress = false;
     el.addEventListener("click", (e) => {
       e.stopPropagation();
       if (suppressNextClick) { suppressNextClick = false; return; }
-      state.multiSelect = true;
-      state.selectedId = null;
-      state.selectedIds = new Set(notes.map(n => n.id));
-      state.cursor = notes[0].step;
-      positionKnobFromCursor();
-      // Preview each note (poly synth makes this audible as a chord).
-      notes.forEach(n => { previewNote(n); flashKey(n.pitch); });
-      renderGrid();
-      updateSelectedBar();
+      if (suppress) { suppress = false; return; }
+      enterChordModeAtNote(notes[0]);
     });
+    el.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      e.stopPropagation();
+      const sx = e.clientX, sy = e.clientY;
+      el.classList.add("charging");
+      let timer = setTimeout(() => {
+        timer = null;
+        el.classList.remove("charging");
+        el.classList.add("charge-complete");
+        setTimeout(() => el.classList.remove("charge-complete"), 360);
+        suppress = true;
+        suppressNextClick = true;
+        // Long-press: select every note in the chord block (multi-select).
+        if (state.chordMode) exitChordMode();
+        state.multiSelect = true;
+        state.selectedId = null;
+        state.selectedIds = new Set(notes.map(n => n.id));
+        state.cursor = notes[0].step;
+        positionKnobFromCursor();
+        renderGrid();
+        updateSelectedBar();
+      }, LONG_PRESS_MS);
+      const cancel = () => { if (timer) { clearTimeout(timer); timer = null; el.classList.remove("charging"); } };
+      const onMove = (ev) => { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) cancel(); };
+      const onUp = () => {
+        cancel();
+        el.removeEventListener("pointermove", onMove);
+        el.removeEventListener("pointerup", onUp);
+        el.removeEventListener("pointercancel", onUp);
+      };
+      el.addEventListener("pointermove", onMove);
+      el.addEventListener("pointerup", onUp);
+      el.addEventListener("pointercancel", onUp);
+    });
+  }
+
+  // Open chord mode anchored at this note's step, with the existing notes (one
+  // or many) as the seed. Cursor + scroller jump to the step. If the note is on
+  // a different channel, switch input to that channel first.
+  function enterChordModeAtNote(n) {
+    if (n.channelId !== state.activeChannelId) setActiveChannel(n.channelId);
+    state.cursor = n.step;
+    positionKnobFromCursor();
+    state.chordMode = true;
+    state.chordStep = n.step;
+    state.selectedId = null;
+    if (state.multiSelect) { state.multiSelect = false; state.selectedIds.clear(); }
+    // Preview every pitch at this chord step so the user hears what's there.
+    state.notes
+      .filter(x => x.channelId === state.activeChannelId && Math.abs(x.step - state.chordStep) < 1e-6)
+      .forEach(x => { previewNote(x); flashKey(x.pitch); });
+    renderGrid();
+    refreshKeyHighlights();
+    updateSelectedBar();
   }
 
   const LONG_PRESS_MS = 450;
@@ -1760,7 +1810,15 @@
     el.addEventListener("click", (e) => {
       e.stopPropagation();
       if (suppressNextClick) { suppressNextClick = false; return; }
-      selectNote(noteId);
+      const n = state.notes.find(x => x.id === noteId);
+      const ch = n && state.channels.find(c => c.id === n.channelId);
+      // Tapping a note on a poly channel opens chord mode at that step so the
+      // user can immediately start growing/shrinking the chord.
+      if (n && ch && isPolyPreset(ch.presetName)) {
+        enterChordModeAtNote(n);
+      } else {
+        selectNote(noteId);
+      }
     });
     el.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
