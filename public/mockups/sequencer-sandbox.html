@@ -98,11 +98,7 @@
   /* ---- Top bar (split above piano vs above grid) ---- */
   .topbar-row {
     display: grid;
-    grid-template-columns: 116px 1fr 32px;
-  }
-  .topbar-right {
-    background: var(--stage);
-    border-bottom: 1px solid var(--stage-line-strong);
+    grid-template-columns: 116px 1fr;
   }
   .topbar-left {
     display: flex; align-items: center; gap: 6px;
@@ -896,7 +892,6 @@
           </button>
         </div>
         <div class="channel-headers" id="channelHeaders"></div>
-        <div class="topbar-right"></div>
       </div>
 
       <!-- stage -->
@@ -979,6 +974,10 @@
               <button data-value="pluck" type="button">Pluck</button>
               <button data-value="pad" type="button">Pad</button>
             </div>
+          </div>
+          <div class="field">
+            <label>Volume <span class="val" id="volumeV">0.80</span></label>
+            <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8">
           </div>
           <div class="field">
             <label>Attack <span class="val" id="attackV">0.02</span></label>
@@ -1122,10 +1121,10 @@
     scaleRoot: "C",
     scaleType: "major",
     channels: [
-      { id: 1, name: "Bass",  color: CHANNEL_PALETTE[0].color, edge: CHANNEL_PALETTE[0].edge, presetName: "bass",  muted: false, adsr: { attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  } },
-      { id: 2, name: "Drum",  color: CHANNEL_PALETTE[1].color, edge: CHANNEL_PALETTE[1].edge, presetName: "pluck", muted: false, adsr: { attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 } },
-      { id: 3, name: "Lead",  color: CHANNEL_PALETTE[2].color, edge: CHANNEL_PALETTE[2].edge, presetName: "lead",  muted: false, adsr: { attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  } },
-      { id: 4, name: "Chord", color: CHANNEL_PALETTE[3].color, edge: CHANNEL_PALETTE[3].edge, presetName: "pad",   muted: false, adsr: { attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  } },
+      { id: 1, name: "Bass",  color: CHANNEL_PALETTE[0].color, edge: CHANNEL_PALETTE[0].edge, presetName: "bass",  muted: false, volume: 0.8, adsr: { attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  } },
+      { id: 2, name: "Drum",  color: CHANNEL_PALETTE[1].color, edge: CHANNEL_PALETTE[1].edge, presetName: "pluck", muted: false, volume: 0.8, adsr: { attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 } },
+      { id: 3, name: "Lead",  color: CHANNEL_PALETTE[2].color, edge: CHANNEL_PALETTE[2].edge, presetName: "lead",  muted: false, volume: 0.8, adsr: { attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  } },
+      { id: 4, name: "Chord", color: CHANNEL_PALETTE[3].color, edge: CHANNEL_PALETTE[3].edge, presetName: "pad",   muted: false, volume: 0.8, adsr: { attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  } },
     ],
     activeChannelId: 1,
     nextChannelId: 5,
@@ -1168,6 +1167,7 @@
   const pasteBtn = $("pasteBtn");
   const playBtn = $("playBtn"), stopBtn = $("stopBtn");
   const attackEl = $("attack"), decayEl = $("decay"), sustainEl = $("sustain"), releaseEl = $("release");
+  const volumeEl = $("volume"), volumeV = $("volumeV");
   const adsrV = { attack: $("attackV"), decay: $("decayV"), sustain: $("sustainV"), release: $("releaseV") };
 
   // ---------- Audio (per-channel synths) ----------
@@ -1209,6 +1209,7 @@
     ch.adsr.decay   = +decayEl.value;
     ch.adsr.sustain = +sustainEl.value;
     ch.adsr.release = +releaseEl.value;
+    ch.volume       = +volumeEl.value;
     const s = getSynth(ch.id);
     if (s) {
       s.envelope.attack  = ch.adsr.attack;
@@ -1220,8 +1221,12 @@
     adsrV.decay.textContent   = ch.adsr.decay.toFixed(2);
     adsrV.sustain.textContent = ch.adsr.sustain.toFixed(2);
     adsrV.release.textContent = ch.adsr.release.toFixed(2);
+    volumeV.textContent       = ch.volume.toFixed(2);
+    // Re-sync the param-pills row so the channel default is reflected on any
+    // selected notes that don't have their own override.
+    if (state.multiSelect || state.selectedId !== null) syncParamPills();
   }
-  [attackEl, decayEl, sustainEl, releaseEl].forEach(el => el.addEventListener("input", applyADSR));
+  [attackEl, decayEl, sustainEl, releaseEl, volumeEl].forEach(el => el.addEventListener("input", applyADSR));
 
   function syncInsPopup() {
     const ch = activeChannel();
@@ -1229,10 +1234,12 @@
     decayEl.value   = ch.adsr.decay;
     sustainEl.value = ch.adsr.sustain;
     releaseEl.value = ch.adsr.release;
+    volumeEl.value  = ch.volume ?? 0.8;
     adsrV.attack.textContent  = ch.adsr.attack.toFixed(2);
     adsrV.decay.textContent   = ch.adsr.decay.toFixed(2);
     adsrV.sustain.textContent = ch.adsr.sustain.toFixed(2);
     adsrV.release.textContent = ch.adsr.release.toFixed(2);
+    volumeV.textContent       = (ch.volume ?? 0.8).toFixed(2);
     const seg = document.querySelector(".seg[data-group='instrument']");
     if (seg) seg.querySelectorAll("button").forEach(b => b.classList.toggle("active", b.dataset.value === ch.presetName));
   }
@@ -1649,14 +1656,18 @@
   }
   function copySelection() {
     const notes = selectedNotes();
-    if (notes.length === 0) { exitMultiSelect(); return; }
+    if (notes.length === 0) return;
     const minStep = Math.min(...notes.map(n => n.step));
     state.clipboard = notes.map(n => ({
       relStep: n.step - minStep,
       pitch: n.pitch,
       size: n.size,
+      volume: n.volume,
+      attack: n.attack, decay: n.decay, sustain: n.sustain, release: n.release,
     }));
-    exitMultiSelect();
+    // Keep selection; just refresh the Paste affordance.
+    updateSelectedBar();
+    renderGrid();
   }
   function deleteSelection() {
     state.notes = state.notes.filter(n => !state.selectedIds.has(n.id));
@@ -1678,6 +1689,9 @@
         pitch: c.pitch,
         size: c.size,
         channelId: ch,
+        volume:  c.volume,
+        attack:  c.attack,  decay: c.decay,
+        sustain: c.sustain, release: c.release,
       });
     });
     state.notes.push(...added);
@@ -1781,32 +1795,44 @@
     }
     return [];
   }
+  // Per-note override → channel default fallback for vol & ADSR.
+  function effectiveProp(note, prop) {
+    if (note[prop] !== undefined && note[prop] !== null) return note[prop];
+    const ch = state.channels.find(c => c.id === note.channelId);
+    if (!ch) return 0;
+    if (prop === "volume") return ch.volume ?? 0.8;
+    return ch.adsr[prop];
+  }
+  function formatAdsr(v) { return Number(v).toFixed(2).replace(/^0\./, "."); }
+  function formatVol(v)  { return Math.round(Number(v) * 100) + "%"; }
   function syncParamPills() {
-    // Length: show the size of the first selected note (or "mixed" if multiple sizes).
     const sel = selectedNotes();
+    const setPill = (el, prop, fmt) => {
+      if (sel.length === 0) { el.textContent = "—"; return; }
+      const vals = new Set(sel.map(n => effectiveProp(n, prop).toFixed(4)));
+      el.textContent = vals.size === 1 ? fmt(effectiveProp(sel[0], prop)) : "mixed";
+    };
+    // Length is per-note size (already a real property).
     if (sel.length > 0) {
       const sizes = new Set(sel.map(n => n.size));
       lenVal.textContent = sizes.size === 1 ? (formatSize(sel[0].size) + "×") : "mixed";
     } else {
       lenVal.textContent = "—";
     }
-    // ADSR & Vol: pulled from the input channel for now (synth params are channel-level).
-    const ch = activeChannel();
-    aVal.textContent = ch.adsr.attack.toFixed(2).replace(/^0\./, ".");
-    dVal.textContent = ch.adsr.decay.toFixed(2).replace(/^0\./, ".");
-    sVal.textContent = ch.adsr.sustain.toFixed(2).replace(/^0\./, ".");
-    rVal.textContent = ch.adsr.release.toFixed(2).replace(/^0\./, ".");
-    volVal.textContent = "80%"; // visual stub — no per-note volume in the data model yet
+    setPill(volVal, "volume",  formatVol);
+    setPill(aVal,   "attack",  formatAdsr);
+    setPill(dVal,   "decay",   formatAdsr);
+    setPill(sVal,   "sustain", formatAdsr);
+    setPill(rVal,   "release", formatAdsr);
   }
 
   function openParamPopover(pillEl, paramName) {
     closeParamPopover();
-    const ch = activeChannel();
     let label, min, max, step, value, fmt, onChange;
+    const sel = selectedNotes();
     if (paramName === "len") {
       label = "Length";
       min = 0; max = 9; step = 1;
-      const sel = selectedNotes();
       value = sel.length ? sizeIndex(sel[0].size) : 2;
       fmt = (v) => formatSize(SIZE_STEPS[v]) + "×";
       onChange = (v) => {
@@ -1819,26 +1845,28 @@
       };
     } else if (paramName === "vol") {
       label = "Volume";
-      min = 0; max = 100; step = 1; value = 80;
-      fmt = (v) => v + "%";
-      onChange = (v) => { volVal.textContent = fmt(v); }; // stub
-    } else {
-      // ADSR — bound to the input channel's envelope.
-      const map = { a: ["attack",  0, 2,    0.01, ch.adsr.attack,  aVal],
-                    d: ["decay",   0, 2,    0.01, ch.adsr.decay,   dVal],
-                    s: ["sustain", 0, 1,    0.01, ch.adsr.sustain, sVal],
-                    r: ["release", 0, 4,    0.01, ch.adsr.release, rVal] };
-      const [key, mn, mx, st, val, valEl] = map[paramName];
-      label = "Envelope · " + key[0].toUpperCase() + key.slice(1) + "  (" + ch.name + ")";
-      min = mn; max = mx; step = st; value = val;
-      fmt = (v) => parseFloat(v).toFixed(2).replace(/^0\./, ".");
+      min = 0; max = 1; step = 0.01;
+      value = sel.length ? effectiveProp(sel[0], "volume") : 0.8;
+      fmt = formatVol;
       onChange = (v) => {
-        ch.adsr[key] = parseFloat(v);
-        valEl.textContent = fmt(v);
-        // re-apply synth params for this channel
-        if (channelSynths[ch.id]) {
-          try { channelSynths[ch.id].envelope[key] = ch.adsr[key]; } catch (_) {}
-        }
+        selectedNotes().forEach(n => { n.volume = parseFloat(v); });
+        volVal.textContent = fmt(v);
+      };
+    } else {
+      // ADSR — per-note override (falls back to channel default).
+      const map = { a: ["attack",  0, 2, 0.01, aVal],
+                    d: ["decay",   0, 2, 0.01, dVal],
+                    s: ["sustain", 0, 1, 0.01, sVal],
+                    r: ["release", 0, 4, 0.01, rVal] };
+      const [key, mn, mx, st, valEl] = map[paramName];
+      label = "Envelope · " + key[0].toUpperCase() + key.slice(1);
+      min = mn; max = mx; step = st;
+      value = sel.length ? effectiveProp(sel[0], key) : 0;
+      fmt = formatAdsr;
+      onChange = (v) => {
+        const num = parseFloat(v);
+        selectedNotes().forEach(n => { n[key] = num; });
+        valEl.textContent = fmt(num);
       };
     }
 
@@ -2233,7 +2261,14 @@
     currentPart = new Tone.Part((time, n) => {
       const dur = Math.min(n.size, state.steps - n.step) * stepSec;
       const s = getSynth(n.channelId);
-      if (s) s.triggerAttackRelease(n.pitch, dur, time);
+      if (s) {
+        // Apply per-note envelope + velocity, falling back to channel defaults.
+        s.envelope.attack  = effectiveProp(n, "attack");
+        s.envelope.decay   = effectiveProp(n, "decay");
+        s.envelope.sustain = effectiveProp(n, "sustain");
+        s.envelope.release = effectiveProp(n, "release");
+        s.triggerAttackRelease(n.pitch, dur, time, effectiveProp(n, "volume"));
+      }
       Tone.Draw.schedule(() => {
         const el = gridEl.querySelector('.note[data-id="' + n.id + '"]');
         if (el) {
