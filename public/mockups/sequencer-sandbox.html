@@ -577,6 +577,62 @@
   .chip-row {
     display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
   }
+
+  /* Value-pills row (Design A) — visible during multi-select. */
+  .params-row {
+    display: flex; gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 2px 0;
+  }
+  .params-row::-webkit-scrollbar { display: none; }
+  .param-pill {
+    appearance: none;
+    background: rgba(255,255,255,0.06);
+    color: #d8d4ff;
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 10px;
+    padding: 0 13px;
+    height: 38px;
+    font: 700 12px var(--ui);
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .param-pill:hover { background: rgba(255,255,255,0.10); }
+  .param-pill .val {
+    color: rgba(255,255,255,0.55);
+    font-weight: 700; font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Small popover anchored to a param-pill, shows a single slider. */
+  .param-popover {
+    position: fixed;
+    background: #2a2640;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 14px 16px 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+    z-index: 1100;
+    min-width: 240px;
+    color: #e9e8ff;
+  }
+  .param-popover .pop-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .param-popover .pop-head .lab {
+    font: 700 11px var(--ui); letter-spacing: 0.10em; text-transform: uppercase;
+    color: rgba(255,255,255,0.55);
+  }
+  .param-popover .pop-head .v {
+    font: 700 14px var(--mono);
+  }
+  .param-popover input[type=range] { width: 100%; }
   .chip-row .label {
     font: 600 10px var(--ui); letter-spacing: 0.12em;
     text-transform: uppercase; color: rgba(233,232,255,0.55);
@@ -875,6 +931,16 @@
             <span style="margin-left:auto; font: 500 10px var(--ui); color: rgba(233,232,255,0.5); letter-spacing: 0.06em;">tap to toggle</span>
           </div>
 
+          <!-- Value pills (multi-select only) -->
+          <div class="params-row hidden" id="paramsRow">
+            <button class="param-pill" data-param="vol" type="button">Vol <span class="val" id="volVal">80%</span></button>
+            <button class="param-pill" data-param="len" type="button">Len <span class="val" id="lenVal">1×</span></button>
+            <button class="param-pill" data-param="a"   type="button">A <span class="val" id="aVal">.02</span></button>
+            <button class="param-pill" data-param="d"   type="button">D <span class="val" id="dVal">.15</span></button>
+            <button class="param-pill" data-param="s"   type="button">S <span class="val" id="sVal">.70</span></button>
+            <button class="param-pill" data-param="r"   type="button">R <span class="val" id="rVal">.40</span></button>
+          </div>
+
           <!-- Quick actions -->
           <div class="chip-row" id="actionsRow">
             <button class="chip primary hidden" id="pasteBtn" type="button">Paste</button>
@@ -1113,6 +1179,9 @@
   const noteRow = $("noteRow"), noteSizeEl = $("noteSize"), noteSizeValEl = $("noteSizeVal");
   const selectedLabel = $("selectedLabel"), deleteBtn = $("deleteBtn"), moveBtn = $("moveBtn");
   const multiRow = $("multiRow"), multiCount = $("multiCount");
+  const paramsRow = $("paramsRow");
+  const volVal = $("volVal"), lenVal = $("lenVal");
+  const aVal = $("aVal"), dVal = $("dVal"), sVal = $("sVal"), rVal = $("rVal");
   const copyBtn = $("copyBtn"), multiDeleteBtn = $("multiDeleteBtn"), doneBtn = $("doneBtn");
   const pasteBtn = $("pasteBtn");
   const playBtn = $("playBtn"), stopBtn = $("stopBtn");
@@ -1637,6 +1706,7 @@
   function updateSelectedBar() {
     noteRow.classList.add("hidden");
     multiRow.classList.add("hidden");
+    paramsRow.classList.add("hidden");
     moveBtn.classList.add("hidden");
     copyBtn.classList.add("hidden");
     doneBtn.classList.add("hidden");
@@ -1645,10 +1715,12 @@
 
     if (state.multiSelect) {
       multiRow.classList.remove("hidden");
+      paramsRow.classList.remove("hidden");
       multiCount.textContent = state.selectedIds.size;
       copyBtn.classList.remove("hidden");
       multiDeleteBtn.classList.remove("hidden");
       doneBtn.classList.remove("hidden");
+      syncParamPills();
     } else {
       const n = state.notes.find(x => x.id === state.selectedId);
       if (n) {
@@ -1719,6 +1791,116 @@
     document.querySelectorAll(".popup").forEach(p => p.classList.toggle("hidden", p.dataset.name !== "ins"));
     $("popupLayer").classList.remove("hidden");
   }
+
+  // ---------- Param pills (Design A) ----------
+  function syncParamPills() {
+    // Length: show the size of the first selected note (or "—" if mixed).
+    const sel = [...state.selectedIds].map(id => state.notes.find(n => n.id === id)).filter(Boolean);
+    if (sel.length > 0) {
+      const sizes = new Set(sel.map(n => n.size));
+      lenVal.textContent = sizes.size === 1 ? (formatSize(sel[0].size) + "×") : "mixed";
+    } else {
+      lenVal.textContent = "—";
+    }
+    // ADSR & Vol: pulled from the input channel for now (synth params are channel-level).
+    const ch = activeChannel();
+    aVal.textContent = ch.adsr.attack.toFixed(2).replace(/^0\./, ".");
+    dVal.textContent = ch.adsr.decay.toFixed(2).replace(/^0\./, ".");
+    sVal.textContent = ch.adsr.sustain.toFixed(2).replace(/^0\./, ".");
+    rVal.textContent = ch.adsr.release.toFixed(2).replace(/^0\./, ".");
+    volVal.textContent = "80%"; // visual stub — no per-note volume in the data model yet
+  }
+
+  function openParamPopover(pillEl, paramName) {
+    closeParamPopover();
+    const ch = activeChannel();
+    let label, min, max, step, value, fmt, onChange;
+    if (paramName === "len") {
+      label = "Length";
+      // Slider exposes the size index just like the per-note slider.
+      min = 0; max = 9; step = 1;
+      const sel = [...state.selectedIds].map(id => state.notes.find(n => n.id === id)).filter(Boolean);
+      value = sel.length ? sizeIndex(sel[0].size) : 2;
+      fmt = (v) => formatSize(SIZE_STEPS[v]) + "×";
+      onChange = (v) => {
+        const size = SIZE_STEPS[v];
+        state.notes.forEach(n => {
+          if (!state.selectedIds.has(n.id)) return;
+          n.size = Math.min(size, state.steps - n.step);
+        });
+        lenVal.textContent = fmt(v);
+        renderGrid();
+      };
+    } else if (paramName === "vol") {
+      label = "Volume";
+      min = 0; max = 100; step = 1; value = 80;
+      fmt = (v) => v + "%";
+      onChange = (v) => { volVal.textContent = fmt(v); }; // stub
+    } else {
+      // ADSR — bound to the input channel's envelope.
+      const map = { a: ["attack",  0, 2,    0.01, ch.adsr.attack,  aVal],
+                    d: ["decay",   0, 2,    0.01, ch.adsr.decay,   dVal],
+                    s: ["sustain", 0, 1,    0.01, ch.adsr.sustain, sVal],
+                    r: ["release", 0, 4,    0.01, ch.adsr.release, rVal] };
+      const [key, mn, mx, st, val, valEl] = map[paramName];
+      label = "Envelope · " + key[0].toUpperCase() + key.slice(1) + "  (" + ch.name + ")";
+      min = mn; max = mx; step = st; value = val;
+      fmt = (v) => parseFloat(v).toFixed(2).replace(/^0\./, ".");
+      onChange = (v) => {
+        ch.adsr[key] = parseFloat(v);
+        valEl.textContent = fmt(v);
+        // re-apply synth params for this channel
+        if (channelSynths[ch.id]) {
+          try { channelSynths[ch.id].envelope[key] = ch.adsr[key]; } catch (_) {}
+        }
+      };
+    }
+
+    const pop = document.createElement("div");
+    pop.className = "param-popover";
+    pop.id = "paramPopover";
+    pop.innerHTML =
+      '<div class="pop-head"><span class="lab">' + label + '</span>' +
+      '<span class="v" id="popVal">' + fmt(value) + '</span></div>' +
+      '<input type="range" id="popRange" min="' + min + '" max="' + max + '" step="' + step + '" value="' + value + '">';
+    document.body.appendChild(pop);
+
+    // Position above the pill so it's reachable with the thumb.
+    const r = pillEl.getBoundingClientRect();
+    const popH = pop.offsetHeight || 96;
+    let top = r.top - popH - 10;
+    if (top < 16) top = r.bottom + 10;
+    let left = r.left;
+    if (left + pop.offsetWidth + 12 > window.innerWidth) left = window.innerWidth - pop.offsetWidth - 12;
+    pop.style.top = top + "px";
+    pop.style.left = left + "px";
+
+    const range = pop.querySelector("#popRange");
+    const popVal = pop.querySelector("#popVal");
+    range.addEventListener("input", () => {
+      popVal.textContent = fmt(range.value);
+      onChange(range.value);
+    });
+
+    setTimeout(() => {
+      document.addEventListener("pointerdown", function once(ev) {
+        if (!pop.contains(ev.target) && !pillEl.contains(ev.target)) {
+          closeParamPopover();
+          document.removeEventListener("pointerdown", once, true);
+        }
+      }, true);
+    }, 0);
+  }
+  function closeParamPopover() {
+    const p = document.getElementById("paramPopover");
+    if (p) p.remove();
+  }
+
+  paramsRow.addEventListener("click", (e) => {
+    const pill = e.target.closest(".param-pill");
+    if (!pill) return;
+    openParamPopover(pill, pill.dataset.param);
+  });
 
   function attachChannelHeaderGesture(el, channelId) {
     let suppress = false;
