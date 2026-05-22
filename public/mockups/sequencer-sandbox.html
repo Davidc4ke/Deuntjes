@@ -1775,8 +1775,9 @@
   gridEl.addEventListener("click", (e) => {
     const r = gridEl.getBoundingClientRect();
     const rowH = r.height / state.steps;
-    const step = Math.min(state.steps - 1, Math.max(0, Math.floor((e.clientY - r.top) / rowH)));
-    state.cursor = step;
+    // Map the click's vertical position to a fractional step, then snap.
+    const raw = (e.clientY - r.top) / rowH;
+    state.cursor = snapCursor(raw);
     if (!state.multiSelect) state.selectedId = null;
     renderGrid();
     positionKnobFromCursor();
