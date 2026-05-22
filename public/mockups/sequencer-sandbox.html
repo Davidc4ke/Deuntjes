@@ -2134,14 +2134,17 @@
       paramsRow.classList.remove("hidden");
       copyBtn.classList.remove("hidden");
       doneBtn.classList.remove("hidden");
-      if (hasMulti) {
-        multiDeleteBtn.classList.remove("hidden");
-      } else {
-        deleteBtn.classList.remove("hidden");
-        const n = state.notes.find(x => x.id === state.selectedId);
-        if (n && Math.abs(state.cursor - n.step) > 1e-6) {
+      if (hasMulti) multiDeleteBtn.classList.remove("hidden");
+      else deleteBtn.classList.remove("hidden");
+      // Move button — shown whenever the cursor is offset from the selection's
+      // anchor (= earliest selected step). Works for single + multi selections.
+      const sel = selectedNotes();
+      if (sel.length > 0) {
+        const anchor = Math.min(...sel.map(n => n.step));
+        const target = Math.min(state.cursor, state.steps - 1);
+        if (Math.abs(target - anchor) > 1e-6) {
           moveBtn.classList.remove("hidden");
-          moveBtn.textContent = "Move " + formatStep(Math.min(state.cursor, state.steps - 1));
+          moveBtn.textContent = "Move " + formatStep(target);
         }
       }
       syncParamPills();
@@ -2575,12 +2578,34 @@
   });
 
   moveBtn.addEventListener("click", () => {
-    const n = state.notes.find(x => x.id === state.selectedId);
+    const sel = selectedNotes();
+    if (sel.length === 0) return;
+    const anchor = Math.min(...sel.map(n => n.step));
     const target = Math.min(state.cursor, state.steps - 1);
-    if (!n || Math.abs(target - n.step) < 1e-6) return;
-    // Replace any same-channel note at the target (epsilon match)
-    state.notes = state.notes.filter(x => x.id === n.id || x.channelId !== n.channelId || Math.abs(x.step - target) >= 1e-6);
-    n.step = target;
+    const delta = target - anchor;
+    if (Math.abs(delta) < 1e-6) return;
+
+    // Skip the move if any selected note would fall off the grid.
+    const wouldOverflow = sel.some(n => {
+      const ns = n.step + delta;
+      return ns < -1e-6 || ns >= state.steps;
+    });
+    if (wouldOverflow) return;
+
+    const selectedSet = new Set(sel);
+    // Drop any non-selected note that would collide with a moved one (same
+    // channel + same target step; on poly channels also require the same pitch
+    // so other chord-mates at the destination survive).
+    state.notes = state.notes.filter(x => {
+      if (selectedSet.has(x)) return true;
+      return !sel.some(n => {
+        if (x.channelId !== n.channelId) return false;
+        if (Math.abs(x.step - (n.step + delta)) > 1e-6) return false;
+        const ch = state.channels.find(c => c.id === n.channelId);
+        return ch && isPolyPreset(ch.presetName) ? x.pitch === n.pitch : true;
+      });
+    });
+    sel.forEach(n => { n.step += delta; });
     renderGrid();
     updateSelectedBar();
   });
@@ -2593,7 +2618,8 @@
     // Map the click's vertical position to a fractional step, then snap.
     const raw = (e.clientY - r.top) / rowH;
     state.cursor = snapCursor(raw);
-    if (state.rangeSelectAnchor === null && !state.multiSelect) state.selectedId = null;
+    // Selection persists across cursor moves now so the Move-to-cursor flow
+    // works after a grid tap. Use the Reset button to deselect explicitly.
     if (state.chordMode && Math.abs(state.cursor - state.chordStep) > 1e-6) exitChordMode();
     autoEnterChordIfOnChord();
     updateRangeSelection();
