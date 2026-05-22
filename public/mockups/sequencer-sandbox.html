@@ -95,9 +95,17 @@
   .status .right { display: flex; gap: 6px; align-items: center; opacity: 0.85; }
   .status svg { width: 16px; height: 11px; }
 
-  /* ---- Top bar ---- */
-  .topbar {
-    display: flex; align-items: center; gap: 6px;
+  /* ---- Top bar (split above piano vs above grid) ---- */
+  .topbar-row {
+    display: grid;
+    grid-template-columns: 116px 1fr 32px;
+  }
+  .topbar-right {
+    background: var(--stage);
+    border-bottom: 1px solid var(--stage-line-strong);
+  }
+  .topbar-left {
+    display: flex; align-items: center;
     padding: 8px 10px;
     background: var(--bar);
     border-bottom: 1px solid var(--frame-line);
@@ -113,34 +121,55 @@
   .pill:hover { background: #4a4a55; }
   .pill.ghost { background: transparent; color: var(--bar-text-mute); }
 
-  .channel-strip {
-    flex: 1;
-    display: flex; gap: 6px;
-    overflow-x: auto; overflow-y: hidden;
+  .channel-headers {
+    display: flex; gap: 4px; align-items: stretch;
+    padding: 8px 10px 6px 10px;
+    background: var(--stage);
+    border-bottom: 1px solid var(--stage-line-strong);
+    overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    padding: 2px 2px;
-    scroll-snap-type: x proximity;
   }
-  .channel-strip::-webkit-scrollbar { display: none; }
-  .channel-chip {
+  .channel-headers::-webkit-scrollbar { display: none; }
+  .channel-col-header {
+    flex: 1 1 0;
+    min-width: 64px;
     appearance: none;
     background: transparent;
-    color: var(--ch, #e9925c);
-    border: 1px solid var(--ch, #e9925c);
+    color: var(--ch, var(--stage-text));
+    border: 1.5px solid var(--ch, rgba(0,0,0,0.15));
     border-radius: 999px;
-    padding: 5px 14px;
+    padding: 5px 8px;
     font: 700 12px var(--ui);
     letter-spacing: 0.02em;
     cursor: pointer;
     white-space: nowrap;
-    flex-shrink: 0;
-    scroll-snap-align: start;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
   }
-  .channel-chip.active {
-    background: var(--ch, #e9925c);
+  .channel-col-header.input {
+    background: var(--ch);
     color: #1a1a1f;
   }
+  .channel-col-header.muted {
+    opacity: 0.32;
+  }
+  .channel-col-add {
+    flex: 0 0 36px;
+    appearance: none;
+    background: transparent;
+    color: var(--stage-text-mute);
+    border: 1px dashed rgba(0,0,0,0.22);
+    border-radius: 999px;
+    font: 700 14px var(--ui);
+    cursor: pointer;
+    padding: 0;
+    white-space: nowrap;
+  }
+  .channel-col-add:hover { background: rgba(0,0,0,0.04); }
 
   /* Channels popup card list */
   .channel-list { display: grid; gap: 10px; margin-bottom: 14px; }
@@ -303,6 +332,15 @@
       0 2px 8px rgba(107,95,217,0.25);
   }
   .note.playing { background: var(--ch-edge, var(--accent-edge)); color: #fff; }
+  .note.muted { opacity: 0.32; }
+
+  .col-divider {
+    position: absolute; top: 0; bottom: 0;
+    width: 1px;
+    background: var(--stage-line);
+    pointer-events: none;
+    z-index: 0;
+  }
 
   /* Long-press charging animation */
   .note.charging {
@@ -660,11 +698,13 @@
         </div>
       </div>
 
-      <!-- top bar -->
-      <div class="topbar">
-        <button class="pill ghost" type="button">Back</button>
-        <div class="channel-strip" id="channelStrip"></div>
-        <button class="pill" data-popup="channels" type="button" title="Channels">CH +</button>
+      <!-- top bar: dark Back-bar above piano + light channel-column-headers above grid -->
+      <div class="topbar-row">
+        <div class="topbar-left">
+          <button class="pill ghost" type="button">Back</button>
+        </div>
+        <div class="channel-headers" id="channelHeaders"></div>
+        <div class="topbar-right"></div>
       </div>
 
       <!-- stage -->
@@ -907,10 +947,10 @@
     scaleRoot: "C",
     scaleType: "major",
     channels: [
-      { id: 1, name: "Bass",  color: CHANNEL_PALETTE[0].color, edge: CHANNEL_PALETTE[0].edge, presetName: "bass",  adsr: { attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  } },
-      { id: 2, name: "Drum",  color: CHANNEL_PALETTE[1].color, edge: CHANNEL_PALETTE[1].edge, presetName: "pluck", adsr: { attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 } },
-      { id: 3, name: "Lead",  color: CHANNEL_PALETTE[2].color, edge: CHANNEL_PALETTE[2].edge, presetName: "lead",  adsr: { attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  } },
-      { id: 4, name: "Chord", color: CHANNEL_PALETTE[3].color, edge: CHANNEL_PALETTE[3].edge, presetName: "pad",   adsr: { attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  } },
+      { id: 1, name: "Bass",  color: CHANNEL_PALETTE[0].color, edge: CHANNEL_PALETTE[0].edge, presetName: "bass",  muted: false, adsr: { attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  } },
+      { id: 2, name: "Drum",  color: CHANNEL_PALETTE[1].color, edge: CHANNEL_PALETTE[1].edge, presetName: "pluck", muted: false, adsr: { attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 } },
+      { id: 3, name: "Lead",  color: CHANNEL_PALETTE[2].color, edge: CHANNEL_PALETTE[2].edge, presetName: "lead",  muted: false, adsr: { attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  } },
+      { id: 4, name: "Chord", color: CHANNEL_PALETTE[3].color, edge: CHANNEL_PALETTE[3].edge, presetName: "pad",   muted: false, adsr: { attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  } },
     ],
     activeChannelId: 1,
     nextChannelId: 5,
@@ -1109,17 +1149,42 @@
     cursorLine.style.top = ((state.cursor + 0.5) * rowH) + "px";
     gridEl.appendChild(cursorLine);
 
-    // notes (active channel only; out-of-range kept in state)
+    // Notes from every channel, each in its own column.
     const isSel = (id) => state.multiSelect ? state.selectedIds.has(id) : (id === state.selectedId);
-    activeNotes().forEach(n => {
+    const gw = gridEl.clientWidth || 360;
+    const colLeft = 38;       // matches existing note left-offset
+    const colRight = 14;      // matches existing note right-offset
+    const N = state.channels.length || 1;
+    const colW = Math.max(20, (gw - colLeft - colRight) / N);
+
+    // Faint vertical dividers between channel columns
+    for (let i = 1; i < N; i++) {
+      const div = document.createElement("div");
+      div.className = "col-divider";
+      div.style.left = (colLeft + i * colW) + "px";
+      gridEl.appendChild(div);
+    }
+
+    state.notes.forEach(n => {
       if (n.step >= state.steps) return;
+      const colIdx = state.channels.findIndex(c => c.id === n.channelId);
+      if (colIdx < 0) return;
+      const ch = state.channels[colIdx];
       const el = document.createElement("div");
-      el.className = "note" + (isSel(n.id) ? " selected" : "");
+      let cls = "note";
+      if (isSel(n.id)) cls += " selected";
+      if (ch.muted) cls += " muted";
+      el.className = cls;
       el.dataset.id = n.id;
       el.textContent = n.pitch;
+      el.style.left  = (colLeft + colIdx * colW + 2) + "px";
+      el.style.width = (colW - 4) + "px";
+      el.style.right = "auto";
       el.style.top = (n.step * rowH + 3) + "px";
       const visibleSize = Math.min(n.size, state.steps - n.step);
       el.style.height = Math.max(6, visibleSize * rowH - 6) + "px";
+      el.style.setProperty("--ch-color", ch.color);
+      el.style.setProperty("--ch-edge", ch.edge);
       attachNoteGesture(el, n.id);
       gridEl.appendChild(el);
     });
@@ -1219,6 +1284,13 @@
   }
 
   function selectNote(id) {
+    if (!state.multiSelect) {
+      const n0 = state.notes.find(x => x.id === id);
+      if (n0 && n0.channelId !== state.activeChannelId) {
+        // Tapping a note in another channel makes that channel the input channel.
+        setActiveChannel(n0.channelId);
+      }
+    }
     if (state.multiSelect) {
       if (state.selectedIds.has(id)) {
         state.selectedIds.delete(id);
@@ -1348,21 +1420,77 @@
   }
 
   function renderChannelStrip() {
-    const strip = $("channelStrip");
-    strip.innerHTML = "";
+    const cont = $("channelHeaders");
+    cont.innerHTML = "";
     state.channels.forEach(ch => {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "channel-chip" + (ch.id === state.activeChannelId ? " active" : "");
-      chip.style.setProperty("--ch", ch.color);
-      chip.textContent = ch.name;
-      chip.addEventListener("click", () => setActiveChannel(ch.id));
-      strip.appendChild(chip);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      let cls = "channel-col-header";
+      if (ch.id === state.activeChannelId) cls += " input";
+      if (ch.muted) cls += " muted";
+      btn.className = cls;
+      btn.style.setProperty("--ch", ch.color);
+      btn.textContent = ch.name;
+      attachChannelHeaderGesture(btn, ch.id);
+      cont.appendChild(btn);
     });
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = "channel-col-add";
+    addBtn.textContent = "+";
+    addBtn.setAttribute("title", "Channels");
+    addBtn.addEventListener("click", openChannelsPopup);
+    cont.appendChild(addBtn);
+  }
+
+  function openChannelsPopup() {
+    renderChannelList();
+    document.querySelectorAll(".popup").forEach(p => p.classList.toggle("hidden", p.dataset.name !== "channels"));
+    $("popupLayer").classList.remove("hidden");
+  }
+
+  function attachChannelHeaderGesture(el, channelId) {
+    let suppress = false;
+    el.addEventListener("click", () => {
+      if (suppress) { suppress = false; return; }
+      setActiveChannel(channelId);
+    });
+    el.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      const sx = e.clientX, sy = e.clientY;
+      let timer = setTimeout(() => {
+        timer = null;
+        suppress = true;
+        toggleChannelMuted(channelId);
+      }, LONG_PRESS_MS);
+      const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+      const onMove = (ev) => { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) cancel(); };
+      const onUp = () => {
+        cancel();
+        el.removeEventListener("pointermove", onMove);
+        el.removeEventListener("pointerup", onUp);
+        el.removeEventListener("pointercancel", onUp);
+      };
+      el.addEventListener("pointermove", onMove);
+      el.addEventListener("pointerup", onUp);
+      el.addEventListener("pointercancel", onUp);
+    });
+  }
+
+  function toggleChannelMuted(id) {
+    const ch = state.channels.find(c => c.id === id);
+    if (!ch) return;
+    // Don't allow muting the input channel — switch input elsewhere first.
+    if (ch.id === state.activeChannelId) return;
+    ch.muted = !ch.muted;
+    renderChannelStrip();
+    renderGrid();
   }
 
   function setActiveChannel(id) {
     if (id === state.activeChannelId) return;
+    const ch = state.channels.find(c => c.id === id);
+    if (ch && ch.muted) ch.muted = false; // tapping a muted chip un-mutes + activates
     state.activeChannelId = id;
     state.selectedId = null;
     if (state.multiSelect) { state.multiSelect = false; state.selectedIds.clear(); }
@@ -1630,8 +1758,9 @@
     const totalSec = state.steps * stepSec;
 
     // Schedule every note at its exact fractional time, looping the whole pattern.
+    const mutedChannels = new Set(state.channels.filter(c => c.muted).map(c => c.id));
     const events = state.notes
-      .filter(n => n.step < state.steps)
+      .filter(n => n.step < state.steps && !mutedChannels.has(n.channelId))
       .map(n => [n.step * stepSec, n]);
 
     currentPart = new Tone.Part((time, n) => {
