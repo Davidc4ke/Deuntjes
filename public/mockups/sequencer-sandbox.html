@@ -377,6 +377,17 @@
   }
   .cursor-line.fractional { background: var(--cursor); opacity: 0.85; }
 
+  /* Playhead — independent of the cursor; sweeps through the pattern during
+     playback while the user keeps editing at the cursor's position. */
+  .playhead-line {
+    position: absolute; left: 36px; right: 8px;
+    height: 1.5px; background: var(--accent);
+    box-shadow: 0 0 0 2px rgba(233,146,92,0.18);
+    pointer-events: none;
+    z-index: 2;
+    transform: translateY(-0.75px);
+  }
+
   .note {
     position: absolute; left: 38px; right: 14px;
     background: var(--ch-color, var(--accent));
@@ -1276,6 +1287,7 @@
   const state = {
     steps: 16,
     cursor: 0,
+    playhead: null,           // fractional step during playback; null when stopped
     notes: [],                // {id, step, size, pitch}
     selectedId: null,
     multiSelect: false,
@@ -1855,6 +1867,15 @@
     cursorLine.style.top = (state.cursor * rowH) + "px";
     gridEl.appendChild(cursorLine);
 
+    // Independent playhead during playback — lets the user keep editing at the
+    // cursor while the sequence runs.
+    if (state.playing && state.playhead !== null) {
+      const ph = document.createElement("div");
+      ph.className = "playhead-line";
+      ph.style.top = (state.playhead * rowH) + "px";
+      gridEl.appendChild(ph);
+    }
+
     // Only unmuted channels claim grid columns; muted channels keep their (dimmed)
     // header but drop their column entirely so the remaining columns get more room.
     const isSel = (id) => state.multiSelect ? state.selectedIds.has(id) : (id === state.selectedId);
@@ -1874,7 +1895,9 @@
     }
 
     // ⋯ button next to the cursor line — opens the per-cursor mini menu.
-    if (!state.playing) {
+    // Stays available during playback now that the cursor is independent of
+    // the playhead, so editing can continue while the sequence runs.
+    {
       const cursorBtn = document.createElement("button");
       cursorBtn.type = "button";
       cursorBtn.className = "cursor-action" + (state.chordMode ? " chord-mode" : "");
@@ -2196,10 +2219,9 @@
 
   // If the cursor has landed on a step in the input channel that already holds
   // a chord (≥ 2 notes), arm chord mode automatically so the user can edit it
-  // by tapping piano keys. Skipped during playback so the moving playhead
-  // doesn't flap into chord mode on every chord step.
+  // by tapping piano keys.
   function autoEnterChordIfOnChord() {
-    if (state.playing || state.chordMode) return;
+    if (state.chordMode) return;
     const channel = state.channels.find(c => c.id === state.activeChannelId);
     if (!channel || !isPolyPreset(channel.presetName)) return;
     const step = effectivePlacementStep();
@@ -3003,32 +3025,26 @@
     Tone.Transport.cancel(0);
   }
 
-  let prePlayCursor = null;
-
   function play() {
     Tone.start();
     if (state.playing) {
       // Fully stop (not just pause) so the transport position resets to 0 and
-      // the next play() can re-seek cleanly to state.cursor.
+      // the next play() can re-seek cleanly from the cursor.
       Tone.Transport.stop();
       teardownPlayback();
       state.playing = false;
+      state.playhead = null;
       playBtn.textContent = "PLAY";
       playBtn.dataset.state = "stopped";
-      if (prePlayCursor !== null) {
-        state.cursor = prePlayCursor;
-        prePlayCursor = null;
-      }
       renderGrid();
-      positionKnobFromCursor();
       return;
     }
     // Ensure a clean transport before we schedule the next run.
     Tone.Transport.stop();
     teardownPlayback();
 
-    prePlayCursor = state.cursor;
     state.playing = true;
+    state.playhead = state.cursor;
     playBtn.textContent = "PAUSE";
     playBtn.dataset.state = "playing";
 
@@ -3065,15 +3081,15 @@
     currentPart.loopEnd = totalSec;
     currentPart.start(0);
 
-    // Smooth cursor animation — updates the cursor display from the transport position.
+    // Smooth playhead animation — updates the playhead display from the transport
+    // position. The user's cursor is left alone so editing can continue.
     scheduledId = Tone.Transport.scheduleRepeat((time) => {
       Tone.Draw.schedule(() => {
-        // After pause/stop, drain any in-flight Draw callbacks instead of overwriting the cursor.
+        // After pause/stop, drain any in-flight Draw callbacks instead of overwriting state.
         if (!state.playing) return;
         const pos = Tone.Transport.seconds % totalSec;
-        state.cursor = pos / stepSec;
+        state.playhead = pos / stepSec;
         renderGrid();
-        positionKnobFromCursor();
       }, time);
     }, "32n");
 
@@ -3085,12 +3101,10 @@
     Tone.Transport.stop();
     teardownPlayback();
     state.playing = false;
+    state.playhead = null;
     playBtn.textContent = "PLAY";
     playBtn.dataset.state = "stopped";
-    state.cursor = 0;
-    prePlayCursor = null;
     renderGrid();
-    positionKnobFromCursor();
   }
   playBtn.addEventListener("click", play);
   stopBtn.addEventListener("click", stop);
