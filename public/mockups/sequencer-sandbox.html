@@ -351,6 +351,9 @@
     pointer-events: none;
     z-index: 1;
   }
+  .note-label.inside {
+    top: 2px;
+  }
   .note.playing .note-label {
     background: #fff;
     color: #1a1a1f;
@@ -1259,6 +1262,9 @@
       const label = document.createElement("span");
       label.className = "note-label";
       label.textContent = n.pitch;
+      // If there's no room above the note (it's right at the top of the grid),
+      // tuck the label inside the note instead of hanging it above where it'd be clipped.
+      if (n.step < 0.5) label.classList.add("inside");
       el.appendChild(label);
       el.style.left  = (colLeft + colIdx * colW + 2) + "px";
       el.style.width = (colW - 4) + "px";
