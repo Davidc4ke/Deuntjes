@@ -1711,6 +1711,7 @@
   defaultSizeEl.addEventListener("input", () => {
     state.defaultSize = SIZE_STEPS[parseInt(defaultSizeEl.value, 10)];
     defaultSizeValEl.textContent = formatSize(state.defaultSize);
+    renderGrid(); // keep the ghost preview in sync with the new default size
   });
   zoomEl.addEventListener("input", () => {
     state.keyboardZoom = parseInt(zoomEl.value, 10) / 100;
