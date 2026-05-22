@@ -383,6 +383,57 @@
     z-index: 2;
   }
 
+  /* Small ⋯ button next to the cursor line, gateway to per-cursor actions. */
+  .cursor-action {
+    position: absolute;
+    left: 2px;
+    width: 22px; height: 22px;
+    background: var(--cursor);
+    color: #fff;
+    border: 1px solid var(--cursor-strong);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 6;
+    display: flex; align-items: center; justify-content: center;
+    font: 700 14px var(--ui); line-height: 1;
+    padding: 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  }
+  .cursor-action:hover { background: var(--cursor-strong); }
+
+  /* Mini dropdown anchored to the cursor-action button. */
+  .cursor-menu {
+    position: fixed;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.12);
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+    padding: 4px;
+    z-index: 1000;
+    display: flex; flex-direction: column;
+    min-width: 140px;
+  }
+  .cursor-menu button {
+    appearance: none; background: transparent; border: none;
+    text-align: left;
+    padding: 8px 10px;
+    font: 600 13px var(--ui);
+    color: #1a1a1f;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .cursor-menu button:hover { background: rgba(0,0,0,0.05); }
+
+  /* Range selection box drawn in the input channel column. */
+  .range-box {
+    position: absolute;
+    background: rgba(107,95,217,0.12);
+    border: 2px solid var(--cursor);
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 2;
+  }
+
   /* Long-press charging animation */
   .note.charging {
     animation: chargeScale 450ms ease-out forwards;
@@ -1004,6 +1055,7 @@
     selectedId: null,
     multiSelect: false,
     selectedIds: new Set(),   // active in multi-select mode
+    rangeSelectAnchor: null,  // step where a range selection began (input channel only)
     clipboard: null,          // [{relStep, pitch, size}] anchored at top-most copied step
     playing: false,
     nextId: 1,
@@ -1191,6 +1243,69 @@
     refreshKeyHighlights();
   }
 
+  // ---------- Cursor mini-menu + range selection ----------
+  function openCursorMenu(e) {
+    e.stopPropagation();
+    closeCursorMenu();
+    const menu = document.createElement("div");
+    menu.className = "cursor-menu";
+    menu.id = "cursorMenu";
+
+    const selBtn = document.createElement("button");
+    selBtn.type = "button";
+    selBtn.textContent = state.rangeSelectAnchor === null ? "Selection" : "Cancel selection";
+    selBtn.addEventListener("click", () => {
+      closeCursorMenu();
+      if (state.rangeSelectAnchor === null) startRangeSelect();
+      else cancelRangeSelect();
+    });
+    menu.appendChild(selBtn);
+
+    const r = e.currentTarget.getBoundingClientRect();
+    menu.style.top = (r.bottom + 6) + "px";
+    menu.style.left = (r.left) + "px";
+    document.body.appendChild(menu);
+
+    setTimeout(() => {
+      document.addEventListener("pointerdown", function once(ev) {
+        if (!menu.contains(ev.target)) {
+          closeCursorMenu();
+          document.removeEventListener("pointerdown", once, true);
+        }
+      }, true);
+    }, 0);
+  }
+  function closeCursorMenu() {
+    const m = document.getElementById("cursorMenu");
+    if (m) m.remove();
+  }
+  function startRangeSelect() {
+    state.rangeSelectAnchor = state.cursor;
+    state.multiSelect = true;
+    state.selectedId = null;
+    state.selectedIds.clear();
+    updateRangeSelection();
+    renderGrid();
+    updateSelectedBar();
+  }
+  function cancelRangeSelect() {
+    state.rangeSelectAnchor = null;
+    state.multiSelect = false;
+    state.selectedIds.clear();
+    renderGrid();
+    updateSelectedBar();
+  }
+  function updateRangeSelection() {
+    if (state.rangeSelectAnchor === null) return;
+    const a = Math.min(state.rangeSelectAnchor, state.cursor);
+    const b = Math.max(state.rangeSelectAnchor, state.cursor);
+    state.selectedIds.clear();
+    state.notes.forEach(n => {
+      if (n.channelId !== state.activeChannelId) return;
+      if (n.step >= a && n.step <= b) state.selectedIds.add(n.id);
+    });
+  }
+
   // ---------- Grid render ----------
   function renderGrid() {
     gridEl.innerHTML = "";
@@ -1235,13 +1350,25 @@
       gridEl.appendChild(div);
     }
 
+    // ⋯ button next to the cursor line — opens the per-cursor mini menu.
+    if (!state.playing) {
+      const cursorBtn = document.createElement("button");
+      cursorBtn.type = "button";
+      cursorBtn.className = "cursor-action";
+      cursorBtn.textContent = "⋯";
+      cursorBtn.title = "Cursor actions";
+      cursorBtn.style.top = (state.cursor * rowH - 11) + "px";
+      cursorBtn.addEventListener("click", openCursorMenu);
+      gridEl.appendChild(cursorBtn);
+    }
+
     // Ghost note in the input channel column — previews where a key-press will land.
     const inputIdx = visibleChannels.findIndex(c => c.id === state.activeChannelId);
     if (inputIdx >= 0) {
       const inputCh = visibleChannels[inputIdx];
       const ghostStep = effectivePlacementStep();
       const ghostSize = Math.min(state.defaultSize, state.steps - ghostStep);
-      if (ghostSize > 0) {
+      if (ghostSize > 0 && state.rangeSelectAnchor === null) {
         const ghost = document.createElement("div");
         ghost.className = "cursor-ghost";
         ghost.style.left  = (colLeft + inputIdx * colW + 2) + "px";
@@ -1251,6 +1378,18 @@
         ghost.style.setProperty("--ch-color", inputCh.color);
         ghost.style.setProperty("--ch-edge", inputCh.edge);
         gridEl.appendChild(ghost);
+      }
+      // Range selection box in the input channel column.
+      if (state.rangeSelectAnchor !== null) {
+        const a = Math.min(state.rangeSelectAnchor, state.cursor);
+        const b = Math.max(state.rangeSelectAnchor, state.cursor);
+        const box = document.createElement("div");
+        box.className = "range-box";
+        box.style.left   = (colLeft + inputIdx * colW + 2) + "px";
+        box.style.width  = (colW - 4) + "px";
+        box.style.top    = (a * rowH) + "px";
+        box.style.height = Math.max(2, (b - a) * rowH) + "px";
+        gridEl.appendChild(box);
       }
     }
 
@@ -1436,6 +1575,7 @@
     state.multiSelect = false;
     state.selectedIds.clear();
     state.selectedId = null;
+    state.rangeSelectAnchor = null;
     renderGrid();
     updateSelectedBar();
   }
@@ -1611,6 +1751,7 @@
     state.activeChannelId = id;
     state.selectedId = null;
     if (state.multiSelect) { state.multiSelect = false; state.selectedIds.clear(); }
+    state.rangeSelectAnchor = null;
     applyActiveChannelStyle();
     renderChannelStrip();
     renderGrid();
@@ -1782,7 +1923,8 @@
     // Map the click's vertical position to a fractional step, then snap.
     const raw = (e.clientY - r.top) / rowH;
     state.cursor = snapCursor(raw);
-    if (!state.multiSelect) state.selectedId = null;
+    if (state.rangeSelectAnchor === null && !state.multiSelect) state.selectedId = null;
+    updateRangeSelection();
     renderGrid();
     positionKnobFromCursor();
     updateSelectedBar();
@@ -1823,6 +1965,7 @@
     const next = snapCursor(frac * state.steps);
     if (Math.abs(next - state.cursor) > 1e-6) {
       state.cursor = next;
+      updateRangeSelection();
       renderGrid();
       updateSelectedBar();
     }
