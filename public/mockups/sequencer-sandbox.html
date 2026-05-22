@@ -2006,7 +2006,9 @@
   function play() {
     Tone.start();
     if (state.playing) {
-      Tone.Transport.pause();
+      // Fully stop (not just pause) so the transport position resets to 0 and
+      // the next play() can re-seek cleanly to state.cursor.
+      Tone.Transport.stop();
       teardownPlayback();
       state.playing = false;
       playBtn.textContent = "PLAY";
@@ -2019,12 +2021,14 @@
       positionKnobFromCursor();
       return;
     }
+    // Ensure a clean transport before we schedule the next run.
+    Tone.Transport.stop();
+    teardownPlayback();
+
     prePlayCursor = state.cursor;
     state.playing = true;
     playBtn.textContent = "PAUSE";
     playBtn.dataset.state = "playing";
-
-    teardownPlayback();
 
     const stepSec = Tone.Time(stepTime).toSeconds();
     const totalSec = state.steps * stepSec;
