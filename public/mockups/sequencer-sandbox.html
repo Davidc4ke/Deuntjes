@@ -354,6 +354,11 @@
   .note-label.inside {
     top: 2px;
   }
+  .note-label.will-overwrite {
+    background: var(--cursor);
+    color: #fff;
+    border-color: var(--cursor-strong);
+  }
   .note.playing .note-label {
     background: #fff;
     color: #1a1a1f;
@@ -1265,6 +1270,11 @@
       // If there's no room above the note (it's right at the top of the grid),
       // tuck the label inside the note instead of hanging it above where it'd be clipped.
       if (n.step < 0.5) label.classList.add("inside");
+      // Flag the note that a piano-tap would overwrite (same input channel + same step as the cursor).
+      const cursorStep = Math.min(state.cursor, state.steps - 1);
+      if (n.channelId === state.activeChannelId && Math.abs(n.step - cursorStep) < 1e-6) {
+        label.classList.add("will-overwrite");
+      }
       el.appendChild(label);
       el.style.left  = (colLeft + colIdx * colW + 2) + "px";
       el.style.width = (colW - 4) + "px";
