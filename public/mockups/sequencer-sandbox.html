@@ -2646,10 +2646,15 @@
         };
         renderPresetButtons(); // refresh active marker
         disposeChannelSynth(ch.id);
-        getSynth(ch.id);
+        const newSynth = getSynth(ch.id);
         // Mono preset can't sustain chords — bail out of chord mode if it was open.
         if (state.chordMode && !isPolyPreset(value)) exitChordMode();
         syncInsPopup();
+        // Quick preview so the user hears what they just picked.
+        if (newSynth) {
+          Tone.start();
+          triggerSynth(newSynth, "C4", "8n");
+        }
       }
       else if (group === "scaleOn") { state.scaleOn = value === "1"; refreshKeyHighlights(); }
       else if (group === "root") { state.scaleRoot = value; refreshKeyHighlights(); }
