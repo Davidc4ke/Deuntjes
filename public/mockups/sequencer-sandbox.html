@@ -171,14 +171,15 @@
     appearance: none;
     background: transparent;
     color: var(--stage-text-mute);
-    border: 1px dashed rgba(0,0,0,0.22);
+    border: 1px solid rgba(0,0,0,0.18);
     border-radius: 999px;
-    font: 700 14px var(--ui);
     cursor: pointer;
     padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
     white-space: nowrap;
   }
-  .channel-col-add:hover { background: rgba(0,0,0,0.04); }
+  .channel-col-add:hover { background: rgba(0,0,0,0.06); color: #4a4a4a; }
+  .channel-col-add svg { width: 18px; height: 18px; display: block; }
 
   /* Channels popup card list */
   .channel-list { display: grid; gap: 10px; margin-bottom: 14px; }
@@ -1787,8 +1788,9 @@
     const addBtn = document.createElement("button");
     addBtn.type = "button";
     addBtn.className = "channel-col-add";
-    addBtn.textContent = "+";
     addBtn.setAttribute("title", "Channels");
+    addBtn.setAttribute("aria-label", "Channel settings");
+    addBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
     addBtn.addEventListener("click", openChannelsPopup);
     cont.appendChild(addBtn);
   }
