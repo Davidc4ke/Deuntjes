@@ -858,7 +858,6 @@
         <div class="col-left">
           <!-- Settings chips -->
           <div class="chip-row">
-            <button class="chip settings" data-popup="sqc" type="button">Sqc</button>
             <button class="chip settings" data-popup="ins" type="button">Ins</button>
           </div>
 
@@ -1269,6 +1268,15 @@
       else cancelRangeSelect();
     });
     menu.appendChild(selBtn);
+
+    const settingsBtn = document.createElement("button");
+    settingsBtn.type = "button";
+    settingsBtn.textContent = "Settings";
+    settingsBtn.addEventListener("click", () => {
+      closeCursorMenu();
+      openSequencerPopup();
+    });
+    menu.appendChild(settingsBtn);
 
     const r = e.currentTarget.getBoundingClientRect();
     menu.style.top = (r.bottom + 6) + "px";
@@ -1700,6 +1708,10 @@
   function openChannelsPopup() {
     renderChannelList();
     document.querySelectorAll(".popup").forEach(p => p.classList.toggle("hidden", p.dataset.name !== "channels"));
+    $("popupLayer").classList.remove("hidden");
+  }
+  function openSequencerPopup() {
+    document.querySelectorAll(".popup").forEach(p => p.classList.toggle("hidden", p.dataset.name !== "sqc"));
     $("popupLayer").classList.remove("hidden");
   }
 
