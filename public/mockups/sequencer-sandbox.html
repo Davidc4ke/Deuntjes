@@ -671,9 +671,21 @@
   }
   .stack-nav button:hover { background: rgba(255,255,255,0.4); }
   .stack-nav button.active {
-    background: var(--cursor);
+    background: var(--stack-c, var(--cursor));
     transform: scale(1.4);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--stack-c, var(--cursor)) 25%, transparent);
   }
+  /* Each stack gets its own accent colour — picked up by the active dot,
+     the stack label, and the pill borders so it's immediately clear which
+     section you're on. */
+  .stack[data-stack="edit"],
+  .stack-nav button[data-stack="edit"]  { --stack-c: #6b5fd9; }  /* cursor purple */
+  .stack[data-stack="voice"],
+  .stack-nav button[data-stack="voice"] { --stack-c: #e9925c; }  /* warm coral */
+  .stack[data-stack="eq"],
+  .stack-nav button[data-stack="eq"]    { --stack-c: #5cd3c6; }  /* mint teal */
+  .stack[data-stack="fx"],
+  .stack-nav button[data-stack="fx"]    { --stack-c: #c47ccf; }  /* magenta */
   .stack-scroller {
     overflow-y: auto;
     overflow-x: hidden;
@@ -698,8 +710,20 @@
     font: 700 9px var(--ui);
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.45);
+    color: var(--stack-c, rgba(255,255,255,0.45));
+    opacity: 0.85;
     padding: 0 2px;
+  }
+  /* Tint pill borders + chip outlines with the stack's accent so each
+     section's row looks visually distinct. Subtle — backgrounds stay dark. */
+  .stack .param-pill {
+    border-color: color-mix(in srgb, var(--stack-c, rgba(255,255,255,0.10)) 35%, rgba(255,255,255,0.10));
+  }
+  .stack .param-pill:hover {
+    background: color-mix(in srgb, var(--stack-c, rgba(255,255,255,0.10)) 12%, rgba(255,255,255,0.06));
+  }
+  .stack[data-stack="edit"] .chip:not(.primary):not(.danger):not(:disabled) {
+    border-color: color-mix(in srgb, var(--stack-c) 35%, rgba(255,255,255,0.08));
   }
   .stack-row {
     display: flex; gap: 6px; align-items: center;
@@ -3665,12 +3689,14 @@
   // of dots on the left mirrors which stack is currently in view AND lets
   // the user jump directly to a stack by tapping a dot.
   function activeStackEl() {
+    // Use the visual position of each stack vs the scroller — offsetTop
+    // is relative to the nearest positioned ancestor which may not be the
+    // scroller, so it gives stale values during snap scrolling.
     const stacks = [...stackScroller.querySelectorAll(".stack")];
-    const scrollTop = stackScroller.scrollTop;
-    // Pick the stack whose top is closest to the scroll position.
+    const scrollerTop = stackScroller.getBoundingClientRect().top;
     let best = stacks[0], bestDiff = Infinity;
     stacks.forEach(s => {
-      const diff = Math.abs(s.offsetTop - scrollTop);
+      const diff = Math.abs(s.getBoundingClientRect().top - scrollerTop);
       if (diff < bestDiff) { bestDiff = diff; best = s; }
     });
     return best;
