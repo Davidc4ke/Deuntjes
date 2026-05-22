@@ -1653,7 +1653,12 @@
     }
     state.selectedId = id;
     const n = state.notes.find(x => x.id === id);
-    if (n) { previewNote(n); flashKey(n.pitch); }
+    if (n) {
+      state.cursor = n.step;
+      positionKnobFromCursor();
+      previewNote(n);
+      flashKey(n.pitch);
+    }
     renderGrid();
     updateSelectedBar();
   }
