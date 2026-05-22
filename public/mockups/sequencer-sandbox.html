@@ -1941,6 +1941,14 @@
       sustain: effectiveProp(n, "sustain"),
       release: effectiveProp(n, "release"),
     });
+    // Apply this note's effective EQ + FX to the channel's chain so the
+    // preview reflects per-note overrides. Channel defaults are used for
+    // bands / effects the note hasn't customised.
+    const chain = channelChains[n.channelId];
+    if (chain) {
+      applyChannelEQ(chain, effectiveEQ(n));
+      applyChannelFX(chain, effectiveFX(n));
+    }
     triggerSynth(s, n.pitch, "8n", undefined, effectiveProp(n, "volume"));
   }
 
@@ -2976,6 +2984,36 @@
     if (prop === "volume") return ch.volume ?? 0.8;
     return ch.adsr[prop];
   }
+  // EQ / FX per-note overrides. Each band / effect parameter can be
+  // individually overridden on a note; everything else falls back to the
+  // channel default. Returns a fully-populated object ready to hand to
+  // applyChannelEQ / applyChannelFX.
+  function effectiveEQ(note) {
+    const ch = state.channels.find(c => c.id === note.channelId);
+    const chEQ = ch ? ch.eq : defaultEQ();
+    if (!note.eq) return chEQ;
+    return {
+      low:  note.eq.low  ?? chEQ.low,
+      mid:  note.eq.mid  ?? chEQ.mid,
+      high: note.eq.high ?? chEQ.high,
+    };
+  }
+  function effectiveFX(note) {
+    const ch = state.channels.find(c => c.id === note.channelId);
+    const chFX = ch ? ch.fx : defaultFX();
+    if (!note.fx) return chFX;
+    const out = {};
+    for (const e of ["reverb", "delay", "chorus", "distortion"]) {
+      if (!note.fx[e]) { out[e] = chFX[e]; continue; }
+      out[e] = { ...chFX[e] };
+      for (const k in note.fx[e]) {
+        if (note.fx[e][k] !== undefined) out[e][k] = note.fx[e][k];
+      }
+    }
+    return out;
+  }
+  function effectiveEQVal(note, band) { return effectiveEQ(note)[band]; }
+  function effectiveFXVal(note, fx, prop) { return effectiveFX(note)[fx][prop]; }
   function formatAdsr(v) { return Number(v).toFixed(2).replace(/^0\./, "."); }
   function formatVol(v)  { return Math.round(Number(v) * 100) + "%"; }
   function syncParamPills() {
@@ -3006,19 +3044,32 @@
     setPill(rVal,   "release", formatAdsr);
     syncEqFxPills();
   }
-  // Mirror the active channel's EQ + FX state onto the bottom-bar pills.
+  // Mirror EQ + FX state onto the bottom-bar pills. With a selection we
+  // show the selected note's effective values ("mixed" if multi-select
+  // notes disagree); without selection we fall back to channel defaults.
   function syncEqFxPills() {
+    const sel = selectedNotes();
     const ch = activeChannel();
     ensureChannelDefaults(ch);
-    const fmtDb = (v) => (v > 0 ? "+" : "") + v.toFixed(1).replace(/\.0$/, "");
-    const fmtPct = (v) => Math.round(v * 100) + "%";
-    eqLowPill.textContent  = fmtDb(ch.eq.low);
-    eqMidPill.textContent  = fmtDb(ch.eq.mid);
-    eqHighPill.textContent = fmtDb(ch.eq.high);
-    reverbPill.textContent = fmtPct(ch.fx.reverb.wet);
-    delayPill.textContent  = fmtPct(ch.fx.delay.wet);
-    chorusPill.textContent = fmtPct(ch.fx.chorus.wet);
-    distPill.textContent   = fmtPct(ch.fx.distortion.wet);
+    const fmtDbLocal = (v) => (v > 0 ? "+" : "") + v.toFixed(1).replace(/\.0$/, "");
+    const fmtPctLocal = (v) => Math.round(v * 100) + "%";
+    const eqVal = (band) => {
+      if (sel.length === 0) return fmtDbLocal(ch.eq[band]);
+      const vals = new Set(sel.map(n => effectiveEQVal(n, band).toFixed(4)));
+      return vals.size === 1 ? fmtDbLocal(effectiveEQVal(sel[0], band)) : "mixed";
+    };
+    const fxVal = (key) => {
+      if (sel.length === 0) return fmtPctLocal(ch.fx[key].wet);
+      const vals = new Set(sel.map(n => effectiveFXVal(n, key, "wet").toFixed(4)));
+      return vals.size === 1 ? fmtPctLocal(effectiveFXVal(sel[0], key, "wet")) : "mixed";
+    };
+    eqLowPill.textContent  = eqVal("low");
+    eqMidPill.textContent  = eqVal("mid");
+    eqHighPill.textContent = eqVal("high");
+    reverbPill.textContent = fxVal("reverb");
+    delayPill.textContent  = fxVal("delay");
+    chorusPill.textContent = fxVal("chorus");
+    distPill.textContent   = fxVal("distortion");
   }
 
   function openParamPopover(pillEl, paramName) {
@@ -3031,44 +3082,62 @@
     if (paramName.startsWith("eq-") || paramName.startsWith("fx-")) {
       const ch = activeChannel();
       ensureChannelDefaults(ch);
+      // With a selection, EQ + FX changes write per-note overrides (just
+      // like Vol/ADSR pills). Without a selection they update the channel
+      // default. The seed value mirrors that: selected note's effective
+      // value, else channel default.
       if (paramName === "eq-low" || paramName === "eq-mid" || paramName === "eq-high") {
         const band = paramName.slice(3);
         label = "EQ · " + band[0].toUpperCase() + band.slice(1);
         min = -18; max = 18; step = 0.5;
-        value = ch.eq[band];
+        value = sel.length ? effectiveEQVal(sel[0], band) : ch.eq[band];
         fmt = (v) => fmtDb(+v) + " dB";
         onChange = (v) => {
           beginSliderSession(pillEl);
-          ch.eq[band] = parseFloat(v);
-          applyChannelEQ(channelChains[ch.id], ch.eq);
-          syncEqFxPills();
-          if (ch.eq[band] === +eqLowEl.value || true) {
-            // Mirror into popup sliders if it's open.
+          const num = parseFloat(v);
+          const targets = selectedNotes();
+          if (targets.length > 0) {
+            targets.forEach(n => {
+              if (!n.eq) n.eq = {};
+              n.eq[band] = num;
+            });
+          } else {
+            ch.eq[band] = num;
+            applyChannelEQ(channelChains[ch.id], ch.eq);
+            // Mirror into popup sliders.
             if (band === "low")  { eqLowEl.value  = ch.eq.low;  eqLowV.textContent  = fmtDb(ch.eq.low); }
             if (band === "mid")  { eqMidEl.value  = ch.eq.mid;  eqMidV.textContent  = fmtDb(ch.eq.mid); }
             if (band === "high") { eqHighEl.value = ch.eq.high; eqHighV.textContent = fmtDb(ch.eq.high); }
           }
-          scheduleAdsrPreview();
+          syncEqFxPills();
         };
       } else {
-        // fx-reverb / fx-delay / fx-chorus / fx-distortion → control wet
+        // fx-reverb / fx-delay / fx-chorus / fx-distortion → wet
         const key = paramName.slice(3);
         const niceName = { reverb: "Reverb", delay: "Delay", chorus: "Chorus", distortion: "Distortion" }[key];
         label = niceName + " · Wet";
         min = 0; max = 1; step = 0.01;
-        value = ch.fx[key].wet;
+        value = sel.length ? effectiveFXVal(sel[0], key, "wet") : ch.fx[key].wet;
         fmt = (v) => fmtPct(+v);
         onChange = (v) => {
           beginSliderSession(pillEl);
-          ch.fx[key].wet = parseFloat(v);
-          applyChannelFX(channelChains[ch.id], ch.fx);
+          const num = parseFloat(v);
+          const targets = selectedNotes();
+          if (targets.length > 0) {
+            targets.forEach(n => {
+              if (!n.fx) n.fx = {};
+              if (!n.fx[key]) n.fx[key] = {};
+              n.fx[key].wet = num;
+            });
+          } else {
+            ch.fx[key].wet = num;
+            applyChannelFX(channelChains[ch.id], ch.fx);
+            const popEl = { reverb: reverbWetEl, delay: delayWetEl, chorus: chorusWetEl, distortion: distWetEl }[key];
+            const popV  = { reverb: reverbWetV,  delay: delayWetV,  chorus: chorusWetV,  distortion: distWetV  }[key];
+            if (popEl) popEl.value = ch.fx[key].wet;
+            if (popV)  popV.textContent = fmtPct(ch.fx[key].wet);
+          }
           syncEqFxPills();
-          // Mirror into popup sliders if it's open.
-          const popEl = { reverb: reverbWetEl, delay: delayWetEl, chorus: chorusWetEl, distortion: distWetEl }[key];
-          const popV  = { reverb: reverbWetV,  delay: delayWetV,  chorus: chorusWetV,  distortion: distWetV  }[key];
-          if (popEl) popEl.value = ch.fx[key].wet;
-          if (popV)  popV.textContent = fmtPct(ch.fx[key].wet);
-          scheduleAdsrPreview();
         };
       }
     } else if (paramName === "len") {
@@ -3666,6 +3735,15 @@
           sustain: effectiveProp(n, "sustain"),
           release: effectiveProp(n, "release"),
         });
+        // Per-note EQ + FX overrides routed via the channel's chain. With
+        // overlapping notes that have different overrides this can crackle
+        // because the chain state is shared — acceptable trade-off for the
+        // mockup; production would use per-voice chains.
+        const chain = channelChains[n.channelId];
+        if (chain) {
+          applyChannelEQ(chain, effectiveEQ(n));
+          applyChannelFX(chain, effectiveFX(n));
+        }
         triggerSynth(s, n.pitch, dur, time, effectiveProp(n, "volume"));
       }
       Tone.Draw.schedule(() => {
