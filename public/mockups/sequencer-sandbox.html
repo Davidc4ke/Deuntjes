@@ -640,7 +640,77 @@
     gap: 12px;
     min-height: 132px;
   }
-  .bottom .col-left { display: grid; gap: 8px; align-content: start; }
+  .bottom .col-left {
+    display: grid;
+    grid-template-columns: 14px 1fr;
+    gap: 10px;
+    align-items: stretch;
+    min-width: 0;
+  }
+
+  /* ---- Stack scroller ---- */
+  /* col-left holds 4 "stacks" of pills/chips stacked vertically. Only one
+     is visible at a time; the user swipes vertically to snap between them.
+     A small column of dots on the left mirrors the current stack and
+     doubles as tap-to-jump nav. */
+  .stack-nav {
+    display: flex; flex-direction: column;
+    gap: 12px;
+    justify-content: center; align-items: center;
+    height: 100%;
+  }
+  .stack-nav button {
+    appearance: none;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.22);
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    transition: background 120ms, transform 120ms;
+  }
+  .stack-nav button:hover { background: rgba(255,255,255,0.4); }
+  .stack-nav button.active {
+    background: var(--cursor);
+    transform: scale(1.4);
+  }
+  .stack-scroller {
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-snap-type: y mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    height: 108px;
+    min-width: 0;
+  }
+  .stack-scroller::-webkit-scrollbar { display: none; }
+  .stack {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    min-height: 108px;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 6px;
+    padding: 6px 0;
+    box-sizing: border-box;
+  }
+  .stack-label {
+    font: 700 9px var(--ui);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.45);
+    padding: 0 2px;
+  }
+  .stack-row {
+    display: flex; gap: 6px; align-items: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    min-width: 0;
+  }
+  .stack-row::-webkit-scrollbar { display: none; }
+  .stack-row > * { flex-shrink: 0; }
 
   /* Chips — small unified button used in both rows */
   .chip {
@@ -963,6 +1033,61 @@
     background: rgba(255,255,255,0.9);
   }
 
+  /* Tab strip at the top of the Instrument popup. */
+  .ins-tabs {
+    display: flex; gap: 4px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 0;
+  }
+  .ins-tab {
+    appearance: none; background: transparent;
+    color: var(--bar-text-mute);
+    border: 0;
+    padding: 8px 14px;
+    font: 700 11px var(--ui); letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .ins-tab:hover { color: #fff; }
+  .ins-tab.active {
+    color: #fff;
+    border-bottom-color: var(--accent);
+  }
+  .ins-tab-pane.hidden { display: none; }
+
+  /* Preset tab: presets grouped by category with a small label above each group. */
+  .preset-group { margin-bottom: 14px; }
+  .preset-group:last-child { margin-bottom: 0; }
+  .preset-group-label {
+    font: 700 9px var(--ui);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--bar-text-mute);
+    margin-bottom: 6px;
+  }
+
+  /* FX tab: one card per effect with a heading. */
+  .fx-section {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+  }
+  .fx-section:last-child { margin-bottom: 0; }
+  .fx-section h4 {
+    margin: 0 0 10px;
+    font: 700 11px var(--ui);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .fx-section .field { margin-bottom: 10px; }
+  .fx-section .field:last-child { margin-bottom: 0; }
+
   /* In-scale key dot */
   .key.in-scale::after {
     content: ""; position: absolute;
@@ -1047,29 +1172,58 @@
       <!-- bottom bar -->
       <div class="bottom">
         <div class="col-left">
-          <!-- Settings chips -->
-          <div class="chip-row"></div>
-
-          <!-- Value pills (visible whenever something is selected) -->
-          <div class="params-row hidden" id="paramsRow">
-            <button class="param-pill" data-param="vol" type="button">Vol <span class="val" id="volVal">80%</span></button>
-            <button class="param-pill" data-param="len" type="button">Len <span class="val" id="lenVal">1×</span></button>
-            <button class="param-pill" data-param="a"   type="button">A <span class="val" id="aVal">.02</span></button>
-            <button class="param-pill" data-param="d"   type="button">D <span class="val" id="dVal">.15</span></button>
-            <button class="param-pill" data-param="s"   type="button">S <span class="val" id="sVal">.70</span></button>
-            <button class="param-pill" data-param="r"   type="button">R <span class="val" id="rVal">.40</span></button>
+          <div class="stack-nav" id="stackNav">
+            <button data-stack="edit"  class="active" type="button" aria-label="Edit"></button>
+            <button data-stack="voice" type="button" aria-label="Voice"></button>
+            <button data-stack="eq"    type="button" aria-label="EQ"></button>
+            <button data-stack="fx"    type="button" aria-label="FX"></button>
           </div>
-
-          <!-- Quick actions -->
-          <div class="chip-row" id="actionsRow">
-            <button class="chip" id="undoBtn" type="button" disabled>Undo</button>
-            <button class="chip" id="redoBtn" type="button" disabled>Redo</button>
-            <button class="chip primary hidden" id="pasteBtn" type="button">Paste</button>
-            <button class="chip hidden" id="moveBtn" type="button">Move 02</button>
-            <button class="chip hidden" id="copyBtn" type="button">Copy</button>
-            <button class="chip danger hidden" id="deleteBtn" type="button">Delete</button>
-            <button class="chip danger hidden" id="multiDeleteBtn" type="button">Delete</button>
-            <button class="chip hidden" id="doneBtn" type="button">Reset</button>
+          <div class="stack-scroller" id="stackScroller">
+            <!-- Stack 1: Edit — undo/redo + selection actions -->
+            <div class="stack" data-stack="edit">
+              <div class="stack-label">Edit</div>
+              <div class="stack-row chip-row" id="actionsRow">
+                <button class="chip" id="undoBtn" type="button" disabled>Undo</button>
+                <button class="chip" id="redoBtn" type="button" disabled>Redo</button>
+                <button class="chip primary hidden" id="pasteBtn" type="button">Paste</button>
+                <button class="chip hidden" id="moveBtn" type="button">Move 02</button>
+                <button class="chip hidden" id="copyBtn" type="button">Copy</button>
+                <button class="chip danger hidden" id="deleteBtn" type="button">Delete</button>
+                <button class="chip danger hidden" id="multiDeleteBtn" type="button">Delete</button>
+                <button class="chip hidden" id="doneBtn" type="button">Reset</button>
+              </div>
+            </div>
+            <!-- Stack 2: Voice — vol + ADSR pills -->
+            <div class="stack" data-stack="voice">
+              <div class="stack-label">Voice</div>
+              <div class="stack-row params-row" id="paramsRow">
+                <button class="param-pill" data-param="vol" type="button">Vol <span class="val" id="volVal">80%</span></button>
+                <button class="param-pill" data-param="len" type="button">Len <span class="val" id="lenVal">1×</span></button>
+                <button class="param-pill" data-param="a"   type="button">A <span class="val" id="aVal">.02</span></button>
+                <button class="param-pill" data-param="d"   type="button">D <span class="val" id="dVal">.15</span></button>
+                <button class="param-pill" data-param="s"   type="button">S <span class="val" id="sVal">.70</span></button>
+                <button class="param-pill" data-param="r"   type="button">R <span class="val" id="rVal">.40</span></button>
+              </div>
+            </div>
+            <!-- Stack 3: EQ -->
+            <div class="stack" data-stack="eq">
+              <div class="stack-label">EQ</div>
+              <div class="stack-row params-row">
+                <button class="param-pill" data-param="eq-low"  type="button">Lo <span class="val" id="eqLowPill">+0</span></button>
+                <button class="param-pill" data-param="eq-mid"  type="button">Mid <span class="val" id="eqMidPill">+0</span></button>
+                <button class="param-pill" data-param="eq-high" type="button">Hi <span class="val" id="eqHighPill">+0</span></button>
+              </div>
+            </div>
+            <!-- Stack 4: FX -->
+            <div class="stack" data-stack="fx">
+              <div class="stack-label">FX</div>
+              <div class="stack-row params-row">
+                <button class="param-pill" data-param="fx-reverb"     type="button">Rev <span class="val" id="reverbPill">0%</span></button>
+                <button class="param-pill" data-param="fx-delay"      type="button">Dly <span class="val" id="delayPill">0%</span></button>
+                <button class="param-pill" data-param="fx-chorus"     type="button">Cho <span class="val" id="chorusPill">0%</span></button>
+                <button class="param-pill" data-param="fx-distortion" type="button">Dst <span class="val" id="distPill">0%</span></button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="transport">
@@ -1105,32 +1259,91 @@
 
         <div class="popup hidden" data-name="ins">
           <header class="popup-header">
-            <h3>Instrument</h3>
+            <h3>Instrument <span class="val" style="font-weight:500; text-transform:none; letter-spacing:0; color: var(--bar-text-mute);">active channel</span></h3>
             <button class="popup-close" type="button">Done</button>
           </header>
-          <div class="field">
-            <label>Preset <span class="val" style="font-weight:500; text-transform:none; letter-spacing:0; color: var(--bar-text-mute);">for active channel</span></label>
-            <div class="seg seg-presets" data-group="instrument" id="presetSeg"></div>
+          <div class="ins-tabs" id="insTabs">
+            <button data-tab="inst"  class="ins-tab active" type="button">Preset</button>
+            <button data-tab="voice" class="ins-tab" type="button">Voice</button>
+            <button data-tab="eq"    class="ins-tab" type="button">EQ</button>
+            <button data-tab="fx"    class="ins-tab" type="button">FX</button>
           </div>
-          <div class="field">
-            <label>Volume <span class="val" id="volumeV">0.80</span></label>
-            <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8">
+
+          <div class="ins-tab-pane" data-pane="inst">
+            <div id="presetGroups"></div>
           </div>
-          <div class="field">
-            <label>Attack <span class="val" id="attackV">0.02</span></label>
-            <input type="range" id="attack" min="0" max="1" step="0.01" value="0.02">
+
+          <div class="ins-tab-pane hidden" data-pane="voice">
+            <div class="field">
+              <label>Volume <span class="val" id="volumeV">0.80</span></label>
+              <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8">
+            </div>
+            <div class="field">
+              <label>Attack <span class="val" id="attackV">0.02</span></label>
+              <input type="range" id="attack" min="0" max="1" step="0.01" value="0.02">
+            </div>
+            <div class="field">
+              <label>Decay <span class="val" id="decayV">0.15</span></label>
+              <input type="range" id="decay" min="0" max="1" step="0.01" value="0.15">
+            </div>
+            <div class="field">
+              <label>Sustain <span class="val" id="sustainV">0.70</span></label>
+              <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.7">
+            </div>
+            <div class="field">
+              <label>Release <span class="val" id="releaseV">0.40</span></label>
+              <input type="range" id="release" min="0" max="2" step="0.01" value="0.4">
+            </div>
           </div>
-          <div class="field">
-            <label>Decay <span class="val" id="decayV">0.15</span></label>
-            <input type="range" id="decay" min="0" max="1" step="0.01" value="0.15">
+
+          <div class="ins-tab-pane hidden" data-pane="eq">
+            <div class="field">
+              <label>Low <span class="val" id="eqLowV">+0.0 dB</span></label>
+              <input type="range" id="eqLow" min="-18" max="18" step="0.5" value="0">
+            </div>
+            <div class="field">
+              <label>Mid <span class="val" id="eqMidV">+0.0 dB</span></label>
+              <input type="range" id="eqMid" min="-18" max="18" step="0.5" value="0">
+            </div>
+            <div class="field">
+              <label>High <span class="val" id="eqHighV">+0.0 dB</span></label>
+              <input type="range" id="eqHigh" min="-18" max="18" step="0.5" value="0">
+            </div>
           </div>
-          <div class="field">
-            <label>Sustain <span class="val" id="sustainV">0.70</span></label>
-            <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.7">
-          </div>
-          <div class="field">
-            <label>Release <span class="val" id="releaseV">0.40</span></label>
-            <input type="range" id="release" min="0" max="2" step="0.01" value="0.4">
+
+          <div class="ins-tab-pane hidden" data-pane="fx">
+            <div class="fx-section">
+              <h4>Reverb</h4>
+              <div class="field"><label>Wet <span class="val" id="reverbWetV">0%</span></label>
+                <input type="range" id="reverbWet" min="0" max="1" step="0.01" value="0"></div>
+              <div class="field"><label>Decay <span class="val" id="reverbDecayV">1.5 s</span></label>
+                <input type="range" id="reverbDecay" min="0.1" max="6" step="0.1" value="1.5"></div>
+            </div>
+            <div class="fx-section">
+              <h4>Delay</h4>
+              <div class="field"><label>Wet <span class="val" id="delayWetV">0%</span></label>
+                <input type="range" id="delayWet" min="0" max="1" step="0.01" value="0"></div>
+              <div class="field"><label>Time <span class="val" id="delayTimeV">.25 s</span></label>
+                <input type="range" id="delayTime" min="0.01" max="1" step="0.01" value="0.25"></div>
+              <div class="field"><label>Feedback <span class="val" id="delayFbV">30%</span></label>
+                <input type="range" id="delayFb" min="0" max="0.9" step="0.01" value="0.3"></div>
+            </div>
+            <div class="fx-section">
+              <h4>Chorus</h4>
+              <div class="field"><label>Wet <span class="val" id="chorusWetV">0%</span></label>
+                <input type="range" id="chorusWet" min="0" max="1" step="0.01" value="0"></div>
+              <div class="field"><label>Rate <span class="val" id="chorusFreqV">1.5 Hz</span></label>
+                <input type="range" id="chorusFreq" min="0.1" max="10" step="0.1" value="1.5"></div>
+              <div class="field"><label>Depth <span class="val" id="chorusDepthV">0.70</span></label>
+                <input type="range" id="chorusDepth" min="0" max="1" step="0.01" value="0.7"></div>
+            </div>
+            <div class="fx-section">
+              <h4>Distortion</h4>
+              <div class="field"><label>Wet <span class="val" id="distWetV">0%</span></label>
+                <input type="range" id="distWet" min="0" max="1" step="0.01" value="0"></div>
+              <div class="field"><label>Amount <span class="val" id="distAmtV">0.40</span></label>
+                <input type="range" id="distAmt" min="0" max="1" step="0.01" value="0.4"></div>
+            </div>
           </div>
         </div>
 
@@ -1265,6 +1478,13 @@
     "kick", "808", "snare", "clap", "hat", "ohat", "tom", "perc", "rim", "crash", "ride",
     "riser", "fx",
   ];
+  // Grouped view of PRESET_ORDER for the Preset tab in the Instrument popup.
+  const PRESET_CATEGORIES = [
+    { label: "Mono melodic", presets: ["bass","lead","pluck","sub","acid","reese"] },
+    { label: "Poly melodic", presets: ["pad","keys","bell","marimba","organ","strings","choir"] },
+    { label: "Drums",        presets: ["kick","808","snare","clap","hat","ohat","tom","perc","rim","crash","ride"] },
+    { label: "FX",           presets: ["riser","fx"] },
+  ];
   function isPolyPreset(name) { return !!(PRESETS[name] && PRESETS[name].poly); }
   function activePresetIsPoly() { return isPolyPreset(activeChannel().presetName); }
 
@@ -1282,6 +1502,34 @@
     if (size === 0.25) return "¼";
     if (size === 0.5)  return "½";
     return String(size);
+  }
+
+  // Channel-level EQ + FX defaults. Both start fully dry (wet=0) so a new
+  // channel sounds exactly like before, and the user only hears effects once
+  // they turn the wet knob up. The 3-band EQ defaults to flat (0 dB on all).
+  function defaultEQ() { return { low: 0, mid: 0, high: 0 }; }
+  function defaultFX() {
+    return {
+      reverb:     { wet: 0, decay: 1.5 },
+      delay:      { wet: 0, time: 0.25, feedback: 0.3 },
+      chorus:     { wet: 0, freq: 1.5, depth: 0.7 },
+      distortion: { wet: 0, amount: 0.4 },
+    };
+  }
+  // Fills in any missing eq/fx fields on a channel object (e.g. ones restored
+  // from a snapshot created before these existed, or returned from clone).
+  function ensureChannelDefaults(ch) {
+    if (!ch.eq) ch.eq = defaultEQ();
+    else { const d = defaultEQ(); for (const k in d) if (ch.eq[k] === undefined) ch.eq[k] = d[k]; }
+    if (!ch.fx) ch.fx = defaultFX();
+    else {
+      const d = defaultFX();
+      for (const e of ["reverb","delay","chorus","distortion"]) {
+        if (!ch.fx[e]) ch.fx[e] = d[e];
+        else for (const k in d[e]) if (ch.fx[e][k] === undefined) ch.fx[e][k] = d[e][k];
+      }
+    }
+    return ch;
   }
 
   const state = {
@@ -1305,10 +1553,10 @@
     scaleRoot: "C",
     scaleType: "major",
     channels: [
-      { id: 1, name: "Bass",  color: CHANNEL_PALETTE[0].color, edge: CHANNEL_PALETTE[0].edge, presetName: "bass",  muted: false, volume: 0.8, adsr: { attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  } },
-      { id: 2, name: "Drum",  color: CHANNEL_PALETTE[1].color, edge: CHANNEL_PALETTE[1].edge, presetName: "pluck", muted: false, volume: 0.8, adsr: { attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 } },
-      { id: 3, name: "Lead",  color: CHANNEL_PALETTE[2].color, edge: CHANNEL_PALETTE[2].edge, presetName: "lead",  muted: false, volume: 0.8, adsr: { attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  } },
-      { id: 4, name: "Chord", color: CHANNEL_PALETTE[3].color, edge: CHANNEL_PALETTE[3].edge, presetName: "pad",   muted: false, volume: 0.8, adsr: { attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  } },
+      { id: 1, name: "Bass",  color: CHANNEL_PALETTE[0].color, edge: CHANNEL_PALETTE[0].edge, presetName: "bass",  muted: false, volume: 0.8, adsr: { attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  }, eq: defaultEQ(), fx: defaultFX() },
+      { id: 2, name: "Drum",  color: CHANNEL_PALETTE[1].color, edge: CHANNEL_PALETTE[1].edge, presetName: "pluck", muted: false, volume: 0.8, adsr: { attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 }, eq: defaultEQ(), fx: defaultFX() },
+      { id: 3, name: "Lead",  color: CHANNEL_PALETTE[2].color, edge: CHANNEL_PALETTE[2].edge, presetName: "lead",  muted: false, volume: 0.8, adsr: { attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  }, eq: defaultEQ(), fx: defaultFX() },
+      { id: 4, name: "Chord", color: CHANNEL_PALETTE[3].color, edge: CHANNEL_PALETTE[3].edge, presetName: "pad",   muted: false, volume: 0.8, adsr: { attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  }, eq: defaultEQ(), fx: defaultFX() },
     ],
     activeChannelId: 1,
     nextChannelId: 5,
@@ -1337,7 +1585,7 @@
   function applySnapshot(json) {
     const s = JSON.parse(json);
     state.notes = s.notes;
-    state.channels = s.channels;
+    state.channels = s.channels.map(ensureChannelDefaults);
     state.activeChannelId = s.activeChannelId;
     state.steps = s.steps;
     state.nextId = s.nextId;
@@ -1353,10 +1601,10 @@
     // Channel set may have changed; drop synths for channels that no longer
     // exist so makeSynth runs fresh next time.
     const liveIds = new Set(state.channels.map(c => c.id));
-    Object.keys(channelSynths).forEach(id => {
+    [...Object.keys(channelSynths), ...Object.keys(channelChains)].forEach(id => {
       if (!liveIds.has(+id)) disposeChannelSynth(+id);
     });
-    // Per-channel synths whose preset/adsr might have changed need rebuilding.
+    // Per-channel synths whose preset/adsr/eq/fx might have changed: rebuild.
     state.channels.forEach(ch => disposeChannelSynth(ch.id));
     if (lengthEl) { lengthEl.value = state.steps; lengthValEl.textContent = state.steps; }
     applyActiveChannelStyle();
@@ -1421,18 +1669,41 @@
   const paramsRow = $("paramsRow");
   const volVal = $("volVal"), lenVal = $("lenVal");
   const aVal = $("aVal"), dVal = $("dVal"), sVal = $("sVal"), rVal = $("rVal");
+  const eqLowPill  = $("eqLowPill"),  eqMidPill = $("eqMidPill"),  eqHighPill = $("eqHighPill");
+  const reverbPill = $("reverbPill"), delayPill = $("delayPill"),
+        chorusPill = $("chorusPill"), distPill  = $("distPill");
   const copyBtn = $("copyBtn"), multiDeleteBtn = $("multiDeleteBtn"), doneBtn = $("doneBtn");
   const pasteBtn = $("pasteBtn");
   const playBtn = $("playBtn"), stopBtn = $("stopBtn");
   const undoBtn = $("undoBtn"), redoBtn = $("redoBtn");
   const attackEl = $("attack"), decayEl = $("decay"), sustainEl = $("sustain"), releaseEl = $("release");
   const volumeEl = $("volume"), volumeV = $("volumeV");
+  // EQ + FX slider refs (Instrument popup, EQ + FX tabs).
+  const eqLowEl  = $("eqLow"),  eqMidEl  = $("eqMid"),  eqHighEl = $("eqHigh");
+  const eqLowV   = $("eqLowV"), eqMidV   = $("eqMidV"), eqHighV  = $("eqHighV");
+  const reverbWetEl = $("reverbWet"),   reverbWetV   = $("reverbWetV");
+  const reverbDecayEl = $("reverbDecay"), reverbDecayV = $("reverbDecayV");
+  const delayWetEl  = $("delayWet"),    delayWetV    = $("delayWetV");
+  const delayTimeEl = $("delayTime"),   delayTimeV   = $("delayTimeV");
+  const delayFbEl   = $("delayFb"),     delayFbV     = $("delayFbV");
+  const chorusWetEl = $("chorusWet"),   chorusWetV   = $("chorusWetV");
+  const chorusFreqEl = $("chorusFreq"), chorusFreqV  = $("chorusFreqV");
+  const chorusDepthEl = $("chorusDepth"), chorusDepthV = $("chorusDepthV");
+  const distWetEl   = $("distWet"),     distWetV     = $("distWetV");
+  const distAmtEl   = $("distAmt"),     distAmtV     = $("distAmtV");
   const adsrV = { attack: $("attackV"), decay: $("decayV"), sustain: $("sustainV"), release: $("releaseV") };
 
   // ---------- Audio (per-channel synths) ----------
+  // Two parallel maps:
+  //   channelSynths[id] — the voice (MonoSynth, MembraneSynth, etc.)
+  //   channelChains[id] — the effects nodes that voice flows through
+  //                       (EQ3 → Distortion → Chorus → FeedbackDelay → Reverb)
+  // makeSynth builds both and wires them; disposeChannelSynth tears both down.
   const channelSynths = {};
+  const channelChains = {};
 
   function makeSynth(channel) {
+    ensureChannelDefaults(channel);
     const p = PRESETS[channel.presetName] || PRESETS.bass;
     const env = {
       attack:  channel.adsr.attack,
@@ -1448,7 +1719,7 @@
           envelope: env,
           pitchDecay: p.pitchDecay ?? 0.05,
           octaves: p.octaves ?? 10,
-        }).toDestination();
+        });
         break;
       case "metal":
         s = new Tone.MetalSynth({
@@ -1457,13 +1728,13 @@
           modulationIndex: p.modulationIndex ?? 16,
           resonance: p.resonance ?? 4000,
           octaves: p.octaves ?? 1.5,
-        }).toDestination();
+        });
         break;
       case "noise":
         s = new Tone.NoiseSynth({
           noise: { type: p.noise || "white" },
           envelope: env,
-        }).toDestination();
+        });
         break;
       case "fm": {
         const opts = {
@@ -1472,15 +1743,15 @@
           envelope: env,
         };
         s = p.poly
-          ? new Tone.PolySynth(Tone.FMSynth, opts).toDestination()
-          : new Tone.FMSynth(opts).toDestination();
+          ? new Tone.PolySynth(Tone.FMSynth, opts)
+          : new Tone.FMSynth(opts);
         break;
       }
       case "duo":
         s = new Tone.DuoSynth({
           harmonicity: 0.99,
           vibratoAmount: 0,
-        }).toDestination();
+        });
         break;
       case "mono":
       default: {
@@ -1490,12 +1761,49 @@
           filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.5, baseFrequency: 220, octaves: 3 },
         };
         s = p.poly
-          ? new Tone.PolySynth(Tone.MonoSynth, opts).toDestination()
-          : new Tone.MonoSynth(opts).toDestination();
+          ? new Tone.PolySynth(Tone.MonoSynth, opts)
+          : new Tone.MonoSynth(opts);
       }
     }
     s.volume.value = -10;
+
+    // Build the effects chain. All effects start fully dry (wet=0) so the
+    // default sound is unchanged; the user only hears effects once they
+    // dial up the wet knob in the popup or the FX stack.
+    const eq         = new Tone.EQ3(0, 0, 0);
+    const distortion = new Tone.Distortion(channel.fx.distortion.amount);
+    const chorus     = new Tone.Chorus(channel.fx.chorus.freq, 2.5, channel.fx.chorus.depth).start();
+    const delay      = new Tone.FeedbackDelay(channel.fx.delay.time, channel.fx.delay.feedback);
+    const reverb     = new Tone.Reverb(channel.fx.reverb.decay);
+    distortion.wet.value = channel.fx.distortion.wet;
+    chorus.wet.value     = channel.fx.chorus.wet;
+    delay.wet.value      = channel.fx.delay.wet;
+    reverb.wet.value     = channel.fx.reverb.wet;
+    s.chain(eq, distortion, chorus, delay, reverb, Tone.Destination);
+    const chain = { eq, distortion, chorus, delay, reverb };
+    channelChains[channel.id] = chain;
+    applyChannelEQ(chain, channel.eq);
     return s;
+  }
+  function applyChannelEQ(chain, eq) {
+    if (!chain || !eq) return;
+    chain.eq.low.value  = eq.low;
+    chain.eq.mid.value  = eq.mid;
+    chain.eq.high.value = eq.high;
+  }
+  function applyChannelFX(chain, fx) {
+    if (!chain || !fx) return;
+    chain.reverb.wet.value     = fx.reverb.wet;
+    // Tone.Reverb.decay can't be set on a live node in some versions — guard.
+    try { chain.reverb.decay = fx.reverb.decay; } catch (_) {}
+    chain.delay.wet.value      = fx.delay.wet;
+    chain.delay.delayTime.value = fx.delay.time;
+    chain.delay.feedback.value  = fx.delay.feedback;
+    chain.chorus.wet.value      = fx.chorus.wet;
+    chain.chorus.frequency.value = fx.chorus.freq;
+    chain.chorus.depth          = fx.chorus.depth;
+    chain.distortion.wet.value  = fx.distortion.wet;
+    chain.distortion.distortion = fx.distortion.amount;
   }
   // Broadcasts an envelope to whatever synth class is at hand. Drum-class
   // synths (MetalSynth, NoiseSynth, MembraneSynth) are deliberately skipped:
@@ -1547,6 +1855,11 @@
       try { channelSynths[channelId].dispose(); } catch (_) {}
       delete channelSynths[channelId];
     }
+    const chain = channelChains[channelId];
+    if (chain) {
+      Object.values(chain).forEach(node => { try { node.dispose(); } catch (_) {} });
+      delete channelChains[channelId];
+    }
   }
 
   function previewNote(n) {
@@ -1576,9 +1889,9 @@
     adsrV.sustain.textContent = ch.adsr.sustain.toFixed(2);
     adsrV.release.textContent = ch.adsr.release.toFixed(2);
     volumeV.textContent       = ch.volume.toFixed(2);
-    // Re-sync the param-pills row so the channel default is reflected on any
-    // selected notes that don't have their own override.
-    if (state.multiSelect || state.selectedId !== null) syncParamPills();
+    // Re-sync the param pills so the new channel default shows up immediately
+    // (both selected-note overrides and the no-selection fallback).
+    syncParamPills();
   }
   // Debounced preview tick so the user hears the new envelope/volume right
   // after they finish moving a slider. Firing on every `input` event would
@@ -1613,8 +1926,60 @@
     el.addEventListener("input", scheduleAdsrPreview);
   });
 
-  function syncInsPopup() {
+  // --- EQ slider input ---
+  function applyEqInputs() {
     const ch = activeChannel();
+    ch.eq.low  = +eqLowEl.value;
+    ch.eq.mid  = +eqMidEl.value;
+    ch.eq.high = +eqHighEl.value;
+    eqLowV.textContent  = fmtDb(ch.eq.low);
+    eqMidV.textContent  = fmtDb(ch.eq.mid);
+    eqHighV.textContent = fmtDb(ch.eq.high);
+    applyChannelEQ(channelChains[ch.id], ch.eq);
+    syncEqFxPills();
+  }
+  [eqLowEl, eqMidEl, eqHighEl].forEach(el => {
+    el.addEventListener("input", () => beginSliderSession(el));
+    el.addEventListener("input", applyEqInputs);
+    el.addEventListener("input", scheduleAdsrPreview);
+  });
+
+  // --- FX slider inputs ---
+  function applyFxInputs() {
+    const ch = activeChannel();
+    ch.fx.reverb.wet     = +reverbWetEl.value;
+    ch.fx.reverb.decay   = +reverbDecayEl.value;
+    ch.fx.delay.wet      = +delayWetEl.value;
+    ch.fx.delay.time     = +delayTimeEl.value;
+    ch.fx.delay.feedback = +delayFbEl.value;
+    ch.fx.chorus.wet     = +chorusWetEl.value;
+    ch.fx.chorus.freq    = +chorusFreqEl.value;
+    ch.fx.chorus.depth   = +chorusDepthEl.value;
+    ch.fx.distortion.wet    = +distWetEl.value;
+    ch.fx.distortion.amount = +distAmtEl.value;
+    reverbWetV.textContent   = fmtPct(ch.fx.reverb.wet);
+    reverbDecayV.textContent = ch.fx.reverb.decay.toFixed(1) + " s";
+    delayWetV.textContent    = fmtPct(ch.fx.delay.wet);
+    delayTimeV.textContent   = ch.fx.delay.time.toFixed(2) + " s";
+    delayFbV.textContent     = fmtPct(ch.fx.delay.feedback);
+    chorusWetV.textContent   = fmtPct(ch.fx.chorus.wet);
+    chorusFreqV.textContent  = ch.fx.chorus.freq.toFixed(1) + " Hz";
+    chorusDepthV.textContent = ch.fx.chorus.depth.toFixed(2);
+    distWetV.textContent     = fmtPct(ch.fx.distortion.wet);
+    distAmtV.textContent     = ch.fx.distortion.amount.toFixed(2);
+    applyChannelFX(channelChains[ch.id], ch.fx);
+    syncEqFxPills();
+  }
+  [reverbWetEl, reverbDecayEl, delayWetEl, delayTimeEl, delayFbEl,
+   chorusWetEl, chorusFreqEl, chorusDepthEl, distWetEl, distAmtEl
+  ].forEach(el => {
+    el.addEventListener("input", () => beginSliderSession(el));
+    el.addEventListener("input", applyFxInputs);
+    el.addEventListener("input", scheduleAdsrPreview);
+  });
+
+  function syncInsPopup() {
+    const ch = ensureChannelDefaults(activeChannel());
     attackEl.value  = ch.adsr.attack;
     decayEl.value   = ch.adsr.decay;
     sustainEl.value = ch.adsr.sustain;
@@ -1625,9 +1990,31 @@
     adsrV.sustain.textContent = ch.adsr.sustain.toFixed(2);
     adsrV.release.textContent = ch.adsr.release.toFixed(2);
     volumeV.textContent       = (ch.volume ?? 0.8).toFixed(2);
-    const seg = document.querySelector(".seg[data-group='instrument']");
-    if (seg) seg.querySelectorAll("button").forEach(b => b.classList.toggle("active", b.dataset.value === ch.presetName));
+
+    // EQ
+    eqLowEl.value  = ch.eq.low;  eqLowV.textContent  = fmtDb(ch.eq.low);
+    eqMidEl.value  = ch.eq.mid;  eqMidV.textContent  = fmtDb(ch.eq.mid);
+    eqHighEl.value = ch.eq.high; eqHighV.textContent = fmtDb(ch.eq.high);
+
+    // FX
+    reverbWetEl.value  = ch.fx.reverb.wet;       reverbWetV.textContent   = fmtPct(ch.fx.reverb.wet);
+    reverbDecayEl.value = ch.fx.reverb.decay;    reverbDecayV.textContent = ch.fx.reverb.decay.toFixed(1) + " s";
+    delayWetEl.value   = ch.fx.delay.wet;        delayWetV.textContent    = fmtPct(ch.fx.delay.wet);
+    delayTimeEl.value  = ch.fx.delay.time;       delayTimeV.textContent   = ch.fx.delay.time.toFixed(2) + " s";
+    delayFbEl.value    = ch.fx.delay.feedback;   delayFbV.textContent     = fmtPct(ch.fx.delay.feedback);
+    chorusWetEl.value  = ch.fx.chorus.wet;       chorusWetV.textContent   = fmtPct(ch.fx.chorus.wet);
+    chorusFreqEl.value = ch.fx.chorus.freq;      chorusFreqV.textContent  = ch.fx.chorus.freq.toFixed(1) + " Hz";
+    chorusDepthEl.value = ch.fx.chorus.depth;    chorusDepthV.textContent = ch.fx.chorus.depth.toFixed(2);
+    distWetEl.value    = ch.fx.distortion.wet;   distWetV.textContent     = fmtPct(ch.fx.distortion.wet);
+    distAmtEl.value    = ch.fx.distortion.amount;distAmtV.textContent     = ch.fx.distortion.amount.toFixed(2);
+
+    syncEqFxPills();
+    // The preset segments live in #presetGroups now; renderPresetButtons sets
+    // the active class on each render.
+    renderPresetButtons();
   }
+  function fmtDb(v)  { return (v > 0 ? "+" : "") + Number(v).toFixed(1); }
+  function fmtPct(v) { return Math.round(Number(v) * 100) + "%"; }
 
   // ---------- Piano render ----------
   function getInScaleClasses() {
@@ -2385,7 +2772,6 @@
       state.multiSelect = false;
     }
 
-    paramsRow.classList.add("hidden");
     moveBtn.classList.add("hidden");
     copyBtn.classList.add("hidden");
     doneBtn.classList.add("hidden");
@@ -2397,7 +2783,6 @@
     const hasMulti = state.multiSelect;
 
     if (hasSingle || hasMulti) {
-      paramsRow.classList.remove("hidden");
       copyBtn.classList.remove("hidden");
       doneBtn.classList.remove("hidden");
       if (hasMulti) multiDeleteBtn.classList.remove("hidden");
@@ -2413,8 +2798,10 @@
           moveBtn.textContent = "Move " + formatStep(target);
         }
       }
-      syncParamPills();
     }
+    // Pills always reflect current state — selection if there is one, else
+    // the active channel's defaults.
+    syncParamPills();
 
     if (state.clipboard && state.clipboard.length > 0) {
       pasteBtn.classList.remove("hidden");
@@ -2496,30 +2883,98 @@
   function formatVol(v)  { return Math.round(Number(v) * 100) + "%"; }
   function syncParamPills() {
     const sel = selectedNotes();
+    const ch = activeChannel();
+    // With a selection: show selected notes' values (or "mixed" if they differ).
+    // Without a selection: fall back to the active channel's defaults so the
+    // Voice stack always has live values to display.
     const setPill = (el, prop, fmt) => {
-      if (sel.length === 0) { el.textContent = "—"; return; }
+      if (sel.length === 0) {
+        const fallback = prop === "volume" ? (ch.volume ?? 0.8) : ch.adsr[prop];
+        el.textContent = fmt(fallback);
+        return;
+      }
       const vals = new Set(sel.map(n => effectiveProp(n, prop).toFixed(4)));
       el.textContent = vals.size === 1 ? fmt(effectiveProp(sel[0], prop)) : "mixed";
     };
-    // Length is per-note size (already a real property).
     if (sel.length > 0) {
       const sizes = new Set(sel.map(n => n.size));
       lenVal.textContent = sizes.size === 1 ? (formatSize(sel[0].size) + "×") : "mixed";
     } else {
-      lenVal.textContent = "—";
+      lenVal.textContent = formatSize(state.defaultSize) + "×";
     }
     setPill(volVal, "volume",  formatVol);
     setPill(aVal,   "attack",  formatAdsr);
     setPill(dVal,   "decay",   formatAdsr);
     setPill(sVal,   "sustain", formatAdsr);
     setPill(rVal,   "release", formatAdsr);
+    syncEqFxPills();
+  }
+  // Mirror the active channel's EQ + FX state onto the bottom-bar pills.
+  function syncEqFxPills() {
+    const ch = activeChannel();
+    ensureChannelDefaults(ch);
+    const fmtDb = (v) => (v > 0 ? "+" : "") + v.toFixed(1).replace(/\.0$/, "");
+    const fmtPct = (v) => Math.round(v * 100) + "%";
+    eqLowPill.textContent  = fmtDb(ch.eq.low);
+    eqMidPill.textContent  = fmtDb(ch.eq.mid);
+    eqHighPill.textContent = fmtDb(ch.eq.high);
+    reverbPill.textContent = fmtPct(ch.fx.reverb.wet);
+    delayPill.textContent  = fmtPct(ch.fx.delay.wet);
+    chorusPill.textContent = fmtPct(ch.fx.chorus.wet);
+    distPill.textContent   = fmtPct(ch.fx.distortion.wet);
   }
 
   function openParamPopover(pillEl, paramName) {
     closeParamPopover();
     let label, min, max, step, value, fmt, onChange;
     const sel = selectedNotes();
-    if (paramName === "len") {
+    // EQ / FX pills control channel-level state; open a popover with the
+    // primary slider (gain for EQ, wet for FX). Use the popup tab for the
+    // full multi-knob editor.
+    if (paramName.startsWith("eq-") || paramName.startsWith("fx-")) {
+      const ch = activeChannel();
+      ensureChannelDefaults(ch);
+      if (paramName === "eq-low" || paramName === "eq-mid" || paramName === "eq-high") {
+        const band = paramName.slice(3);
+        label = "EQ · " + band[0].toUpperCase() + band.slice(1);
+        min = -18; max = 18; step = 0.5;
+        value = ch.eq[band];
+        fmt = (v) => fmtDb(+v) + " dB";
+        onChange = (v) => {
+          beginSliderSession(pillEl);
+          ch.eq[band] = parseFloat(v);
+          applyChannelEQ(channelChains[ch.id], ch.eq);
+          syncEqFxPills();
+          if (ch.eq[band] === +eqLowEl.value || true) {
+            // Mirror into popup sliders if it's open.
+            if (band === "low")  { eqLowEl.value  = ch.eq.low;  eqLowV.textContent  = fmtDb(ch.eq.low); }
+            if (band === "mid")  { eqMidEl.value  = ch.eq.mid;  eqMidV.textContent  = fmtDb(ch.eq.mid); }
+            if (band === "high") { eqHighEl.value = ch.eq.high; eqHighV.textContent = fmtDb(ch.eq.high); }
+          }
+          scheduleAdsrPreview();
+        };
+      } else {
+        // fx-reverb / fx-delay / fx-chorus / fx-distortion → control wet
+        const key = paramName.slice(3);
+        const niceName = { reverb: "Reverb", delay: "Delay", chorus: "Chorus", distortion: "Distortion" }[key];
+        label = niceName + " · Wet";
+        min = 0; max = 1; step = 0.01;
+        value = ch.fx[key].wet;
+        fmt = (v) => fmtPct(+v);
+        onChange = (v) => {
+          beginSliderSession(pillEl);
+          ch.fx[key].wet = parseFloat(v);
+          applyChannelFX(channelChains[ch.id], ch.fx);
+          syncEqFxPills();
+          // Mirror into popup sliders if it's open.
+          const popEl = { reverb: reverbWetEl, delay: delayWetEl, chorus: chorusWetEl, distortion: distWetEl }[key];
+          const popV  = { reverb: reverbWetV,  delay: delayWetV,  chorus: chorusWetV,  distortion: distWetV  }[key];
+          if (popEl) popEl.value = ch.fx[key].wet;
+          if (popV)  popV.textContent = fmtPct(ch.fx[key].wet);
+          scheduleAdsrPreview();
+        };
+      }
+    } else if (paramName === "len") {
       label = "Length";
       min = 0; max = 9; step = 1;
       value = sel.length ? sizeIndex(sel[0].size) : 2;
@@ -2599,7 +3054,9 @@
     if (p) p.remove();
   }
 
-  paramsRow.addEventListener("click", (e) => {
+  // Delegate from the stack scroller so all param pills (Voice / EQ / FX)
+  // open a popover, regardless of which stack they live in.
+  stackScroller.addEventListener("click", (e) => {
     const pill = e.target.closest(".param-pill");
     if (!pill) return;
     openParamPopover(pill, pill.dataset.param);
@@ -2776,7 +3233,11 @@
       color: palette.color,
       edge: palette.edge,
       presetName,
+      muted: false,
+      volume: 0.8,
       adsr: { attack: p.attack, decay: p.decay, sustain: p.sustain, release: p.release },
+      eq: defaultEQ(),
+      fx: defaultFX(),
     });
     renderChannelList();
     renderChannelStrip();
@@ -2798,7 +3259,36 @@
   document.querySelectorAll(".popup-close").forEach(b => b.addEventListener("click", () => popupLayer.classList.add("hidden")));
   popupLayer.addEventListener("click", (e) => { if (e.target === popupLayer) popupLayer.classList.add("hidden"); });
 
+  // Preset segments are re-rendered into #presetGroups whenever the active
+  // channel changes, so we delegate the click instead of binding per-seg.
+  $("presetGroups").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-value]");
+    if (!btn) return;
+    const value = btn.dataset.value;
+    pushUndo();
+    const ch = activeChannel();
+    ch.presetName = value;
+    const p = PRESETS[value];
+    ch.adsr = {
+      attack:  p.attack  ?? 0.01,
+      decay:   p.decay   ?? 0.2,
+      sustain: p.sustain ?? 0.0,
+      release: p.release ?? 0.3,
+    };
+    renderPresetButtons(); // refresh active marker across all category segs
+    disposeChannelSynth(ch.id);
+    const newSynth = getSynth(ch.id);
+    // Mono preset can't sustain chords — bail out of chord mode if it was open.
+    if (state.chordMode && !isPolyPreset(value)) exitChordMode();
+    syncInsPopup();
+    if (newSynth) {
+      Tone.start();
+      triggerSynth(newSynth, "C4", "8n");
+    }
+  });
+  // Other segmented controls (snap, scale, etc.) keep the simple per-seg binding.
   document.querySelectorAll(".seg").forEach(seg => {
+    if (seg.dataset.group === "instrument") return;
     seg.addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-value]");
       if (!btn) return;
@@ -2806,29 +3296,6 @@
       const group = seg.dataset.group;
       const value = btn.dataset.value;
       if (group === "snap") state.snap = value;
-      else if (group === "instrument") {
-        pushUndo();
-        const ch = activeChannel();
-        ch.presetName = value;
-        const p = PRESETS[value];
-        ch.adsr = {
-          attack:  p.attack  ?? 0.01,
-          decay:   p.decay   ?? 0.2,
-          sustain: p.sustain ?? 0.0,
-          release: p.release ?? 0.3,
-        };
-        renderPresetButtons(); // refresh active marker
-        disposeChannelSynth(ch.id);
-        const newSynth = getSynth(ch.id);
-        // Mono preset can't sustain chords — bail out of chord mode if it was open.
-        if (state.chordMode && !isPolyPreset(value)) exitChordMode();
-        syncInsPopup();
-        // Quick preview so the user hears what they just picked.
-        if (newSynth) {
-          Tone.start();
-          triggerSynth(newSynth, "C4", "8n");
-        }
-      }
       else if (group === "scaleOn") { state.scaleOn = value === "1"; refreshKeyHighlights(); }
       else if (group === "root") { state.scaleRoot = value; refreshKeyHighlights(); }
       else if (group === "scale") { state.scaleType = value; refreshKeyHighlights(); }
@@ -3149,20 +3616,81 @@
     crash: "Crash", ride: "Ride", riser: "Riser", fx: "FX",
   };
   function renderPresetButtons() {
-    const seg = $("presetSeg");
-    if (!seg) return;
-    seg.innerHTML = "";
+    const cont = $("presetGroups");
+    if (!cont) return;
+    cont.innerHTML = "";
     const active = activeChannel().presetName;
-    PRESET_ORDER.forEach(name => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.dataset.value = name;
-      if (PRESETS[name] && PRESETS[name].poly) btn.dataset.poly = "1";
-      if (name === active) btn.classList.add("active");
-      btn.textContent = PRESET_LABELS[name] || (name[0].toUpperCase() + name.slice(1));
-      seg.appendChild(btn);
+    PRESET_CATEGORIES.forEach(cat => {
+      const group = document.createElement("div");
+      group.className = "preset-group";
+      const lab = document.createElement("div");
+      lab.className = "preset-group-label";
+      lab.textContent = cat.label;
+      group.appendChild(lab);
+      const seg = document.createElement("div");
+      seg.className = "seg seg-presets";
+      seg.dataset.group = "instrument";
+      cat.presets.forEach(name => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.value = name;
+        if (PRESETS[name] && PRESETS[name].poly) btn.dataset.poly = "1";
+        if (name === active) btn.classList.add("active");
+        btn.textContent = PRESET_LABELS[name] || (name[0].toUpperCase() + name.slice(1));
+        seg.appendChild(btn);
+      });
+      group.appendChild(seg);
+      cont.appendChild(group);
     });
   }
+
+  // --- Instrument popup tabs ---
+  document.querySelectorAll(".ins-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const name = tab.dataset.tab;
+      document.querySelectorAll(".ins-tab").forEach(x => x.classList.toggle("active", x === tab));
+      document.querySelectorAll(".ins-tab-pane").forEach(p => p.classList.toggle("hidden", p.dataset.pane !== name));
+    });
+  });
+
+  // --- Bottom-bar stack navigation ---
+  // The stack-scroller snaps vertically between 4 stacks. The little column
+  // of dots on the left mirrors which stack is currently in view AND lets
+  // the user jump directly to a stack by tapping a dot.
+  const stackScroller = $("stackScroller");
+  const stackNav = $("stackNav");
+  function activeStackEl() {
+    const stacks = [...stackScroller.querySelectorAll(".stack")];
+    const scrollTop = stackScroller.scrollTop;
+    // Pick the stack whose top is closest to the scroll position.
+    let best = stacks[0], bestDiff = Infinity;
+    stacks.forEach(s => {
+      const diff = Math.abs(s.offsetTop - scrollTop);
+      if (diff < bestDiff) { bestDiff = diff; best = s; }
+    });
+    return best;
+  }
+  function updateStackNav() {
+    const cur = activeStackEl();
+    if (!cur) return;
+    const name = cur.dataset.stack;
+    stackNav.querySelectorAll("button").forEach(b => b.classList.toggle("active", b.dataset.stack === name));
+  }
+  stackScroller.addEventListener("scroll", () => {
+    // Throttle to next frame so we don't fire updateStackNav every pixel.
+    if (stackScroller._navRaf) return;
+    stackScroller._navRaf = requestAnimationFrame(() => {
+      stackScroller._navRaf = 0;
+      updateStackNav();
+    });
+  });
+  stackNav.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-stack]");
+    if (!btn) return;
+    const name = btn.dataset.stack;
+    const target = stackScroller.querySelector('.stack[data-stack="' + name + '"]');
+    if (target) stackScroller.scrollTo({ top: target.offsetTop, behavior: "smooth" });
+  });
 
   function init() {
     renderPresetButtons();
@@ -3173,6 +3701,7 @@
     renderGrid();
     positionKnobFromCursor();
     updateSelectedBar();
+    updateStackNav();
     scrollPianoTo("C4");
     window.addEventListener("resize", () => {
       renderKeys(); renderGrid(); positionKnobFromCursor();
