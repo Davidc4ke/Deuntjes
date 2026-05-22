@@ -1143,10 +1143,11 @@
       gridEl.appendChild(row);
     }
 
-    // Cursor line — floats at the cursor's exact Y so half/off snap reads visually
+    // Cursor line — sits at the TOP of the cursor's row so a new note placed at
+    // step=cursor renders right below the line (the note starts where the cursor is).
     const cursorLine = document.createElement("div");
     cursorLine.className = "cursor-line" + (state.cursor !== Math.round(state.cursor) ? " fractional" : "");
-    cursorLine.style.top = ((state.cursor + 0.5) * rowH) + "px";
+    cursorLine.style.top = (state.cursor * rowH) + "px";
     gridEl.appendChild(cursorLine);
 
     // Notes from every channel, each in its own column.
