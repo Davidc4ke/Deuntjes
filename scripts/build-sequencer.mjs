@@ -156,10 +156,16 @@ function transformJsClean(js) {
     /const \$ = \(id\) => root\.querySelector\("#"\+id\);/,
     'const $ = (id) => root.querySelector("#"+id);',
   );
+  // pushUndo runs *before* the mutation it makes undoable. Notifying
+  // options.onChange synchronously here would hand the parent the
+  // pre-mutation state, so the autosave would always be one action behind
+  // and drop the last edit on tab close. queueMicrotask defers the
+  // notification to after the current synchronous task (the caller's
+  // mutation + renderGrid) has completed.
   out = out.replace(
     /function pushUndo\(\) \{([\s\S]*?)\n  \}/,
     (m, body) =>
-      `function pushUndo() {${body}\n    if (options.onChange) options.onChange(JSON.parse(snapshotState()));\n  }`,
+      `function pushUndo() {${body}\n    if (options.onChange) queueMicrotask(() => options.onChange(JSON.parse(snapshotState())));\n  }`,
   );
   // Capture the rAF handle so destroy() can cancel it before init runs on a
   // torn-down DOM. Also gate the body of init() on the destroyed flag — once

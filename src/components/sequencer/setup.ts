@@ -246,7 +246,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     if (undoStack.length > UNDO_LIMIT) undoStack.shift();
     redoStack.length = 0;
     updateUndoButtons();
-    if (options.onChange) options.onChange(JSON.parse(snapshotState()));
+    if (options.onChange) queueMicrotask(() => options.onChange(JSON.parse(snapshotState())));
   }
   function undo() {
     if (undoStack.length === 0) return;
@@ -2473,15 +2473,14 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   // produces sound. Tone.start() resumes it but returns a Promise — if we
   // don't await, Transport.start() races the unlock and the first run plays
   // silently. We capture the promise on the first user interaction so every
-  // later audio path can sync on it cheaply.
+  // later audio path can sync on it cheaply. Callers (play / previewNote)
+  // await this; we deliberately don't attach a document-level capture-phase
+  // listener because that interferes with click delivery on iOS Safari.
   let audioUnlockPromise = null;
   function unlockAudio() {
     if (!audioUnlockPromise) audioUnlockPromise = Tone.start();
     return audioUnlockPromise;
   }
-  // First gesture anywhere in the editor primes the context. Subsequent
-  // calls to unlockAudio() return the already-resolved promise.
-  document.addEventListener("pointerdown", unlockAudio, { once: true, capture: true });
 
   async function play() {
     await unlockAudio();
