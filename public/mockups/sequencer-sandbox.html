@@ -657,6 +657,16 @@
       0 1px 0 rgba(255,255,255,0.25) inset,
       0 2px 6px rgba(0,0,0,0.25);
     border: 1px solid var(--cursor-strong);
+    touch-action: none;
+  }
+  /* Invisible hit-area extension so the knob is comfortable to grab on a
+     phone (Apple HIG recommends ≥44pt). The ::before sits behind the visible
+     dot but still receives pointer events, attributed to .knob. */
+  .knob::before {
+    content: "";
+    position: absolute;
+    inset: -14px;
+    border-radius: 50%;
   }
   .knob:active { cursor: grabbing; background: var(--cursor-strong); }
 
@@ -665,7 +675,7 @@
     background: var(--bottom);
     color: #e9e8ff;
     border-top: 1px solid var(--bottom-line);
-    padding: 10px 12px 14px;
+    padding: 10px 12px 0;
     display: grid;
     grid-template-columns: 1fr 84px;
     gap: 12px;
@@ -1075,6 +1085,31 @@
     letter-spacing: 0.1em;
   }
   .popup-close:hover { background: #ec9d6e; }
+  .popup-section { margin-bottom: 20px; }
+  .popup-section:last-child { margin-bottom: 0; }
+  .popup-section-label {
+    font: 600 10px var(--ui); letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--bar-text-mute);
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .popup #songTitleInput {
+    width: 100%;
+    appearance: none;
+    background: rgba(255,255,255,0.04);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font: 600 15px var(--ui);
+  }
+  .popup #songTitleInput:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgba(255,255,255,0.06);
+  }
+  .popup #songCopyBtn { width: 100%; }
   .popup .field { display: grid; gap: 6px; margin-bottom: 16px; }
   .popup .field:last-child { margin-bottom: 0; }
   .popup .field label {
@@ -1225,7 +1260,7 @@
       <!-- top bar: dark Back-bar above piano + light channel-column-headers above grid -->
       <div class="topbar-row">
         <div class="topbar-left">
-          <button class="icon-btn" type="button" aria-label="Back" title="Back">
+          <button class="icon-btn" id="backBtn" type="button" aria-label="Back" title="Back">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
           <button class="icon-btn" data-popup="key" type="button" aria-label="Keyboard" title="Keyboard">
@@ -1473,9 +1508,23 @@
 
         <div class="popup hidden" data-name="key">
           <header class="popup-header">
-            <h3>Keyboard</h3>
+            <h3>Song</h3>
             <button class="popup-close" type="button">Done</button>
           </header>
+          <div class="popup-section" id="songSectionOwner" style="display: none;">
+            <div class="popup-section-label">Title</div>
+            <div class="field">
+              <input type="text" id="songTitleInput" spellcheck="false" autocomplete="off">
+            </div>
+          </div>
+          <div class="popup-section" id="songSectionGuest" style="display: none;">
+            <div class="popup-section-label">Owned by <span id="songCreatorName"></span></div>
+            <div class="field">
+              <button class="pill" id="songCopyBtn" type="button">Copy to edit</button>
+            </div>
+          </div>
+          <div class="popup-section">
+            <div class="popup-section-label">Keyboard</div>
           <div class="field">
             <label>Key zoom <span class="val"><span id="zoomVal">100</span>%</span></label>
             <input type="range" id="zoom" min="60" max="220" step="5" value="100">
@@ -1512,6 +1561,7 @@
               <button data-value="pent-major" type="button">Pent maj</button>
               <button data-value="pent-minor" type="button">Pent min</button>
             </div>
+          </div>
           </div>
         </div>
       </div>
@@ -2340,6 +2390,7 @@
     const menu = document.createElement("div");
     menu.className = "cursor-menu";
     menu.id = "cursorMenu";
+    menu.dataset.seqPopover = "1";
 
     const selBtn = document.createElement("button");
     selBtn.type = "button";
@@ -2979,6 +3030,7 @@
     const t = document.createElement("div");
     t.id = "toast";
     t.className = "toast";
+    t.dataset.seqPopover = "1";
     t.textContent = msg;
     document.body.appendChild(t);
     requestAnimationFrame(() => t.classList.add("show"));
@@ -3400,6 +3452,7 @@
     const pop = document.createElement("div");
     pop.className = "param-popover";
     pop.id = "paramPopover";
+    pop.dataset.seqPopover = "1";
     pop.innerHTML =
       '<div class="pop-head"><span class="lab">' + label + '</span>' +
       '<span class="v" id="popVal">' + fmt(value) + '</span></div>' +
@@ -3658,6 +3711,48 @@
   });
   document.querySelectorAll(".popup-close").forEach(b => b.addEventListener("click", () => popupLayer.classList.add("hidden")));
   popupLayer.addEventListener("click", (e) => { if (e.target === popupLayer) popupLayer.classList.add("hidden"); });
+
+  // ---------- App integration hooks ----------
+  // The React wrapper passes callbacks for navigation and song-level edits
+  // through the same `options` bag used for initialState / onChange. These
+  // are no-ops in the standalone mockup.
+  const backBtn = $("backBtn");
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      if (options.onBack) options.onBack();
+    });
+  }
+  const songSectionOwner = $("songSectionOwner");
+  const songSectionGuest = $("songSectionGuest");
+  const songTitleInput = $("songTitleInput");
+  const songCreatorName = $("songCreatorName");
+  const songCopyBtn = $("songCopyBtn");
+  if (options.isOwner === false) {
+    songSectionGuest.style.display = "";
+    if (songCreatorName && options.creatorDisplay) songCreatorName.textContent = options.creatorDisplay;
+  } else {
+    // Default to owner mode (matches the standalone mockup where no host
+    // app is wiring isOwner=false).
+    songSectionOwner.style.display = "";
+  }
+  if (songTitleInput) {
+    songTitleInput.value = options.songTitle || "";
+    songTitleInput.addEventListener("blur", () => {
+      const v = songTitleInput.value.trim();
+      if (!v) { songTitleInput.value = options.songTitle || ""; return; }
+      if (v === options.songTitle) return;
+      if (options.onRenameTitle) options.onRenameTitle(v);
+      options.songTitle = v;
+    });
+    songTitleInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); songTitleInput.blur(); }
+    });
+  }
+  if (songCopyBtn) {
+    songCopyBtn.addEventListener("click", () => {
+      if (options.onCopy) options.onCopy();
+    });
+  }
 
   // Preset segments are re-rendered into #presetGroups whenever the active
   // channel changes, so we delegate the click instead of binding per-seg.

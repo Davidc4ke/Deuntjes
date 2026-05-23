@@ -44,9 +44,11 @@ function transformCss(css) {
   out = out.replace(/^\s*\.device::before\s*\{[\s\S]*?^\s*\}\s*$/m, '');
   // Drop .caption (sandbox-only instructions panel) and its descendant rules.
   out = out.replace(/^\s*\.caption[^{]*\{[\s\S]*?^\s*\}\s*$/gm, '');
-  // Drop the fake iOS status bar — we render no .status element.
+  // Drop the fake iOS status bar — we render no .status element. The
+  // descendant rules (.status .right, .status svg) target nodes that don't
+  // exist either, so they're harmless dead CSS — leaving them avoids a
+  // tricky regex that ate adjacent rules.
   out = out.replace(/^\s*\.status\s*\{[\s\S]*?^\s*\}\s*$/m, '');
-  out = out.replace(/^\s*\.status\s+[^{]*\{[\s\S]*?^\s*\}\s*$/gm, '');
   // Re-target ".screen" rules at our wrapper class. The original .screen rule
   // had a 4-row grid (status, topbar, stage, bottom); drop the first row
   // since we no longer render the status bar.
@@ -190,6 +192,13 @@ export interface MountOptions {
   initialState?: unknown;
   onChange?: (state: unknown) => void;
   readOnly?: boolean;
+  // Song-level integration hooks (no-ops in the standalone mockup):
+  onBack?: () => void;
+  onRenameTitle?: (title: string) => void;
+  onCopy?: () => void;
+  songTitle?: string;
+  isOwner?: boolean;
+  creatorDisplay?: string;
 }
 
 export function mountSequencer(root: HTMLElement, options: MountOptions = {}): () => void {
@@ -212,6 +221,11 @@ ${jsBody}
     if (__resizeHandler) { try { window.removeEventListener('resize', __resizeHandler); } catch (_) {} __resizeHandler = null; }
     try { Tone.Transport.stop(); Tone.Transport.cancel(); } catch (_) {}
     try { Object.keys(channelSynths).forEach((id) => disposeChannelSynth(+id)); } catch (_) {}
+    // Sweep popovers/menus/toasts the editor mounted on document.body — they
+    // live outside \`root\` so root.innerHTML='' wouldn't catch them.
+    try {
+      document.querySelectorAll('[data-seq-popover]').forEach((el) => el.remove());
+    } catch (_) {}
     root.innerHTML = '';
   };
 }

@@ -15,6 +15,14 @@ export interface SequencerEditorProps {
   // doesn't wire onChange to the API). The editor itself doesn't block input;
   // we just don't persist it. Used for the read-only view non-owners get.
   readOnly?: boolean;
+  // Integration hooks rendered into the sequencer's own chrome (back button +
+  // keyboard popup). They let us drop the React app-bar entirely.
+  onBack: () => void;
+  songTitle: string;
+  onRenameTitle: (title: string) => void;
+  isOwner: boolean;
+  creatorDisplay?: string;
+  onCopy?: () => void;
 }
 
 // Inject the sequencer CSS into <head> exactly once across the app. The CSS
@@ -28,12 +36,28 @@ function ensureStylesInjected() {
   document.head.appendChild(style);
 }
 
-export function SequencerEditor({ initialState, onChange, readOnly }: SequencerEditorProps) {
+export function SequencerEditor({
+  initialState,
+  onChange,
+  readOnly,
+  onBack,
+  songTitle,
+  onRenameTitle,
+  isOwner,
+  creatorDisplay,
+  onCopy,
+}: SequencerEditorProps) {
   const rootRef = useRef<HTMLDivElement>(null);
-  // Store the latest onChange in a ref so the imperative mount function — which
-  // captures the callback once at mount time — always calls the current one.
+  // Stash callbacks in refs so the imperative mount function — which captures
+  // them once — always invokes the current ones.
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onBackRef = useRef(onBack);
+  onBackRef.current = onBack;
+  const onRenameRef = useRef(onRenameTitle);
+  onRenameRef.current = onRenameTitle;
+  const onCopyRef = useRef(onCopy);
+  onCopyRef.current = onCopy;
 
   useEffect(() => {
     const root = rootRef.current;
@@ -44,10 +68,15 @@ export function SequencerEditor({ initialState, onChange, readOnly }: SequencerE
       initialState,
       onChange: (state) => onChangeRef.current(state as SequencerState),
       readOnly,
+      onBack: () => onBackRef.current(),
+      songTitle,
+      onRenameTitle: (t) => onRenameRef.current(t),
+      isOwner,
+      creatorDisplay,
+      onCopy: () => onCopyRef.current?.(),
     });
     return destroy;
-    // Intentionally only mount once. State drift between server-snapshot and
-    // editor-local state is handled by debounced PATCHes, not re-mounts.
+    // Mount once; everything else flows through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

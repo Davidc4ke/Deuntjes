@@ -8,6 +8,13 @@ export interface MountOptions {
   initialState?: unknown;
   onChange?: (state: unknown) => void;
   readOnly?: boolean;
+  // Song-level integration hooks (no-ops in the standalone mockup):
+  onBack?: () => void;
+  onRenameTitle?: (title: string) => void;
+  onCopy?: () => void;
+  songTitle?: string;
+  isOwner?: boolean;
+  creatorDisplay?: string;
 }
 
 export function mountSequencer(root: HTMLElement, options: MountOptions = {}): () => void {
@@ -835,6 +842,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     const menu = document.createElement("div");
     menu.className = "cursor-menu";
     menu.id = "cursorMenu";
+    menu.dataset.seqPopover = "1";
 
     const selBtn = document.createElement("button");
     selBtn.type = "button";
@@ -1474,6 +1482,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     const t = document.createElement("div");
     t.id = "toast";
     t.className = "toast";
+    t.dataset.seqPopover = "1";
     t.textContent = msg;
     document.body.appendChild(t);
     requestAnimationFrame(() => t.classList.add("show"));
@@ -1895,6 +1904,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     const pop = document.createElement("div");
     pop.className = "param-popover";
     pop.id = "paramPopover";
+    pop.dataset.seqPopover = "1";
     pop.innerHTML =
       '<div class="pop-head"><span class="lab">' + label + '</span>' +
       '<span class="v" id="popVal">' + fmt(value) + '</span></div>' +
@@ -2153,6 +2163,48 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   });
   document.querySelectorAll(".popup-close").forEach(b => b.addEventListener("click", () => popupLayer.classList.add("hidden")));
   popupLayer.addEventListener("click", (e) => { if (e.target === popupLayer) popupLayer.classList.add("hidden"); });
+
+  // ---------- App integration hooks ----------
+  // The React wrapper passes callbacks for navigation and song-level edits
+  // through the same `options` bag used for initialState / onChange. These
+  // are no-ops in the standalone mockup.
+  const backBtn = $("backBtn");
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      if (options.onBack) options.onBack();
+    });
+  }
+  const songSectionOwner = $("songSectionOwner");
+  const songSectionGuest = $("songSectionGuest");
+  const songTitleInput = $("songTitleInput");
+  const songCreatorName = $("songCreatorName");
+  const songCopyBtn = $("songCopyBtn");
+  if (options.isOwner === false) {
+    songSectionGuest.style.display = "";
+    if (songCreatorName && options.creatorDisplay) songCreatorName.textContent = options.creatorDisplay;
+  } else {
+    // Default to owner mode (matches the standalone mockup where no host
+    // app is wiring isOwner=false).
+    songSectionOwner.style.display = "";
+  }
+  if (songTitleInput) {
+    songTitleInput.value = options.songTitle || "";
+    songTitleInput.addEventListener("blur", () => {
+      const v = songTitleInput.value.trim();
+      if (!v) { songTitleInput.value = options.songTitle || ""; return; }
+      if (v === options.songTitle) return;
+      if (options.onRenameTitle) options.onRenameTitle(v);
+      options.songTitle = v;
+    });
+    songTitleInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); songTitleInput.blur(); }
+    });
+  }
+  if (songCopyBtn) {
+    songCopyBtn.addEventListener("click", () => {
+      if (options.onCopy) options.onCopy();
+    });
+  }
 
   // Preset segments are re-rendered into #presetGroups whenever the active
   // channel changes, so we delegate the click instead of binding per-seg.
@@ -2655,6 +2707,11 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     if (__resizeHandler) { try { window.removeEventListener('resize', __resizeHandler); } catch (_) {} __resizeHandler = null; }
     try { Tone.Transport.stop(); Tone.Transport.cancel(); } catch (_) {}
     try { Object.keys(channelSynths).forEach((id) => disposeChannelSynth(+id)); } catch (_) {}
+    // Sweep popovers/menus/toasts the editor mounted on document.body — they
+    // live outside `root` so root.innerHTML='' wouldn't catch them.
+    try {
+      document.querySelectorAll('[data-seq-popover]').forEach((el) => el.remove());
+    } catch (_) {}
     root.innerHTML = '';
   };
 }
