@@ -3957,20 +3957,31 @@
     }
     positionKnobFromCursor();
   }
-  let dragging = false;
-  const startDrag = (e) => { dragging = true; e.preventDefault(); };
-  const moveDrag = (e) => {
-    if (!dragging) return;
-    const y = e.touches ? e.touches[0].clientY : e.clientY;
-    setCursorFromClientY(y);
+  // Multi-touch-safe drag: each pointer (finger / mouse) has a unique
+  // pointerId. We capture exactly the one that started on the knob and
+  // listen for its events on knobEl itself — so a second finger landing on
+  // the piano or a channel header doesn't end this drag, and a touchmove
+  // from any other pointer is ignored. Pointer capture also routes events
+  // to knobEl even when the finger drifts outside the knob/scroller.
+  let dragPointerId = null;
+  knobEl.addEventListener("pointerdown", (e) => {
+    if (dragPointerId !== null) return;
+    dragPointerId = e.pointerId;
+    try { knobEl.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault();
+  });
+  knobEl.addEventListener("pointermove", (e) => {
+    if (e.pointerId !== dragPointerId) return;
+    setCursorFromClientY(e.clientY);
+  });
+  const endKnobDrag = (e) => {
+    if (e.pointerId !== dragPointerId) return;
+    try { knobEl.releasePointerCapture(dragPointerId); } catch (_) {}
+    dragPointerId = null;
   };
-  const endDrag = () => { dragging = false; };
-  knobEl.addEventListener("mousedown", startDrag);
-  knobEl.addEventListener("touchstart", startDrag, { passive: false });
-  window.addEventListener("mousemove", moveDrag);
-  window.addEventListener("touchmove", moveDrag, { passive: false });
-  window.addEventListener("mouseup", endDrag);
-  window.addEventListener("touchend", endDrag);
+  knobEl.addEventListener("pointerup", endKnobDrag);
+  knobEl.addEventListener("pointercancel", endKnobDrag);
+  // Tap on the scroller track (outside the knob) jumps the cursor.
   scrollerEl.addEventListener("click", (e) => {
     if (e.target === knobEl) return;
     setCursorFromClientY(e.clientY);
