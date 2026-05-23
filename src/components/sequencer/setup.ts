@@ -13,6 +13,7 @@ export interface MountOptions {
 export function mountSequencer(root: HTMLElement, options: MountOptions = {}): () => void {
   let __destroyed = false;
   let __raf = 0;
+  let __resizeHandler: (() => void) | null = null;
   // ---------- Pitches C0..C8 ----------
   const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
   const PITCHES = []; // built low -> high
@@ -2622,6 +2623,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   });
 
   function init() {
+    if (__destroyed) return;
     renderPresetButtons();
     syncInsPopup(); // display-only; doesn't create a synth
     applyActiveChannelStyle();
@@ -2632,12 +2634,12 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     updateSelectedBar();
     updateStackNav();
     scrollPianoTo("C4");
-    window.addEventListener("resize", () => {
+    __resizeHandler = () => {
       renderKeys(); renderGrid(); positionKnobFromCursor();
-    });
+    };
+    window.addEventListener("resize", __resizeHandler);
   }
-  requestAnimationFrame(init);
-
+  __raf = requestAnimationFrame(init);
   // applySnapshot overrides state from options.initialState (if provided)
   // *after* all functions are declared. This re-uses the mockup's own snapshot
   // restore path so renderers re-build channel synths / grid / pills correctly.
@@ -2649,7 +2651,8 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
 
   return () => {
     __destroyed = true;
-    if (__raf) cancelAnimationFrame(__raf);
+    if (__raf) { try { cancelAnimationFrame(__raf); } catch (_) {} __raf = 0; }
+    if (__resizeHandler) { try { window.removeEventListener('resize', __resizeHandler); } catch (_) {} __resizeHandler = null; }
     try { Tone.Transport.stop(); Tone.Transport.cancel(); } catch (_) {}
     try { Object.keys(channelSynths).forEach((id) => disposeChannelSynth(+id)); } catch (_) {}
     root.innerHTML = '';

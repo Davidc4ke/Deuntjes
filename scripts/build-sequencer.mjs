@@ -159,6 +159,22 @@ function transformJsClean(js) {
     (m, body) =>
       `function pushUndo() {${body}\n    if (options.onChange) options.onChange(JSON.parse(snapshotState()));\n  }`,
   );
+  // Capture the rAF handle so destroy() can cancel it before init runs on a
+  // torn-down DOM. Also gate the body of init() on the destroyed flag — once
+  // destroyed=true (set by the React effect cleanup), init must no-op.
+  out = out.replace(/\brequestAnimationFrame\(init\);\s*$/m, '__raf = requestAnimationFrame(init);');
+  out = out.replace(
+    /function init\(\) \{/,
+    'function init() {\n    if (__destroyed) return;',
+  );
+  // Capture the window resize listener so destroy() can remove it. Without
+  // this, navigating away leaves a permanent resize handler that fires
+  // renderKeys/renderGrid on a cleared root and throws.
+  out = out.replace(
+    /window\.addEventListener\("resize", \(\) => \{([\s\S]*?)\}\);/,
+    (m, body) =>
+      `__resizeHandler = () => {${body}};\n    window.addEventListener("resize", __resizeHandler);`,
+  );
   return out;
 }
 const jsBody = transformJsClean(rawJs);
@@ -179,6 +195,7 @@ export interface MountOptions {
 export function mountSequencer(root: HTMLElement, options: MountOptions = {}): () => void {
   let __destroyed = false;
   let __raf = 0;
+  let __resizeHandler: (() => void) | null = null;
 ${jsBody}
   // applySnapshot overrides state from options.initialState (if provided)
   // *after* all functions are declared. This re-uses the mockup's own snapshot
@@ -191,7 +208,8 @@ ${jsBody}
 
   return () => {
     __destroyed = true;
-    if (__raf) cancelAnimationFrame(__raf);
+    if (__raf) { try { cancelAnimationFrame(__raf); } catch (_) {} __raf = 0; }
+    if (__resizeHandler) { try { window.removeEventListener('resize', __resizeHandler); } catch (_) {} __resizeHandler = null; }
     try { Tone.Transport.stop(); Tone.Transport.cancel(); } catch (_) {}
     try { Object.keys(channelSynths).forEach((id) => disposeChannelSynth(+id)); } catch (_) {}
     root.innerHTML = '';

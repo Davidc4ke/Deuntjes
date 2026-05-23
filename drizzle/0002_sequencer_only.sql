@@ -2,7 +2,7 @@
 -- jsonb blob on `songs`. The sequencer owns its own state shape end-to-end.
 -- Any existing songs were pre-sequencer data; the new editor wouldn't know
 -- how to render them, so we clear them rather than ship invalid blobs.
-TRUNCATE TABLE "songs" RESTART IDENTITY CASCADE;
+TRUNCATE TABLE "songs" CASCADE;
 DROP TABLE IF EXISTS "read_state" CASCADE;
 DROP TABLE IF EXISTS "activities" CASCADE;
 DROP TABLE IF EXISTS "comments" CASCADE;

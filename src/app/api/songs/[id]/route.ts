@@ -64,15 +64,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!body) return NextResponse.json({ error: 'invalid body' }, { status: 400 });
 
   const patch: { title?: string; sequencerData?: unknown; updatedAt: Date } = { updatedAt: new Date() };
-  if (typeof body.title === 'string') {
+  if (body.title !== undefined) {
+    if (typeof body.title !== 'string') {
+      return NextResponse.json({ error: 'title must be a string' }, { status: 400 });
+    }
     const t = body.title.trim();
-    if (t) patch.title = t;
+    if (!t) return NextResponse.json({ error: 'title cannot be blank' }, { status: 400 });
+    patch.title = t;
   }
   if (body.sequencerData !== undefined) {
     if (typeof body.sequencerData !== 'object' || body.sequencerData === null) {
       return NextResponse.json({ error: 'sequencerData must be an object' }, { status: 400 });
     }
     patch.sequencerData = body.sequencerData;
+  }
+  if (patch.title === undefined && patch.sequencerData === undefined) {
+    return NextResponse.json({ error: 'nothing to update' }, { status: 400 });
   }
 
   await db.update(songs).set(patch).where(eq(songs.id, id));
