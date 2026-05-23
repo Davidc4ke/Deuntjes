@@ -146,17 +146,20 @@ select:focus {
 
 /* Song page shell — full-bleed; the sequencer's own chrome owns the top
    bar (back button + keyboard-icon → Song popup).
-   The BG matches the bottom-bar purple (--bottom in the sequencer's own
-   tokens) so any iOS-viewport gap below the bar looks seamless rather
-   than as a dark-gray seam. height: 100dvh pins us to the *dynamic*
-   viewport so the bottom edge moves with Safari's collapsing URL bar. */
+   - height: 100svh uses the *small* viewport (the smallest the visible
+     viewport can be given Safari's chrome). 100dvh would let the editor
+     extend behind the URL bar when it's visible at the bottom, which
+     clipped the bottom-bar pills / STOP button.
+   - BG matches the bottom-bar purple so any pixels iOS leaves below the
+     editor (home-indicator zone etc.) blend in instead of showing a
+     dark-gray seam. */
 .song-shell {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 100dvh;
+  height: 100svh;
   background: #2c2a4a;
   overflow: hidden;
 }

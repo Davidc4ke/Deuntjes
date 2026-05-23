@@ -676,10 +676,6 @@
     color: #e9e8ff;
     border-top: 1px solid var(--bottom-line);
     padding: 10px 12px 0;
-    /* Extend the dark purple BG into iOS's home-indicator zone without
-       adding visible padding. The pill row stays right at the visual edge
-       of the bar; the safe-area only pushes the BG down. */
-    padding-bottom: env(safe-area-inset-bottom, 0px);
     display: grid;
     grid-template-columns: 1fr 84px;
     gap: 12px;
