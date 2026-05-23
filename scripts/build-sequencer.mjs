@@ -66,6 +66,14 @@ function transformCss(css) {
   // .sequencer-app is the editor root — anything inside is fair game.
   return [
     '.sequencer-app, .sequencer-app * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }',
+    // Block iOS Safari from treating long-presses on grid step labels /
+    // notes / pills as a text selection. The native selection gesture
+    // also hijacks pointer events, which broke multi-touch and surfaced
+    // a "Cancel selection / Copy / Look Up" popover that wouldn't close.
+    '.sequencer-app, .sequencer-app * { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }',
+    // Inputs we *do* want selectable: the song-title input lives inside
+    // the keyboard popup.
+    '.sequencer-app input[type="text"], .sequencer-app input:not([type]) { user-select: text; -webkit-user-select: text; }',
     '.sequencer-app { position: relative; width: 100%; height: 100%; border-radius: 0 !important; }',
     out,
   ].join('\n');
