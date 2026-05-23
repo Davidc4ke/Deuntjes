@@ -2469,8 +2469,22 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     ph.style.top = (state.playhead * rowH) + "px";
   }
 
-  function play() {
-    Tone.start();
+  // iOS Safari requires the AudioContext to be `running` before any node
+  // produces sound. Tone.start() resumes it but returns a Promise — if we
+  // don't await, Transport.start() races the unlock and the first run plays
+  // silently. We capture the promise on the first user interaction so every
+  // later audio path can sync on it cheaply.
+  let audioUnlockPromise = null;
+  function unlockAudio() {
+    if (!audioUnlockPromise) audioUnlockPromise = Tone.start();
+    return audioUnlockPromise;
+  }
+  // First gesture anywhere in the editor primes the context. Subsequent
+  // calls to unlockAudio() return the already-resolved promise.
+  document.addEventListener("pointerdown", unlockAudio, { once: true, capture: true });
+
+  async function play() {
+    await unlockAudio();
     if (state.playing) {
       // Fully stop (not just pause) so the transport position resets to 0 and
       // the next play() can re-seek cleanly from the cursor.
