@@ -744,13 +744,25 @@
     scroll-snap-type: y mandatory;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    height: 108px;
+    /* Fill the grid area in .col-left. Hardcoding 108px here meant the
+       scroller floated inside a taller column (PLAY/STOP drive .bottom to
+       be taller than min-height: 132px), and iOS rendered it bottom-
+       aligned — so the pill row ended up clipped at the bar's bottom edge.
+       align-self: start keeps the scroller pinned to the top of the
+       column regardless of how iOS resolves stretch + explicit-height. */
+    height: 100%;
+    min-height: 108px;
+    align-self: stretch;
     min-width: 0;
   }
   .stack-scroller::-webkit-scrollbar { display: none; }
   .stack {
     scroll-snap-align: start;
     scroll-snap-stop: always;
+    /* Each stack fills the scroller exactly so the snap target is always
+       the visible area. Was min-height: 108px, which broke when the
+       scroller grew. */
+    height: 100%;
     min-height: 108px;
     display: grid;
     grid-template-rows: auto 1fr;
