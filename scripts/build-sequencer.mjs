@@ -82,11 +82,12 @@ function transformCss(css) {
     // the keyboard popup.
     '.sequencer-app input[type="text"], .sequencer-app input:not([type]) { user-select: text; -webkit-user-select: text; }',
     '.sequencer-app { position: relative; width: 100%; height: 100%; border-radius: 0 !important; }',
-    // Cursor-menu / param-popover backdrops: a transparent full-screen
-    // catcher that the editor's destroy hook also sweeps. The mockup's
-    // own setTimeout(0) + document-capture-pointerdown dismiss is fragile
-    // on iOS and can hang; this overlay is the reliable way.
-    '.seq-menu-backdrop { position: fixed; inset: 0; background: transparent; z-index: 999; }',
+    // Cursor-menu / param-popover overlays. The popover sits inside the
+    // overlay; a click on the overlay itself (not bubbled from the
+    // popover) closes it. Click is the most reliable iOS dismiss path —
+    // pointerdown can be dropped during gesture recognition.
+    '.seq-menu-overlay { position: fixed; inset: 0; z-index: 1000; background: transparent; }',
+    '.seq-menu-overlay > .cursor-menu, .seq-menu-overlay > .param-popover { position: absolute; }',
     out,
   ].join('\n');
 }

@@ -2445,24 +2445,26 @@
     const r = e.currentTarget.getBoundingClientRect();
     menu.style.top = (r.bottom + 6) + "px";
     menu.style.left = (r.left) + "px";
-    // Transparent backdrop catches taps outside the menu — more reliable
-    // than the setTimeout + document-capture-pointerdown pattern, which
-    // iOS can drop. The backdrop is removed alongside the menu.
-    const backdrop = document.createElement("div");
-    backdrop.className = "seq-menu-backdrop";
-    backdrop.dataset.seqPopover = "1";
-    backdrop.addEventListener("pointerdown", (ev) => {
-      ev.stopPropagation();
-      closeCursorMenu();
+    // Wrap the menu in a fullscreen overlay. Clicking the overlay (where
+    // the click target is the overlay itself rather than the menu inside)
+    // closes the menu. Click is the most reliable dismiss path on iOS:
+    // pointerdown can be dropped during gesture recognition.
+    const overlay = document.createElement("div");
+    overlay.className = "seq-menu-overlay";
+    overlay.id = "cursorMenuOverlay";
+    overlay.dataset.seqPopover = "1";
+    overlay.addEventListener("click", (ev) => {
+      if (ev.target === overlay) closeCursorMenu();
     });
-    document.body.appendChild(backdrop);
-    menu.style.zIndex = "1000";
-    document.body.appendChild(menu);
+    overlay.appendChild(menu);
+    document.body.appendChild(overlay);
   }
   function closeCursorMenu() {
+    const o = document.getElementById("cursorMenuOverlay");
+    if (o) o.remove();
+    // Defensive sweep for any orphans from earlier code paths.
     const m = document.getElementById("cursorMenu");
-    if (m) m.remove();
-    document.querySelectorAll(".seq-menu-backdrop").forEach((el) => el.remove());
+    if (m && !m.closest(".seq-menu-overlay")) m.remove();
   }
   function startRangeSelect() {
     state.rangeSelectAnchor = state.cursor;
@@ -3508,21 +3510,25 @@
       }
     });
 
-    // Transparent backdrop catches taps outside the popover. The pill
-    // itself stays clickable above the backdrop (z-index 1001 > 999) so
-    // tapping the same pill again toggles. See cursor menu for context.
-    const backdrop = document.createElement("div");
-    backdrop.className = "seq-menu-backdrop";
-    backdrop.dataset.seqPopover = "1";
-    backdrop.addEventListener("pointerdown", (ev) => {
-      ev.stopPropagation();
-      closeParamPopover();
+    // Wrap in a fullscreen overlay; clicking the overlay (target is the
+    // overlay itself, not the popover content) closes the popover. The
+    // popover keeps its already-computed absolute top/left from above.
+    const overlay = document.createElement("div");
+    overlay.className = "seq-menu-overlay";
+    overlay.id = "paramPopoverOverlay";
+    overlay.dataset.seqPopover = "1";
+    overlay.addEventListener("click", (ev) => {
+      if (ev.target === overlay) closeParamPopover();
     });
-    document.body.appendChild(backdrop);
-    pop.style.zIndex = "1001";
+    // Move the popover into the overlay (already appended to document.body
+    // above so positioning could be measured). Re-parenting preserves the
+    // computed style/position.
+    overlay.appendChild(pop);
+    document.body.appendChild(overlay);
   }
   function closeParamPopover() {
-    document.querySelectorAll(".seq-menu-backdrop").forEach((el) => el.remove());
+    const o = document.getElementById("paramPopoverOverlay");
+    if (o) o.remove();
     const p = document.getElementById("paramPopover");
     if (p) p.remove();
   }
