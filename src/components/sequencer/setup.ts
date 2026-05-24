@@ -2418,30 +2418,56 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     }
     positionKnobFromCursor();
   }
-  // Multi-touch-safe drag: each pointer (finger / mouse) has a unique
-  // pointerId. We capture exactly the one that started on the knob and
-  // listen for its events on knobEl itself — so a second finger landing on
-  // the piano or a channel header doesn't end this drag, and a touchmove
-  // from any other pointer is ignored. Pointer capture also routes events
-  // to knobEl even when the finger drifts outside the knob/scroller.
-  let dragPointerId = null;
-  knobEl.addEventListener("pointerdown", (e) => {
-    if (dragPointerId !== null) return;
-    dragPointerId = e.pointerId;
-    try { knobEl.setPointerCapture(e.pointerId); } catch (_) {}
+  // Multi-touch-safe drag. setPointerCapture has a history of bugs on iOS
+  // Safari (WebKit #220196) — even after the 15.5 fix, the very first event
+  // after capture can drop, and a captured pointer can interfere with the
+  // delivery of subsequent unrelated touches on the same page. Apple's own
+  // docs and Patrick Lauke's research recommend native TouchEvents for
+  // multi-touch sliders: touchmove/touchend always fire on the element
+  // that received touchstart, regardless of where the finger drifts, and
+  // each concurrent touch has its own identifier so other touches
+  // (piano, channels, bottom bar) fire their events independently.
+  //
+  // Mouse fallback for desktop is kept on window-level handlers — iOS
+  // suppresses synthetic mouse events when real touches are in flight, so
+  // the two paths don't double-fire.
+  let knobTouchId = null;
+  knobEl.addEventListener("touchstart", (e) => {
+    if (knobTouchId !== null) return;
+    knobTouchId = e.changedTouches[0].identifier;
+    e.preventDefault();
+  }, { passive: false });
+  knobEl.addEventListener("touchmove", (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      if (t.identifier === knobTouchId) {
+        setCursorFromClientY(t.clientY);
+        e.preventDefault();
+        return;
+      }
+    }
+  }, { passive: false });
+  const endKnobTouch = (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === knobTouchId) {
+        knobTouchId = null;
+        return;
+      }
+    }
+  };
+  knobEl.addEventListener("touchend", endKnobTouch);
+  knobEl.addEventListener("touchcancel", endKnobTouch);
+  // Mouse fallback (desktop).
+  let mouseDragging = false;
+  knobEl.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    mouseDragging = true;
     e.preventDefault();
   });
-  knobEl.addEventListener("pointermove", (e) => {
-    if (e.pointerId !== dragPointerId) return;
-    setCursorFromClientY(e.clientY);
+  window.addEventListener("mousemove", (e) => {
+    if (mouseDragging) setCursorFromClientY(e.clientY);
   });
-  const endKnobDrag = (e) => {
-    if (e.pointerId !== dragPointerId) return;
-    try { knobEl.releasePointerCapture(dragPointerId); } catch (_) {}
-    dragPointerId = null;
-  };
-  knobEl.addEventListener("pointerup", endKnobDrag);
-  knobEl.addEventListener("pointercancel", endKnobDrag);
+  window.addEventListener("mouseup", () => { mouseDragging = false; });
   // Tap on the scroller track (outside the knob) jumps the cursor.
   scrollerEl.addEventListener("click", (e) => {
     if (e.target === knobEl) return;
