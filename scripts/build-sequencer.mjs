@@ -71,10 +71,22 @@ function transformCss(css) {
     // also hijacks pointer events, which broke multi-touch and surfaced
     // a "Cancel selection / Copy / Look Up" popover that wouldn't close.
     '.sequencer-app, .sequencer-app * { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }',
+    // touch-action: manipulation disables double-tap-to-zoom and pinch
+    // gesture recognition globally inside the editor. Without it, iOS
+    // pauses event delivery on a second touch while it decides whether
+    // the user is starting a zoom — that's what was breaking multi-touch
+    // (knob drag + piano tap simultaneously). The piano keeps pan-y
+    // locally so the keyboard can still scroll vertically.
+    '.sequencer-app { touch-action: manipulation; }',
     // Inputs we *do* want selectable: the song-title input lives inside
     // the keyboard popup.
     '.sequencer-app input[type="text"], .sequencer-app input:not([type]) { user-select: text; -webkit-user-select: text; }',
     '.sequencer-app { position: relative; width: 100%; height: 100%; border-radius: 0 !important; }',
+    // Cursor-menu / param-popover backdrops: a transparent full-screen
+    // catcher that the editor's destroy hook also sweeps. The mockup's
+    // own setTimeout(0) + document-capture-pointerdown dismiss is fragile
+    // on iOS and can hang; this overlay is the reliable way.
+    '.seq-menu-backdrop { position: fixed; inset: 0; background: transparent; z-index: 999; }',
     out,
   ].join('\n');
 }

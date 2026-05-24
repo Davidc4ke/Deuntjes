@@ -885,20 +885,24 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     const r = e.currentTarget.getBoundingClientRect();
     menu.style.top = (r.bottom + 6) + "px";
     menu.style.left = (r.left) + "px";
+    // Transparent backdrop catches taps outside the menu — more reliable
+    // than the setTimeout + document-capture-pointerdown pattern, which
+    // iOS can drop. The backdrop is removed alongside the menu.
+    const backdrop = document.createElement("div");
+    backdrop.className = "seq-menu-backdrop";
+    backdrop.dataset.seqPopover = "1";
+    backdrop.addEventListener("pointerdown", (ev) => {
+      ev.stopPropagation();
+      closeCursorMenu();
+    });
+    document.body.appendChild(backdrop);
+    menu.style.zIndex = "1000";
     document.body.appendChild(menu);
-
-    setTimeout(() => {
-      document.addEventListener("pointerdown", function once(ev) {
-        if (!menu.contains(ev.target)) {
-          closeCursorMenu();
-          document.removeEventListener("pointerdown", once, true);
-        }
-      }, true);
-    }, 0);
   }
   function closeCursorMenu() {
     const m = root.querySelector("#"+"cursorMenu");
     if (m) m.remove();
+    document.querySelectorAll(".seq-menu-backdrop").forEach((el) => el.remove());
   }
   function startRangeSelect() {
     state.rangeSelectAnchor = state.cursor;
@@ -1944,16 +1948,21 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       }
     });
 
-    setTimeout(() => {
-      document.addEventListener("pointerdown", function once(ev) {
-        if (!pop.contains(ev.target) && !pillEl.contains(ev.target)) {
-          closeParamPopover();
-          document.removeEventListener("pointerdown", once, true);
-        }
-      }, true);
-    }, 0);
+    // Transparent backdrop catches taps outside the popover. The pill
+    // itself stays clickable above the backdrop (z-index 1001 > 999) so
+    // tapping the same pill again toggles. See cursor menu for context.
+    const backdrop = document.createElement("div");
+    backdrop.className = "seq-menu-backdrop";
+    backdrop.dataset.seqPopover = "1";
+    backdrop.addEventListener("pointerdown", (ev) => {
+      ev.stopPropagation();
+      closeParamPopover();
+    });
+    document.body.appendChild(backdrop);
+    pop.style.zIndex = "1001";
   }
   function closeParamPopover() {
+    document.querySelectorAll(".seq-menu-backdrop").forEach((el) => el.remove());
     const p = root.querySelector("#"+"paramPopover");
     if (p) p.remove();
   }
