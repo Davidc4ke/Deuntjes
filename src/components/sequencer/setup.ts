@@ -2718,49 +2718,45 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     stackNav.querySelectorAll("button").forEach(b =>
       b.classList.toggle("active", b.dataset.stack === name)
     );
-    stackScroller.querySelectorAll(".stack").forEach(s =>
-      s.classList.toggle("active", s.dataset.stack === name)
-    );
   }
   function updateStackNav() {
-    // Pick whichever stack is active (visible). If none, default to "edit".
-    const active = stackScroller.querySelector(".stack.active");
-    setActiveStack(active ? active.dataset.stack : "edit");
+    const stacks = [...stackScroller.querySelectorAll(".stack")];
+    if (!stacks.length) return;
+    const scrollerTop = stackScroller.getBoundingClientRect().top;
+    let best = stacks[0], bestDiff = Infinity;
+    stacks.forEach(s => {
+      const diff = Math.abs(s.getBoundingClientRect().top - scrollerTop);
+      if (diff < bestDiff) { bestDiff = diff; best = s; }
+    });
+    setActiveStack(best.dataset.stack);
   }
-
-  // Stack nav dot tap: switch the visible stack.
+  const stackIO = new IntersectionObserver((entries) => {
+    let best = null;
+    entries.forEach(e => {
+      if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
+    });
+    if (best && best.target && best.intersectionRatio > 0.55) {
+      setActiveStack(best.target.dataset.stack);
+    }
+  }, { root: stackScroller, threshold: [0.25, 0.5, 0.75, 1.0] });
+  stackScroller.querySelectorAll(".stack").forEach(s => stackIO.observe(s));
+  stackScroller.addEventListener("scroll", () => {
+    if (stackScroller._navRaf) return;
+    stackScroller._navRaf = requestAnimationFrame(() => {
+      stackScroller._navRaf = 0;
+      updateStackNav();
+    });
+  });
   stackNav.addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-stack]");
     if (!btn) return;
-    setActiveStack(btn.dataset.stack);
+    const name = btn.dataset.stack;
+    const target = stackScroller.querySelector('.stack[data-stack="' + name + '"]');
+    if (target) {
+      stackScroller.scrollTo({ top: target.offsetTop, behavior: "smooth" });
+      setActiveStack(name);
+    }
   });
-
-  // Vertical swipe on the stack scroller cycles through stacks.
-  // (Replaces the old scroll-snap approach — no overflow, no snap,
-  // just display: none vs display: grid.)
-  {
-    const SWIPE_THRESHOLD = 30;
-    const stackNames = [...stackScroller.querySelectorAll(".stack")].map(s => s.dataset.stack);
-    let startY = null;
-    let swiped = false;
-    stackScroller.addEventListener("touchstart", (e) => {
-      startY = e.changedTouches[0].clientY;
-      swiped = false;
-    }, { passive: true });
-    stackScroller.addEventListener("touchmove", (e) => {
-      if (startY === null || swiped) return;
-      const dy = e.changedTouches[0].clientY - startY;
-      if (Math.abs(dy) > SWIPE_THRESHOLD) {
-        swiped = true;
-        const active = stackScroller.querySelector(".stack.active");
-        const idx = stackNames.indexOf(active?.dataset.stack ?? stackNames[0]);
-        const next = dy < 0
-          ? Math.min(idx + 1, stackNames.length - 1)
-          : Math.max(idx - 1, 0);
-        setActiveStack(stackNames[next]);
-      }
-    }, { passive: true });
-  }
 
   function init() {
     if (__destroyed) return;
