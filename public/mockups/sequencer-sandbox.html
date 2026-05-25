@@ -493,6 +493,27 @@
     opacity: 0.28;
     pointer-events: none;
     z-index: 2;
+    transition: opacity 120ms ease, transform 120ms ease, border-style 120ms ease;
+  }
+  /* When a piano key is charging for chord mode, pulse the ghost step to
+     show where the chord will land. */
+  .grid.key-charging .cursor-ghost {
+    opacity: 0.55;
+    border-style: solid;
+    border-width: 2px;
+    animation: ghostCharge 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  @keyframes ghostCharge {
+    0%   { opacity: 0.28; transform: scale(1); }
+    50%  { opacity: 0.60; transform: scale(1.04); }
+    100% { opacity: 0.55; transform: scale(1.02); }
+  }
+  .grid.key-charge-complete .cursor-ghost::after {
+    content: ""; position: absolute; inset: -2px;
+    border-radius: 7px;
+    pointer-events: none;
+    box-shadow: 0 0 0 2px var(--cursor);
+    animation: chargeBurst 360ms ease-out forwards;
   }
 
   /* Small ⋯ button next to the cursor line, gateway to per-cursor actions. */
@@ -2364,15 +2385,21 @@
       if (state.chordMode || !activePresetIsPoly()) return;
       const sx = e.clientX, sy = e.clientY;
       el.classList.add("charging");
+      gridEl.classList.add("key-charging");
       let timer = setTimeout(() => {
         timer = null;
         el.classList.remove("charging");
         el.classList.add("charge-complete");
-        setTimeout(() => el.classList.remove("charge-complete"), 360);
+        gridEl.classList.remove("key-charging");
+        gridEl.classList.add("key-charge-complete");
+        setTimeout(() => {
+          el.classList.remove("charge-complete");
+          gridEl.classList.remove("key-charge-complete");
+        }, 360);
         suppress = true;
         enterChordMode(pitch);
       }, CHORD_LONG_PRESS_MS);
-      const cancel = () => { if (timer) { clearTimeout(timer); timer = null; el.classList.remove("charging"); } };
+      const cancel = () => { if (timer) { clearTimeout(timer); timer = null; el.classList.remove("charging"); gridEl.classList.remove("key-charging"); } };
       const onMove = (ev) => { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) cancel(); };
       const onUp = (ev) => {
         cancel();

@@ -815,15 +815,21 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       if (state.chordMode || !activePresetIsPoly()) return;
       const sx = e.clientX, sy = e.clientY;
       el.classList.add("charging");
+      gridEl.classList.add("key-charging");
       let timer = setTimeout(() => {
         timer = null;
         el.classList.remove("charging");
         el.classList.add("charge-complete");
-        setTimeout(() => el.classList.remove("charge-complete"), 360);
+        gridEl.classList.remove("key-charging");
+        gridEl.classList.add("key-charge-complete");
+        setTimeout(() => {
+          el.classList.remove("charge-complete");
+          gridEl.classList.remove("key-charge-complete");
+        }, 360);
         suppress = true;
         enterChordMode(pitch);
       }, CHORD_LONG_PRESS_MS);
-      const cancel = () => { if (timer) { clearTimeout(timer); timer = null; el.classList.remove("charging"); } };
+      const cancel = () => { if (timer) { clearTimeout(timer); timer = null; el.classList.remove("charging"); gridEl.classList.remove("key-charging"); } };
       const onMove = (ev) => { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) cancel(); };
       const onUp = (ev) => {
         cancel();
