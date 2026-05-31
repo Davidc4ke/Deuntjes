@@ -947,6 +947,27 @@
     font: 700 14px var(--mono);
   }
   .param-popover input[type=range] { width: 100%; }
+  .param-popover .pop-options {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .param-popover .pop-option {
+    appearance: none;
+    background: rgba(255,255,255,0.05);
+    color: #d8d4ff;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 8px 10px;
+    min-width: 44px;
+    font: 700 12px var(--ui);
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  .param-popover .pop-option:hover { background: rgba(255,255,255,0.10); }
+  .param-popover .pop-option.active {
+    background: var(--accent);
+    color: #2a1a0d;
+    border-color: var(--accent-edge);
+  }
   .chip-row .label {
     font: 600 10px var(--ui); letter-spacing: 0.12em;
     text-transform: uppercase; color: rgba(233,232,255,0.55);
@@ -3418,6 +3439,7 @@
   function openParamPopover(pillEl, paramName) {
     closeParamPopover();
     let label, min, max, step, value, fmt, onChange;
+    let options = null; // optional discrete button choices [{value, label}, ...]
     const sel = selectedNotes();
     // EQ / FX pills control channel-level state; open a popover with the
     // primary slider (gain for EQ, wet for FX). Use the popup tab for the
@@ -3536,6 +3558,8 @@
       min = 0; max = 9; step = 1;
       value = sel.length ? sizeIndex(sel[0].size) : 2;
       fmt = (v) => formatSize(SIZE_STEPS[v]) + "×";
+      // Discrete choices — render as a button row instead of a slider.
+      options = SIZE_STEPS.map((s, i) => ({ value: i, label: formatSize(s) + "×" }));
       onChange = (v) => {
         const size = SIZE_STEPS[v];
         selectedNotes().forEach(n => {
@@ -3575,10 +3599,21 @@
     pop.className = "param-popover";
     pop.id = "paramPopover";
     pop.dataset.seqPopover = "1";
-    pop.innerHTML =
+    const headHtml =
       '<div class="pop-head"><span class="lab">' + label + '</span>' +
-      '<span class="v" id="popVal">' + fmt(value) + '</span></div>' +
-      '<input type="range" id="popRange" min="' + min + '" max="' + max + '" step="' + step + '" value="' + value + '">';
+      '<span class="v" id="popVal">' + fmt(value) + '</span></div>';
+    if (options) {
+      // Discrete options → button row. Each button toggles to the chosen
+      // value and fires onChange (same contract as the slider's input).
+      const optsHtml = options.map(o =>
+        '<button type="button" class="pop-option' + (o.value === value ? ' active' : '') +
+        '" data-value="' + o.value + '">' + o.label + '</button>'
+      ).join("");
+      pop.innerHTML = headHtml + '<div class="pop-options">' + optsHtml + '</div>';
+    } else {
+      pop.innerHTML = headHtml +
+        '<input type="range" id="popRange" min="' + min + '" max="' + max + '" step="' + step + '" value="' + value + '">';
+    }
     document.body.appendChild(pop);
 
     // Position above the pill so it's reachable with the thumb.
@@ -3591,28 +3626,44 @@
     pop.style.top = top + "px";
     pop.style.left = left + "px";
 
-    const range = pop.querySelector("#popRange");
     const popVal = pop.querySelector("#popVal");
-    range.addEventListener("input", () => {
-      popVal.textContent = fmt(range.value);
-      onChange(range.value);
-      // Audible preview after the slider settles. If exactly one note is
-      // selected, play *that* note's pitch — it routes through the active
-      // channel's effect chain, so EQ / FX / Voice tweaks all become
-      // audible against the actual edit subject. Otherwise fall back to
-      // the channel C4 ping.
-      beginSliderSession(range);
-      const selNow = selectedNotes();
-      if (selNow.length === 1) {
-        if (range._previewTimer) clearTimeout(range._previewTimer);
-        range._previewTimer = setTimeout(() => {
-          range._previewTimer = 0;
-          previewNote(selNow[0]);
-        }, 150);
-      } else {
-        scheduleAdsrPreview();
-      }
-    });
+    if (options) {
+      // Wire the button row: tap an option → apply, highlight, preview.
+      pop.querySelectorAll(".pop-option").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const v = parseFloat(btn.dataset.value);
+          pop.querySelectorAll(".pop-option").forEach(b => b.classList.toggle("active", b === btn));
+          popVal.textContent = fmt(v);
+          onChange(v);
+          pushUndo();
+          const selNow = selectedNotes();
+          if (selNow.length === 1) previewNote(selNow[0]);
+          else scheduleAdsrPreview();
+        });
+      });
+    } else {
+      const range = pop.querySelector("#popRange");
+      range.addEventListener("input", () => {
+        popVal.textContent = fmt(range.value);
+        onChange(range.value);
+        // Audible preview after the slider settles. If exactly one note is
+        // selected, play *that* note's pitch — it routes through the active
+        // channel's effect chain, so EQ / FX / Voice tweaks all become
+        // audible against the actual edit subject. Otherwise fall back to
+        // the channel C4 ping.
+        beginSliderSession(range);
+        const selNow = selectedNotes();
+        if (selNow.length === 1) {
+          if (range._previewTimer) clearTimeout(range._previewTimer);
+          range._previewTimer = setTimeout(() => {
+            range._previewTimer = 0;
+            previewNote(selNow[0]);
+          }, 150);
+        } else {
+          scheduleAdsrPreview();
+        }
+      });
+    }
 
     // Wrap in a fullscreen overlay; clicking the overlay (target is the
     // overlay itself, not the popover content) closes the popover. The
