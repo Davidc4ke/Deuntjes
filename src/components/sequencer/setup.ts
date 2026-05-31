@@ -2104,8 +2104,6 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   function toggleChannelMuted(id) {
     const ch = state.channels.find(c => c.id === id);
     if (!ch) return;
-    // Don't allow muting the input channel — switch input elsewhere first.
-    if (ch.id === state.activeChannelId) return;
     pushUndo();
     ch.muted = !ch.muted;
     renderChannelStrip();
@@ -2159,16 +2157,14 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       reorder.appendChild(upBtn); reorder.appendChild(downBtn);
 
       // Mute toggle — the sole place to toggle whether the channel plays
-      // in the mix. Disabled for the active input channel; the user must
-      // switch the input to another channel first.
+      // in the mix. The active input channel can be muted too (useful for
+      // composing against the rest of the mix); previewing keys still
+      // plays audio regardless of mute state.
       const muteBtn = document.createElement("button");
       muteBtn.type = "button";
       muteBtn.className = "mute" + (ch.muted ? " muted" : "");
       muteBtn.textContent = ch.muted ? "Muted" : "Mute";
-      muteBtn.disabled = ch.id === state.activeChannelId;
-      muteBtn.title = muteBtn.disabled
-        ? "Switch input to another channel to mute this one"
-        : (ch.muted ? "Unmute (include in mix)" : "Mute (exclude from mix)");
+      muteBtn.title = ch.muted ? "Unmute (include in mix)" : "Mute (exclude from mix)";
       muteBtn.addEventListener("click", () => toggleChannelMuted(ch.id));
 
       const rm = document.createElement("button");
