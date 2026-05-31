@@ -2047,20 +2047,13 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
         timer = null;
         el.classList.remove("charging");
         suppress = true;
-        if (channelId === state.activeChannelId) {
-          // Long-press on the input chip → open the instrument settings.
-          el.classList.add("charge-complete");
-          setTimeout(() => el.classList.remove("charge-complete"), 360);
-          openInsPopup();
-        } else {
-          toggleChannelMuted(channelId);
-          // toggleChannelMuted re-renders the strip; play the burst on the new chip.
-          const newChip = $("channelHeaders").querySelector('[data-channel-id="' + channelId + '"]');
-          if (newChip) {
-            newChip.classList.add("charge-complete");
-            setTimeout(() => newChip.classList.remove("charge-complete"), 360);
-          }
-        }
+        // Long-press on any channel chip → open the instrument settings
+        // for that channel. (Mute is no longer a header gesture; it lives
+        // in the Channels popup so there's a single source of truth.)
+        if (channelId !== state.activeChannelId) setActiveChannel(channelId);
+        el.classList.add("charge-complete");
+        setTimeout(() => el.classList.remove("charge-complete"), 360);
+        openInsPopup();
       }, LONG_PRESS_MS);
       const cancel = () => {
         if (timer) { clearTimeout(timer); timer = null; el.classList.remove("charging"); }
@@ -2087,12 +2080,13 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     ch.muted = !ch.muted;
     renderChannelStrip();
     renderGrid();
+    // If the Channels popup is open, refresh the cards so the mute toggle
+    // reflects the new state.
+    if (!$("popupLayer").classList.contains("hidden")) renderChannelList();
   }
 
   function setActiveChannel(id) {
     if (id === state.activeChannelId) return;
-    const ch = state.channels.find(c => c.id === id);
-    if (ch && ch.muted) ch.muted = false; // tapping a muted chip un-mutes + activates
     state.activeChannelId = id;
     state.selectedId = null;
     if (state.multiSelect) { state.multiSelect = false; state.selectedIds.clear(); }
@@ -2134,11 +2128,27 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       downBtn.addEventListener("click", () => moveChannel(ch.id, +1));
       reorder.appendChild(upBtn); reorder.appendChild(downBtn);
 
+      // Mute toggle — the sole place to toggle whether the channel plays
+      // in the mix. Disabled for the active input channel; the user must
+      // switch the input to another channel first.
+      const muteBtn = document.createElement("button");
+      muteBtn.type = "button";
+      muteBtn.className = "mute" + (ch.muted ? " muted" : "");
+      muteBtn.textContent = ch.muted ? "Muted" : "Mute";
+      muteBtn.disabled = ch.id === state.activeChannelId;
+      muteBtn.title = muteBtn.disabled
+        ? "Switch input to another channel to mute this one"
+        : (ch.muted ? "Unmute (include in mix)" : "Mute (exclude from mix)");
+      muteBtn.addEventListener("click", () => toggleChannelMuted(ch.id));
+
       const rm = document.createElement("button");
       rm.type = "button"; rm.className = "remove"; rm.textContent = "×";
       rm.disabled = state.channels.length <= 1;
       rm.addEventListener("click", () => removeChannel(ch.id));
-      header.appendChild(nameEl); header.appendChild(reorder); header.appendChild(rm);
+      header.appendChild(nameEl);
+      header.appendChild(reorder);
+      header.appendChild(muteBtn);
+      header.appendChild(rm);
       card.appendChild(header);
 
       const swatches = document.createElement("div");
