@@ -308,6 +308,22 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   const floatingDelete = $("floatingDelete");
   const attackEl = $("attack"), decayEl = $("decay"), sustainEl = $("sustain"), releaseEl = $("release");
   const volumeEl = $("volume"), volumeV = $("volumeV");
+  const insChannelNameEl = $("insChannelName");
+  if (insChannelNameEl) {
+    insChannelNameEl.addEventListener("input", () => {
+      const ch = activeChannel();
+      ch.name = insChannelNameEl.value || "Untitled";
+      renderChannelStrip();
+    });
+    insChannelNameEl.addEventListener("change", () => {
+      // Commit a single undo entry on blur/Enter so a multi-keystroke rename
+      // collapses into one undo step (and one autosave).
+      pushUndo();
+    });
+    insChannelNameEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); insChannelNameEl.blur(); }
+    });
+  }
   // EQ + FX slider refs (Instrument popup, EQ + FX tabs).
   const eqLowEl  = $("eqLow"),  eqMidEl  = $("eqMid"),  eqHighEl = $("eqHigh");
   const eqLowV   = $("eqLowV"), eqMidV   = $("eqMidV"), eqHighV  = $("eqHighV");
@@ -671,6 +687,9 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
 
   function syncInsPopup() {
     const ch = ensureChannelDefaults(activeChannel());
+    if (insChannelNameEl && document.activeElement !== insChannelNameEl) {
+      insChannelNameEl.value = ch.name;
+    }
     attackEl.value  = ch.adsr.attack;
     decayEl.value   = ch.adsr.decay;
     sustainEl.value = ch.adsr.sustain;

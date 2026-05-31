@@ -1101,6 +1101,28 @@
     margin: 0; font: 700 12px var(--ui);
     letter-spacing: 0.14em; text-transform: uppercase;
     color: #fff;
+    display: flex; align-items: baseline; gap: 6px;
+    min-width: 0;
+  }
+  .ins-channel-name {
+    appearance: none;
+    background: transparent;
+    color: var(--bar-text-mute);
+    border: 0;
+    border-bottom: 1px dashed rgba(255,255,255,0.18);
+    padding: 2px 4px;
+    font: 500 12px var(--ui);
+    text-transform: none;
+    letter-spacing: 0;
+    width: 140px;
+    min-width: 0;
+    border-radius: 0;
+  }
+  .ins-channel-name:focus {
+    outline: none;
+    color: #fff;
+    border-bottom-color: var(--accent);
+    border-bottom-style: solid;
   }
   .popup-close {
     appearance: none; background: var(--accent); color: #2a1a0d;
@@ -1410,7 +1432,7 @@
 
         <div class="popup hidden" data-name="ins">
           <header class="popup-header">
-            <h3>Instrument <span class="val" style="font-weight:500; text-transform:none; letter-spacing:0; color: var(--bar-text-mute);">active channel</span></h3>
+            <h3>Instrument · <input type="text" id="insChannelName" class="ins-channel-name" maxlength="16" spellcheck="false" autocomplete="off"></h3>
             <button class="popup-close" type="button">Done</button>
           </header>
           <div class="ins-tabs" id="insTabs">
@@ -1881,6 +1903,22 @@
   const floatingDelete = $("floatingDelete");
   const attackEl = $("attack"), decayEl = $("decay"), sustainEl = $("sustain"), releaseEl = $("release");
   const volumeEl = $("volume"), volumeV = $("volumeV");
+  const insChannelNameEl = $("insChannelName");
+  if (insChannelNameEl) {
+    insChannelNameEl.addEventListener("input", () => {
+      const ch = activeChannel();
+      ch.name = insChannelNameEl.value || "Untitled";
+      renderChannelStrip();
+    });
+    insChannelNameEl.addEventListener("change", () => {
+      // Commit a single undo entry on blur/Enter so a multi-keystroke rename
+      // collapses into one undo step (and one autosave).
+      pushUndo();
+    });
+    insChannelNameEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); insChannelNameEl.blur(); }
+    });
+  }
   // EQ + FX slider refs (Instrument popup, EQ + FX tabs).
   const eqLowEl  = $("eqLow"),  eqMidEl  = $("eqMid"),  eqHighEl = $("eqHigh");
   const eqLowV   = $("eqLowV"), eqMidV   = $("eqMidV"), eqHighV  = $("eqHighV");
@@ -2244,6 +2282,9 @@
 
   function syncInsPopup() {
     const ch = ensureChannelDefaults(activeChannel());
+    if (insChannelNameEl && document.activeElement !== insChannelNameEl) {
+      insChannelNameEl.value = ch.name;
+    }
     attackEl.value  = ch.adsr.attack;
     decayEl.value   = ch.adsr.decay;
     sustainEl.value = ch.adsr.sustain;
