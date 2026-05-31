@@ -799,7 +799,10 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       const el = document.createElement("div");
       el.className = "key white";
       if (p.name.startsWith("C") && !p.name.includes("#")) el.classList.add("octave-label");
-      el.textContent = p.name;
+      const dot = document.createElement("span");
+      dot.className = "key-dot";
+      dot.textContent = p.name;
+      el.appendChild(dot);
       el.dataset.pitch = p.name;
       const L = layout[p.name];
       el.style.top = L.top + "px"; el.style.height = L.h + "px";
@@ -811,6 +814,10 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       const el = document.createElement("div");
       el.className = "key black";
       el.dataset.pitch = p.name;
+      const dot = document.createElement("span");
+      dot.className = "key-dot";
+      dot.textContent = p.name;
+      el.appendChild(dot);
       const L = layout[p.name];
       el.style.top = L.top + "px"; el.style.height = L.h + "px";
       attachPianoKeyGesture(el, p.name, true);

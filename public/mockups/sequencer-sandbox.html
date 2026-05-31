@@ -485,10 +485,18 @@
     overflow: hidden;
   }
 
-  /* Piano */
+  /* Piano — cream control-panel column with circular keys.
+     Inspired by the second reference image: two columns of dots
+     (white keys on the right, black keys on the left). */
   .piano {
     position: relative;
-    background: linear-gradient(180deg, #f0ebda 0%, #e6e1d1 100%);
+    background:
+      linear-gradient(90deg,
+        #ddd6c3 0%,
+        #e8e3d3 6%,
+        #e6e1d1 50%,
+        #e8e3d3 94%,
+        #ddd6c3 100%);
     border-right: 1px solid var(--stage-line-strong);
     overflow-y: auto; overflow-x: hidden;
     user-select: none;
@@ -496,7 +504,10 @@
     overscroll-behavior: contain;
     scrollbar-width: thin;
     scrollbar-color: var(--stage-line-strong) transparent;
-    box-shadow: inset -1px 0 0 rgba(0,0,0,0.06);
+    box-shadow:
+      inset 1px 0 0 rgba(255,255,255,0.5),
+      inset -1px 0 0 rgba(0,0,0,0.08),
+      inset 0 2px 4px rgba(0,0,0,0.06);
   }
   .piano::-webkit-scrollbar { width: 4px; }
   .piano::-webkit-scrollbar-track { background: transparent; }
@@ -547,81 +558,150 @@
     cursor: not-allowed;
     box-shadow: 0 1px 3px rgba(0,0,0,0.15);
   }
+  /* Each .key is the row-wide hit target. The actual circular visual lives
+     inside a .key-dot child so all state styles (flash / cursor-pitch /
+     chord-active / charging) can simply restyle the dot. */
   .key {
     position: absolute; left: 0; right: 0; cursor: pointer;
-    display: flex; align-items: flex-end; justify-content: flex-end;
-    padding: 0 8px 4px;
-    font: 600 10px var(--mono); letter-spacing: 0.02em;
-    color: var(--stage-text);
-    transition: background 220ms var(--ease-smooth);
+    display: flex; align-items: center;
+    background: transparent;
+    border: none;
   }
-  .key.white {
-    background: linear-gradient(180deg, #f4efde 0%, #ebe5d3 100%);
-    border-bottom: 1px solid #d4cdb8;
-  }
-  .key.white:nth-child(7n) { border-bottom-color: #b8b0a0; } /* slight emphasis */
+  .key.white { justify-content: flex-end; padding-right: 12px; }
   .key.black {
-    background: linear-gradient(180deg, #2d3645 0%, #1c2330 100%);
-    right: 38%; left: 0;
-    z-index: 2; color: #e6e1d1;
-    border-bottom: 1px solid #000;
-    box-shadow:
-      1px 0 0 rgba(0,0,0,0.5) inset,
-      -2px 2px 4px rgba(0,0,0,0.18),
-      inset 0 1px 0 rgba(255,255,255,0.08);
-  }
-  .key.octave-label {
-    color: var(--stage-text); font-weight: 700;
-    background: linear-gradient(180deg, #d8d2bf 0%, #c8c2af 100%);
-    border-bottom-color: #aaa48f;
-  }
-  .key.flash {
-    background:
-      radial-gradient(circle at 50% 50%, var(--accent-bright) 0%, var(--accent) 100%) !important;
-    color: #2a1a0d !important;
-    box-shadow: inset 0 0 14px rgba(255,140,95,0.5), 0 0 12px rgba(255,117,71,0.5);
-    transition: background 100ms;
-  }
-  .key.black.flash { color: #2a1a0d !important; }
-  /* Key whose pitch is part of the chord currently being built. */
-  .key.chord-active {
-    background: var(--cursor) !important;
-    color: #fff !important;
-    box-shadow:
-      inset 0 0 0 2px var(--cursor-strong),
-      0 0 8px rgba(63, 111, 157, 0.4);
-  }
-  .key.black.chord-active { color: #fff !important; }
-  /* Softer hint: a key the cursor is currently sitting on in the input channel. */
-  .key.cursor-pitch {
-    background: rgba(63, 111, 157, 0.18) !important;
-    box-shadow: inset 0 0 0 2px var(--cursor);
-  }
-  .key.black.cursor-pitch {
-    background: rgba(63, 111, 157, 0.55) !important;
-    color: #fff !important;
+    /* Sit in the left column. Stays above white keys so the dot can
+       overlap the row above without being eaten by it. */
+    right: 50%; left: 0;
+    z-index: 2;
+    justify-content: flex-end;
+    padding-right: 6px;
   }
 
-  /* Long-press to enter chord mode — 600ms fill sweep + burst on commit. */
-  .key.charging {
-    z-index: 4;
-  }
-  .key.charging::before {
-    content: ""; position: absolute; inset: 0;
+  .key-dot {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    font: 700 7.5px var(--mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     pointer-events: none;
-    background: linear-gradient(to right, rgba(63, 111, 157, 0.32), rgba(63, 111, 157, 0.32)) left center / 0% 100% no-repeat;
+    transition:
+      background 240ms var(--ease-smooth),
+      color 240ms var(--ease-smooth),
+      box-shadow 240ms var(--ease-smooth),
+      transform 160ms var(--ease-snap);
+  }
+  .key.white .key-dot {
+    width: 28px; height: 28px;
+    background:
+      radial-gradient(circle at 35% 30%, #fbf6e6 0%, #ebe5d3 70%, #d6d0bd 100%);
+    color: var(--stage-text);
+    border: 1px solid #b8b0a0;
+    box-shadow:
+      inset 0 1px 1px rgba(255,255,255,0.7),
+      inset 0 -2px 3px rgba(0,0,0,0.08),
+      0 1px 2px rgba(0,0,0,0.22);
+  }
+  .key.black .key-dot {
+    width: 24px; height: 24px;
+    background:
+      radial-gradient(circle at 35% 30%, #3a4658 0%, #1c2330 70%, #0d1218 100%);
+    color: var(--stage);
+    border: 1px solid #000;
+    font-size: 6.5px;
+    box-shadow:
+      inset 0 1px 1px rgba(255,255,255,0.18),
+      inset 0 -2px 3px rgba(0,0,0,0.55),
+      0 1px 2px rgba(0,0,0,0.35);
+  }
+  /* C-notes get a slightly different cream so octaves are easy to spot. */
+  .key.white.octave-label .key-dot {
+    background:
+      radial-gradient(circle at 35% 30%, #f0e9d2 0%, #d8d2bf 70%, #c0baaa 100%);
+    border-color: #9d977f;
+  }
+
+  /* Hover lift — subtle on a phone but obvious with a mouse. */
+  .key:hover .key-dot { transform: scale(1.06); }
+  .key:active .key-dot { transform: scale(0.92); }
+
+  /* Flash — playback / preview ping. Pulses orange with the cassette glow. */
+  .key.flash .key-dot {
+    background:
+      radial-gradient(circle at 35% 30%, var(--accent-bright) 0%, var(--accent) 70%, var(--accent-edge) 100%) !important;
+    color: var(--accent-ink) !important;
+    border-color: var(--accent-edge);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.4),
+      inset 0 -1px 2px rgba(0,0,0,0.18),
+      var(--glow-orange);
+    transition: background 100ms, box-shadow 100ms;
+  }
+
+  /* Key the cursor is currently parked on in the input channel — soft blue hint. */
+  .key.cursor-pitch .key-dot {
+    background:
+      radial-gradient(circle at 35% 30%,
+        rgba(126, 163, 198, 0.95) 0%,
+        rgba(63, 111, 157, 0.85) 70%,
+        rgba(45, 87, 128, 0.95) 100%) !important;
+    color: #fff !important;
+    border-color: var(--cursor-strong);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.3),
+      inset 0 -1px 2px rgba(0,0,0,0.2),
+      0 0 6px rgba(63, 111, 157, 0.35);
+  }
+
+  /* Key that's part of an active chord — full steel-blue with glow. */
+  .key.chord-active .key-dot {
+    background:
+      radial-gradient(circle at 35% 30%, var(--cursor-soft) 0%, var(--cursor) 70%, var(--cursor-strong) 100%) !important;
+    color: #fff !important;
+    border-color: var(--cursor-strong);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.35),
+      inset 0 -1px 2px rgba(0,0,0,0.2),
+      0 0 6px rgba(63, 111, 157, 0.45),
+      0 0 14px rgba(63, 111, 157, 0.25);
+  }
+
+  /* In-scale indicator — small glowing orange LED inside the circle. */
+  .key.in-scale .key-dot::before {
+    content: "";
+    position: absolute;
+    top: 3px; left: 50%;
+    transform: translateX(-50%);
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent-bright);
+    box-shadow:
+      0 0 3px rgba(255, 117, 71, 0.7),
+      0 0 6px rgba(255, 117, 71, 0.4);
+  }
+
+  /* Long-press charge — fills the dot with steel blue, then bursts on commit. */
+  .key.charging { z-index: 4; }
+  .key.charging .key-dot::after {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    background: linear-gradient(to right, rgba(63, 111, 157, 0.45), rgba(63, 111, 157, 0.45)) left center / 0% 100% no-repeat;
     box-shadow: inset 0 0 0 0 var(--cursor);
-    animation: chargeFill 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: chargeFill 600ms var(--ease-smooth) forwards;
   }
-  .key.black.charging::before {
-    background: linear-gradient(to right, rgba(126, 163, 198, 0.55), rgba(126, 163, 198, 0.55)) left center / 0% 100% no-repeat;
+  .key.black.charging .key-dot::after {
+    background: linear-gradient(to right, rgba(126, 163, 198, 0.65), rgba(126, 163, 198, 0.65)) left center / 0% 100% no-repeat;
   }
-  .key.charge-complete::after {
-    content: ""; position: absolute; inset: -1px;
+  .key.charge-complete .key-dot::after {
+    content: "";
+    position: absolute; inset: -2px;
+    border-radius: 50%;
     pointer-events: none;
     box-shadow: 0 0 0 2px var(--cursor);
     animation: chargeBurst 360ms ease-out forwards;
-    z-index: 5;
+    background: transparent;
   }
 
   /* Grid */
@@ -1623,8 +1703,9 @@
       linear-gradient(180deg, #f4efde 0%, #d8d2bf 100%);
     color: var(--stage-text);
     border-radius: 8px;
-    font: 700 13px var(--display);
-    letter-spacing: 0.18em;
+    font: 700 14px var(--mono);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
     cursor: pointer;
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,0.7),
@@ -1910,20 +1991,8 @@
   .fx-section .field { margin-bottom: 10px; }
   .fx-section .field:last-child { margin-bottom: 0; }
 
-  /* In-scale key dot — small glowing orange indicator. */
-  .key.in-scale::after {
-    content: ""; position: absolute;
-    left: 6px; top: 50%; transform: translateY(-50%);
-    width: 5px; height: 5px; border-radius: 50%;
-    background: var(--accent);
-    box-shadow:
-      0 0 3px rgba(255, 117, 71, 0.5),
-      0 0 6px rgba(255, 117, 71, 0.25);
-  }
-  .key.black.in-scale::after {
-    background: var(--accent-soft);
-    box-shadow: 0 0 4px rgba(255, 180, 142, 0.6);
-  }
+  /* In-scale indicator is rendered inside .key-dot (see above); no extra
+     ::after needed on .key. */
 
   /* ---- Caption + hint (outside device) ---- */
   .caption {
@@ -3071,7 +3140,10 @@
       const el = document.createElement("div");
       el.className = "key white";
       if (p.name.startsWith("C") && !p.name.includes("#")) el.classList.add("octave-label");
-      el.textContent = p.name;
+      const dot = document.createElement("span");
+      dot.className = "key-dot";
+      dot.textContent = p.name;
+      el.appendChild(dot);
       el.dataset.pitch = p.name;
       const L = layout[p.name];
       el.style.top = L.top + "px"; el.style.height = L.h + "px";
@@ -3083,6 +3155,10 @@
       const el = document.createElement("div");
       el.className = "key black";
       el.dataset.pitch = p.name;
+      const dot = document.createElement("span");
+      dot.className = "key-dot";
+      dot.textContent = p.name;
+      el.appendChild(dot);
       const L = layout[p.name];
       el.style.top = L.top + "px"; el.style.height = L.h + "px";
       attachPianoKeyGesture(el, p.name, true);
