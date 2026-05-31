@@ -1,21 +1,18 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/db/client';
-import { songVersions, songs, users } from '@/db/schema';
-import { asc, eq } from 'drizzle-orm';
+import { songs, users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  const userId = (session?.user as { id?: string } | undefined)?.id;
-  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-
-  const { id } = await params;
-  const [song] = await db
+async function loadSong(id: string) {
+  const [row] = await db
     .select({
       id: songs.id,
       title: songs.title,
-      createdAt: songs.createdAt,
+      sequencerData: songs.sequencerData,
       createdBy: songs.createdBy,
+      createdAt: songs.createdAt,
+      updatedAt: songs.updatedAt,
       creatorName: users.displayName,
       creatorAvatar: users.avatarEmoji,
     })
@@ -23,38 +20,82 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     .innerJoin(users, eq(users.id, songs.createdBy))
     .where(eq(songs.id, id))
     .limit(1);
+  return row;
+}
 
-  if (!song) return NextResponse.json({ error: 'not found' }, { status: 404 });
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  const userId = (session?.user as { id?: string } | undefined)?.id;
+  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const versions = await db
-    .select({
-      id: songVersions.id,
-      versionNumber: songVersions.versionNumber,
-      label: songVersions.label,
-      keyRoot: songVersions.keyRoot,
-      keyMode: songVersions.keyMode,
-      tempoBpm: songVersions.tempoBpm,
-      timeSigNum: songVersions.timeSigNum,
-      timeSigDen: songVersions.timeSigDen,
-      barCount: songVersions.barCount,
-      parentVersionId: songVersions.parentVersionId,
-      createdAt: songVersions.createdAt,
-    })
-    .from(songVersions)
-    .where(eq(songVersions.songId, id))
-    .orderBy(asc(songVersions.versionNumber));
+  const { id } = await params;
+  const row = await loadSong(id);
+  if (!row) return NextResponse.json({ error: 'not found' }, { status: 404 });
 
   return NextResponse.json({
     song: {
-      id: song.id,
-      title: song.title,
-      createdAt: song.createdAt,
-      createdBy: {
-        id: song.createdBy,
-        displayName: song.creatorName,
-        avatarEmoji: song.creatorAvatar,
-      },
+      id: row.id,
+      title: row.title,
+      sequencerData: row.sequencerData,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      createdBy: { id: row.createdBy, displayName: row.creatorName, avatarEmoji: row.creatorAvatar },
+      isOwner: row.createdBy === userId,
     },
-    versions,
   });
+}
+
+// Owner-only update for the song title and/or sequencer blob. Last-write-wins
+// — debounced autosave from the client sends the full state every time and
+// we trust it. Non-owners get 403 (they need to copy the song first).
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  const userId = (session?.user as { id?: string } | undefined)?.id;
+  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const { id } = await params;
+  const row = await loadSong(id);
+  if (!row) return NextResponse.json({ error: 'not found' }, { status: 404 });
+  if (row.createdBy !== userId) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+
+  const body = (await req.json().catch(() => null)) as
+    | { title?: string; sequencerData?: unknown }
+    | null;
+  if (!body) return NextResponse.json({ error: 'invalid body' }, { status: 400 });
+
+  const patch: { title?: string; sequencerData?: unknown; updatedAt: Date } = { updatedAt: new Date() };
+  if (body.title !== undefined) {
+    if (typeof body.title !== 'string') {
+      return NextResponse.json({ error: 'title must be a string' }, { status: 400 });
+    }
+    const t = body.title.trim();
+    if (!t) return NextResponse.json({ error: 'title cannot be blank' }, { status: 400 });
+    patch.title = t;
+  }
+  if (body.sequencerData !== undefined) {
+    if (typeof body.sequencerData !== 'object' || body.sequencerData === null) {
+      return NextResponse.json({ error: 'sequencerData must be an object' }, { status: 400 });
+    }
+    patch.sequencerData = body.sequencerData;
+  }
+  if (patch.title === undefined && patch.sequencerData === undefined) {
+    return NextResponse.json({ error: 'nothing to update' }, { status: 400 });
+  }
+
+  await db.update(songs).set(patch).where(eq(songs.id, id));
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  const userId = (session?.user as { id?: string } | undefined)?.id;
+  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const { id } = await params;
+  const row = await loadSong(id);
+  if (!row) return NextResponse.json({ error: 'not found' }, { status: 404 });
+  if (row.createdBy !== userId) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+
+  await db.delete(songs).where(eq(songs.id, id));
+  return NextResponse.json({ ok: true });
 }

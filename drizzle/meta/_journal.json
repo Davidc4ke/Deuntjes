@@ -15,6 +15,13 @@
       "when": 1779261159880,
       "tag": "0001_wandering_lady_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779261200000,
+      "tag": "0002_sequencer_only",
+      "breakpoints": true
     }
   ]
 }

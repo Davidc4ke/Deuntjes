@@ -1,45 +1,43 @@
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { requireUser } from '@/components/shared/AuthGate';
 import { AppBar } from '@/components/app/AppBar';
 import { signOut } from '@/auth';
-import Link from 'next/link';
 import { db } from '@/db/client';
-import { songVersions, songs, users } from '@/db/schema';
-import { desc, eq, sql } from 'drizzle-orm';
-import { SongCard } from '@/components/song/SongCard';
-import { unreadCountsForUser } from '@/lib/activity';
+import { songs, users } from '@/db/schema';
+import { desc, eq } from 'drizzle-orm';
+import { defaultSequencerState } from '@/lib/sequencerState';
 
 export const dynamic = 'force-dynamic';
 
+async function createSongAction() {
+  'use server';
+  const { userId } = await requireUser();
+  const [row] = await db
+    .insert(songs)
+    .values({ title: 'Untitled song', createdBy: userId, sequencerData: defaultSequencerState() })
+    .returning({ id: songs.id });
+  redirect(`/songs/${row.id}`);
+}
+
 export default async function HomePage() {
-  const { session, userId } = await requireUser();
+  const { userId, session } = await requireUser();
   const name = session.user?.name ?? 'friend';
   const avatar = (session.user as { avatar?: string }).avatar ?? '🎵';
-
-  const latestVersion = db
-    .select({
-      songId: songVersions.songId,
-      versionNumber: sql<number>`max(${songVersions.versionNumber})`.as('vmax'),
-    })
-    .from(songVersions)
-    .groupBy(songVersions.songId)
-    .as('lv');
 
   const rows = await db
     .select({
       id: songs.id,
       title: songs.title,
       createdAt: songs.createdAt,
+      updatedAt: songs.updatedAt,
       createdBy: songs.createdBy,
       creatorName: users.displayName,
       creatorAvatar: users.avatarEmoji,
-      latestVersionNumber: latestVersion.versionNumber,
     })
     .from(songs)
     .innerJoin(users, eq(users.id, songs.createdBy))
-    .leftJoin(latestVersion, eq(latestVersion.songId, songs.id))
-    .orderBy(desc(songs.createdAt));
-
-  const unread = await unreadCountsForUser({ userId, songIds: rows.map((r) => r.id) });
+    .orderBy(desc(songs.updatedAt));
 
   return (
     <>
@@ -63,47 +61,36 @@ export default async function HomePage() {
         }
       />
       <main className="page">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <form action={createSongAction}>
+            <button
+              type="submit"
+              style={{ background: 'var(--accent)', color: '#1a1024', borderColor: 'transparent' }}
+            >
+              + New song
+            </button>
+          </form>
+        </div>
         {rows.length === 0 ? (
           <div className="card">
             <h2 style={{ marginTop: 0 }}>No songs yet</h2>
-            <p className="muted">Be the first — start a song from your phone.</p>
-            <Link href="/songs/new" style={{ display: 'inline-block', marginTop: 12 }}>
-              <button>+ New song</button>
-            </Link>
+            <p className="muted">Tap “New song” to start your first sequencer.</p>
           </div>
         ) : (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-              <Link href="/songs/new">
-                <button
-                  style={{
-                    background: 'var(--accent)',
-                    color: '#1a1024',
-                    borderColor: 'transparent',
-                  }}
-                >
-                  + New song
-                </button>
+          <div>
+            {rows.map((r) => (
+              <Link key={r.id} href={`/songs/${r.id}`} className="song-card">
+                <span style={{ fontSize: 22 }}>{r.creatorAvatar}</span>
+                <div className="song-card-meta">
+                  <div className="song-card-title">{r.title}</div>
+                  <div className="song-card-sub">
+                    {r.creatorName}
+                    {r.createdBy === userId ? ' · you' : ''}
+                  </div>
+                </div>
               </Link>
-            </div>
-            <div>
-              {rows.map((r) => (
-                <SongCard
-                  key={r.id}
-                  song={{
-                    id: r.id,
-                    title: r.title,
-                    createdBy: {
-                      displayName: r.creatorName,
-                      avatarEmoji: r.creatorAvatar,
-                    },
-                    latestVersionNumber: r.latestVersionNumber ?? 1,
-                    unreadCount: unread.get(r.id) ?? 0,
-                  }}
-                />
-              ))}
-            </div>
-          </>
+            ))}
+          </div>
         )}
       </main>
     </>

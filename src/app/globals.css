@@ -93,66 +93,6 @@ select:focus {
   white-space: nowrap;
 }
 
-.context-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 25;
-  padding: 10px 12px calc(10px + var(--safe-bottom));
-  background: rgba(11, 11, 15, 0.92);
-  backdrop-filter: saturate(140%) blur(8px);
-  border-top: 1px solid var(--border);
-}
-
-.floating-transport {
-  position: fixed;
-  right: 16px;
-  bottom: calc(76px + var(--safe-bottom));
-  width: 56px;
-  height: 56px;
-  border-radius: 28px;
-  background: var(--accent);
-  color: #1a1024;
-  border: none;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 40;
-  font-size: 22px;
-}
-
-.sheet-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 50;
-}
-
-.sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 51;
-  max-height: 85vh;
-  background: var(--bg-elev);
-  border-top-left-radius: 16px;
-  border-top-right-radius: 16px;
-  padding: 12px 16px calc(16px + var(--safe-bottom));
-  overflow: auto;
-  border-top: 1px solid var(--border);
-}
-
-.sheet-grip {
-  width: 40px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--border);
-  margin: 4px auto 12px;
-}
-
 .page {
   padding: 16px;
   padding-bottom: 120px;
@@ -178,11 +118,22 @@ select:focus {
   color: inherit;
 }
 
-.unread-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 5px;
-  background: var(--accent-2);
+.song-card-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.song-card-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-card-sub {
+  color: var(--fg-dim);
+  font-size: 13px;
+  margin-top: 2px;
 }
 
 .muted {
@@ -193,111 +144,18 @@ select:focus {
   margin-top: 12px;
 }
 
-.section-timeline {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scroll-snap-type: x mandatory;
-}
-
-.section-chip {
-  flex: 0 0 auto;
-  min-width: 96px;
-  padding: 10px 12px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  scroll-snap-align: start;
-  user-select: none;
-  cursor: pointer;
-}
-
-.section-chip.editing {
-  border-color: var(--accent);
-}
-
-.section-name {
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.section-bars {
-  font-size: 12px;
-  color: var(--fg-dim);
-  margin-top: 4px;
-}
-
-.section-add {
-  flex: 0 0 auto;
-  min-width: 48px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  font-size: 18px;
-}
-
-.slot-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 14px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  cursor: pointer;
-}
-
-.slot-icon {
-  font-size: 22px;
-}
-
-.drum-pad-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-
-.drum-pad-row .grip {
-  color: var(--fg-dim);
-  cursor: grab;
-  user-select: none;
-  padding: 0 2px;
-}
-
-.wizard-steps {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 16px;
-}
-
-.wizard-steps > div {
-  flex: 1;
-  height: 4px;
-  background: var(--border);
-  border-radius: 2px;
-}
-
-.wizard-steps > div.active {
-  background: var(--accent);
-}
-
-.toast {
+/* Song page shell — full-bleed; the sequencer's own chrome owns the top
+   bar (back button + keyboard-icon → Song popup).
+   The BG matches the bottom-bar purple so any pixels iOS leaves below the
+   editor (home-indicator zone, transient browser-chrome differences) blend
+   in instead of showing a dark-gray seam. We deliberately do NOT pin
+   height to a viewport unit or set overflow:hidden — both made multi-touch
+   misbehave on iOS Safari. position: fixed inset:0 + the natural viewport
+   is enough; the sequencer's internal grid sizes its bottom row to fit. */
+.song-shell {
   position: fixed;
-  left: 50%;
-  bottom: calc(140px + var(--safe-bottom));
-  transform: translateX(-50%);
-  background: var(--bg-elev-2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 14px;
-  z-index: 60;
-  font-size: 14px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  inset: 0;
+  background: #2c2a4a;
 }
 
 @media (min-width: 1024px) {

@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bottom bar — 3 alternatives (iPhone scale)</title>
+<style>
+  :root {
+    --bar: #2a2640;
+    --bar-2: #322d4d;
+    --bar-text: #e9e8ff;
+    --bar-text-mute: #a09cc6;
+    --frame-line: rgba(255,255,255,0.06);
+    --cursor: #6b5fd9;
+    --cursor-strong: #5648b8;
+    --accent: #e9925c;
+    --ui: system-ui, -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+    --mono: "SF Mono", Menlo, ui-monospace, monospace;
+    --stage: #f6f4ee;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #1a1a23; color: #e8e6f5; font-family: var(--ui); }
+  body { padding: 32px 16px 96px; }
+
+  h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.02em; margin: 0 0 4px; }
+  h1 .sub { color: var(--bar-text-mute); font-weight: 500; margin-left: 8px; }
+  p.lede {
+    color: var(--bar-text-mute); margin: 0 auto 36px;
+    font-size: 13px; line-height: 1.55; max-width: 560px;
+  }
+
+  .design {
+    margin: 0 auto 48px;
+    width: 100%;
+    max-width: 480px;
+  }
+  .design header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 8px;
+  }
+  .design .label-chip {
+    display: inline-block;
+    background: var(--cursor);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font: 700 13px var(--ui);
+    letter-spacing: 0.04em;
+  }
+  .design header h2 {
+    font-size: 16px; font-weight: 700; letter-spacing: 0.01em;
+    margin: 0; color: #fff;
+  }
+  .design .summary {
+    color: var(--bar-text-mute); font-size: 13px; line-height: 1.55;
+    margin: 0 0 16px;
+  }
+  .design .notes { display: flex; gap: 18px; margin-top: 12px; font-size: 12px; line-height: 1.4; }
+  .design .notes .col { flex: 1; }
+  .design .notes .pros { color: #8ad592; }
+  .design .notes .cons { color: #d58a8a; }
+
+  /* ===== iPhone-bottom device frame ===== */
+  /* Width matches an iPhone viewport (~390px). The frame shows the grid edge above,
+     the bottom dock below it, and the home-indicator at the very bottom. */
+  .device {
+    width: 390px;
+    margin: 0 auto;
+    background: #0a0a14;
+    border-radius: 0 0 44px 44px;
+    border: 1px solid #2a2532;
+    border-top: none;
+    box-shadow: 0 14px 36px rgba(0,0,0,0.45);
+    overflow: hidden;
+  }
+  .device .grid-peek {
+    background: var(--stage);
+    height: 28px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    position: relative;
+  }
+  .device .grid-peek::before, .device .grid-peek::after {
+    content: ""; position: absolute; top: 0; bottom: 0; width: 1px;
+    background: rgba(0,0,0,0.06);
+  }
+  .device .grid-peek::before { left: 33%; }
+  .device .grid-peek::after  { left: 66%; }
+  .device .home-indicator {
+    height: 34px;
+    display: flex; align-items: flex-end; justify-content: center;
+    padding-bottom: 9px;
+  }
+  .device .home-indicator span {
+    display: block;
+    width: 134px; height: 5px;
+    background: rgba(255,255,255,0.85);
+    border-radius: 999px;
+  }
+
+  /* ===== Shared dock ===== */
+  .dock {
+    background: var(--bar);
+    padding: 14px 16px 16px;
+    color: var(--bar-text);
+  }
+  .dock-row { display: flex; align-items: center; gap: 10px; }
+  .dock-row + .dock-row { margin-top: 12px; }
+  .dock-row .grow { flex: 1; }
+
+  .meta {
+    font: 700 16px var(--ui);
+    color: var(--bar-text);
+  }
+  .meta .muted { color: var(--bar-text-mute); font-weight: 500; }
+
+  /* Unified button skeleton — all dock controls share this */
+  .btn {
+    appearance: none;
+    background: rgba(255,255,255,0.06);
+    color: var(--bar-text);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    padding: 0 16px;
+    height: 48px;
+    font: 700 14px var(--ui);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .btn:hover { background: rgba(255,255,255,0.10); }
+  .btn.primary { background: var(--cursor); border-color: var(--cursor-strong); color: #fff; }
+  .btn.danger  { background: rgba(255,80,90,0.10); border-color: rgba(255,80,90,0.3); color: #ff9c9c; }
+  .btn.transport {
+    background: #fff; color: #1a1a1f;
+    border-color: rgba(255,255,255,0.4);
+    font-size: 14px; font-weight: 800;
+    min-width: 72px;
+  }
+  .btn.transport.stop { background: #f1f1f1; }
+  .btn.value { padding: 0 14px; }
+  .btn .val {
+    color: rgba(255,255,255,0.55);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700; font-size: 13px;
+  }
+  .btn.primary .val,
+  .btn.danger .val { color: rgba(255,255,255,0.7); }
+
+  /* Inline slider — used in B and C */
+  .mini-slider {
+    display: inline-flex; align-items: center; gap: 10px;
+    flex: 1; min-width: 0;
+    height: 48px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    padding: 0 14px;
+  }
+  .mini-slider .lab {
+    font: 800 11px var(--ui); letter-spacing: 0.10em; text-transform: uppercase;
+    color: var(--bar-text-mute);
+    flex-shrink: 0;
+    min-width: 14px;
+  }
+  .mini-slider .track {
+    flex: 1; height: 5px; border-radius: 999px;
+    background: rgba(255,255,255,0.10);
+    position: relative;
+    min-width: 30px;
+  }
+  .mini-slider .track .fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: var(--cursor); border-radius: 999px;
+  }
+  .mini-slider .track .knob {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--cursor);
+    box-shadow: 0 0 0 3px var(--bar), 0 2px 4px rgba(0,0,0,0.25);
+  }
+  .mini-slider .v {
+    font: 700 13px var(--mono); color: var(--bar-text);
+    flex-shrink: 0; min-width: 30px; text-align: right;
+  }
+
+  /* Segmented control — used in C */
+  .seg {
+    display: inline-flex;
+    background: rgba(0,0,0,0.22);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .seg button {
+    appearance: none; background: transparent; color: var(--bar-text-mute);
+    border: none; border-radius: 9px;
+    height: 40px; padding: 0 14px;
+    font: 700 13px var(--ui); letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+  .seg button.active {
+    background: var(--cursor); color: #fff;
+  }
+
+  /* Pill row — horizontal scrollable strip (A) */
+  .pill-row {
+    display: flex; gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex: 1;
+  }
+  .pill-row::-webkit-scrollbar { display: none; }
+
+  .right-cluster { display: flex; gap: 8px; flex-shrink: 0; }
+  .adsr-row { display: flex; gap: 6px; flex: 1; }
+  .adsr-row .mini-slider { padding: 0 10px; gap: 8px; }
+  .divider {
+    width: 1px; height: 28px;
+    background: rgba(255,255,255,0.10);
+    margin: 0 2px;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>Bottom bar — alternative designs<span class="sub">iPhone scale · 390 px</span></h1>
+<p class="lede">
+  Each panel below is rendered at actual iPhone width with thumb-friendly 48 px controls
+  (slider rails get 20 px knobs). All three add <strong>Volume</strong>,
+  <strong>Length</strong> and per-stage <strong>ADSR</strong> on top of the existing
+  Copy / Delete / Done + transport.
+</p>
+
+<!-- =============================================== -->
+<!-- DESIGN A — Value-pills row                        -->
+<!-- =============================================== -->
+<section class="design">
+  <header>
+    <span class="label-chip">A</span>
+    <h2>Value-pills row</h2>
+  </header>
+  <p class="summary">
+    Every parameter is a single 48 px pill showing its current value. Tap a pill →
+    one-knob popover slides up. Two stacked rows; bottom row scrolls horizontally if
+    more params arrive.
+  </p>
+
+  <div class="device">
+    <div class="grid-peek"></div>
+    <div class="dock">
+      <div class="dock-row">
+        <span class="meta">Selection <span class="muted">· 2 notes</span></span>
+      </div>
+
+      <div class="dock-row">
+        <div class="pill-row">
+          <button class="btn value">Vol <span class="val">80%</span></button>
+          <button class="btn value">Len <span class="val">1×</span></button>
+          <button class="btn value">A <span class="val">.02</span></button>
+          <button class="btn value">D <span class="val">.15</span></button>
+          <button class="btn value">S <span class="val">.70</span></button>
+          <button class="btn value">R <span class="val">.40</span></button>
+        </div>
+      </div>
+
+      <div class="dock-row">
+        <button class="btn primary">Copy</button>
+        <button class="btn danger">Delete</button>
+        <button class="btn">Done</button>
+        <span class="grow"></span>
+        <button class="btn transport">▶</button>
+        <button class="btn transport stop">■</button>
+      </div>
+    </div>
+    <div class="home-indicator"><span></span></div>
+  </div>
+
+  <div class="notes">
+    <div class="col pros"><strong>+</strong> stays narrow; scrolls if more params; values readable at a glance.</div>
+    <div class="col cons"><strong>−</strong> every adjustment is a 2-step tap (pill → popover slider).</div>
+  </div>
+</section>
+
+<!-- =============================================== -->
+<!-- DESIGN B — Inline-slider strip                    -->
+<!-- =============================================== -->
+<section class="design">
+  <header>
+    <span class="label-chip">B</span>
+    <h2>Inline-slider strip</h2>
+  </header>
+  <p class="summary">
+    Sliders are right there — no second tap. Vol and Len each get full-width
+    sliders; ADSR gets a 4-up row below. Actions live on their own row so they
+    stay the same size as everything else.
+  </p>
+
+  <div class="device">
+    <div class="grid-peek"></div>
+    <div class="dock">
+      <div class="dock-row">
+        <span class="meta">Selection <span class="muted">· 2 notes</span></span>
+      </div>
+
+      <div class="dock-row">
+        <div class="mini-slider">
+          <span class="lab">Vol</span>
+          <div class="track"><div class="fill" style="width:80%"></div><div class="knob" style="left:80%"></div></div>
+          <span class="v">80%</span>
+        </div>
+        <div class="mini-slider">
+          <span class="lab">Len</span>
+          <div class="track"><div class="fill" style="width:30%"></div><div class="knob" style="left:30%"></div></div>
+          <span class="v">1×</span>
+        </div>
+      </div>
+
+      <div class="dock-row">
+        <div class="adsr-row">
+          <div class="mini-slider">
+            <span class="lab">A</span>
+            <div class="track"><div class="fill" style="width:10%"></div><div class="knob" style="left:10%"></div></div>
+          </div>
+          <div class="mini-slider">
+            <span class="lab">D</span>
+            <div class="track"><div class="fill" style="width:38%"></div><div class="knob" style="left:38%"></div></div>
+          </div>
+          <div class="mini-slider">
+            <span class="lab">S</span>
+            <div class="track"><div class="fill" style="width:70%"></div><div class="knob" style="left:70%"></div></div>
+          </div>
+          <div class="mini-slider">
+            <span class="lab">R</span>
+            <div class="track"><div class="fill" style="width:40%"></div><div class="knob" style="left:40%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dock-row">
+        <button class="btn primary">Copy</button>
+        <button class="btn danger">Delete</button>
+        <button class="btn">Done</button>
+        <span class="grow"></span>
+        <button class="btn transport">▶</button>
+        <button class="btn transport stop">■</button>
+      </div>
+    </div>
+    <div class="home-indicator"><span></span></div>
+  </div>
+
+  <div class="notes">
+    <div class="col pros"><strong>+</strong> drag-and-go on every slider; all values visible at once.</div>
+    <div class="col cons"><strong>−</strong> eats ~240 px of vertical space — biggest of the three.</div>
+  </div>
+</section>
+
+<!-- =============================================== -->
+<!-- DESIGN C — Tabbed parameter sheet                 -->
+<!-- =============================================== -->
+<section class="design">
+  <header>
+    <span class="label-chip">C</span>
+    <h2>Tabbed parameter sheet</h2>
+  </header>
+  <p class="summary">
+    Top row is always actions + transport. A segmented control on the second row picks
+    one parameter group — <em>Mix · Length · Envelope</em> — and the slider row swaps
+    to that group. Compact; expands only the section you're touching.
+  </p>
+
+  <div class="device">
+    <div class="grid-peek"></div>
+    <div class="dock">
+      <div class="dock-row">
+        <span class="meta">Selection <span class="muted">· 2 notes</span></span>
+      </div>
+
+      <div class="dock-row">
+        <div class="seg">
+          <button>Mix</button>
+          <button>Length</button>
+          <button class="active">Envelope</button>
+        </div>
+      </div>
+
+      <div class="dock-row">
+        <div class="adsr-row">
+          <div class="mini-slider">
+            <span class="lab">A</span>
+            <div class="track"><div class="fill" style="width:10%"></div><div class="knob" style="left:10%"></div></div>
+          </div>
+          <div class="mini-slider">
+            <span class="lab">D</span>
+            <div class="track"><div class="fill" style="width:38%"></div><div class="knob" style="left:38%"></div></div>
+          </div>
+          <div class="mini-slider">
+            <span class="lab">S</span>
+            <div class="track"><div class="fill" style="width:70%"></div><div class="knob" style="left:70%"></div></div>
+          </div>
+          <div class="mini-slider">
+            <span class="lab">R</span>
+            <div class="track"><div class="fill" style="width:40%"></div><div class="knob" style="left:40%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dock-row">
+        <button class="btn primary">Copy</button>
+        <button class="btn danger">Delete</button>
+        <button class="btn">Done</button>
+        <span class="grow"></span>
+        <button class="btn transport">▶</button>
+        <button class="btn transport stop">■</button>
+      </div>
+    </div>
+    <div class="home-indicator"><span></span></div>
+  </div>
+
+  <div class="notes">
+    <div class="col pros"><strong>+</strong> actions + transport always visible; ADSR row gets full width.</div>
+    <div class="col cons"><strong>−</strong> extra tap to switch parameter group; other params hidden until you swap tabs.</div>
+  </div>
+</section>
+
+<p class="lede" style="margin-top:40px; text-align:center;">
+  All three reuse one <code>.btn</code> skeleton (48 px tall) and one
+  <code>.mini-slider</code> skeleton, so the dock can't drift visually as parameters
+  are added.
+</p>
+
+</body>
+</html>
