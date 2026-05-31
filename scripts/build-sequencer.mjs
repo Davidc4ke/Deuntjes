@@ -172,9 +172,14 @@ function transformJs(js) {
 // transformJs without the state edit and then append an overlay.
 function transformJsClean(js) {
   let out = js;
-  out = out.replace(/document\.getElementById\(/g, 'root.querySelector("#"+');
+  // Scope the $ helper to the editor's root so we don't collide with the
+  // surrounding app's IDs. The handful of direct `document.getElementById`
+  // calls left in the mockup are all for body-mounted popovers (cursor
+  // menu overlay, param popover, toast) — those MUST stay document-level
+  // because the elements live outside `root`. So we only rewrite $, not
+  // every getElementById call.
   out = out.replace(
-    /const \$ = \(id\) => root\.querySelector\("#"\+id\);/,
+    /const \$ = \(id\) => document\.getElementById\(id\);/,
     'const $ = (id) => root.querySelector("#"+id);',
   );
   // pushUndo runs *before* the mutation it makes undoable. Notifying

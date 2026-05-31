@@ -933,10 +933,10 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     document.body.appendChild(overlay);
   }
   function closeCursorMenu() {
-    const o = root.querySelector("#"+"cursorMenuOverlay");
+    const o = document.getElementById("cursorMenuOverlay");
     if (o) o.remove();
     // Defensive sweep for any orphans from earlier code paths.
-    const m = root.querySelector("#"+"cursorMenu");
+    const m = document.getElementById("cursorMenu");
     if (m && !m.closest(".seq-menu-overlay")) m.remove();
   }
   function startRangeSelect() {
@@ -1516,7 +1516,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   // ---------- Toast ----------
   let toastTimer = null;
   function showToast(msg) {
-    const existing = root.querySelector("#"+"toast");
+    const existing = document.getElementById("toast");
     if (existing) existing.remove();
     const t = document.createElement("div");
     t.id = "toast";
@@ -2000,9 +2000,9 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     document.body.appendChild(overlay);
   }
   function closeParamPopover() {
-    const o = root.querySelector("#"+"paramPopoverOverlay");
+    const o = document.getElementById("paramPopoverOverlay");
     if (o) o.remove();
-    const p = root.querySelector("#"+"paramPopover");
+    const p = document.getElementById("paramPopover");
     if (p) p.remove();
   }
 
