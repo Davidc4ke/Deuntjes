@@ -38,14 +38,14 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   const WHITE_KEY_H = 30; // px per white key — drives total scrollable height
 
   const CHANNEL_PALETTE = [
-    { color: "#e9925c", edge: "#c47338" }, // coral / bass
-    { color: "#4ea6e9", edge: "#2d83c5" }, // blue / drum
-    { color: "#6dc97a", edge: "#499b56" }, // green / lead
-    { color: "#c47ccf", edge: "#985ba5" }, // magenta / chord
-    { color: "#f0c04b", edge: "#c69829" }, // amber / pad
-    { color: "#7e8dff", edge: "#5a6acc" }, // periwinkle / aux
-    { color: "#ff7e9a", edge: "#cc5772" }, // rose
-    { color: "#5cd3c6", edge: "#349a90" }, // teal
+    { color: "#ff7547", edge: "#a8421e" }, // glowing orange / bass
+    { color: "#3f6f9d", edge: "#2d5780" }, // steel blue / drum
+    { color: "#e0b860", edge: "#a48433" }, // vintage amber / lead
+    { color: "#6db0a5", edge: "#3f7a70" }, // muted teal / chord
+    { color: "#c87a3a", edge: "#8c5022" }, // burnt orange / pad
+    { color: "#7e9bb3", edge: "#4f6c84" }, // dusty steel / aux
+    { color: "#b585a8", edge: "#7a5470" }, // dusty mauve / rose
+    { color: "#a8a285", edge: "#736e56" }, // olive khaki / perc
   ];
 
   // synth: how the preset's voice is built (mono = subtractive MonoSynth, fm = FMSynth,

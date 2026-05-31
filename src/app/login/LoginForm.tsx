@@ -45,11 +45,7 @@ export function LoginForm() {
         />
       </label>
       {error ? <div style={{ color: 'var(--danger)' }}>{error}</div> : null}
-      <button
-        type="submit"
-        disabled={pending}
-        style={{ background: 'var(--accent)', color: '#1a1024', borderColor: 'transparent' }}
-      >
+      <button type="submit" disabled={pending} className="primary">
         {pending ? 'Signing in…' : 'Sign in'}
       </button>
       <p className="muted" style={{ fontSize: 13 }}>
