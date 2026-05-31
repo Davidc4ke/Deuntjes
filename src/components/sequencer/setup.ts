@@ -35,7 +35,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   const PITCH_INDEX = {};
   PITCHES.slice().reverse().forEach((p, i) => { PITCH_INDEX[p.name] = i; });
 
-  const WHITE_KEY_H = 30; // px per white key — drives total scrollable height
+  const WHITE_KEY_H = 44; // px per white key — drives total scrollable height
 
   const CHANNEL_PALETTE = [
     { color: "#ff7547", edge: "#a8421e" }, // glowing orange / bass

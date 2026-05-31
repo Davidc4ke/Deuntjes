@@ -581,8 +581,8 @@
     position: relative;
     display: flex; align-items: center; justify-content: center;
     border-radius: 50%;
-    font: 700 7.5px var(--mono);
-    letter-spacing: 0.06em;
+    font: 700 10px var(--mono);
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     pointer-events: none;
     transition:
@@ -592,7 +592,7 @@
       transform 160ms var(--ease-snap);
   }
   .key.white .key-dot {
-    width: 28px; height: 28px;
+    width: 40px; height: 40px;
     background:
       radial-gradient(circle at 35% 30%, #fbf6e6 0%, #ebe5d3 70%, #d6d0bd 100%);
     color: var(--stage-text);
@@ -600,19 +600,19 @@
     box-shadow:
       inset 0 1px 1px rgba(255,255,255,0.7),
       inset 0 -2px 3px rgba(0,0,0,0.08),
-      0 1px 2px rgba(0,0,0,0.22);
+      0 1px 3px rgba(0,0,0,0.25);
   }
   .key.black .key-dot {
-    width: 24px; height: 24px;
+    width: 36px; height: 36px;
     background:
       radial-gradient(circle at 35% 30%, #3a4658 0%, #1c2330 70%, #0d1218 100%);
     color: var(--stage);
     border: 1px solid #000;
-    font-size: 6.5px;
+    font-size: 9px;
     box-shadow:
       inset 0 1px 1px rgba(255,255,255,0.18),
       inset 0 -2px 3px rgba(0,0,0,0.55),
-      0 1px 2px rgba(0,0,0,0.35);
+      0 2px 4px rgba(0,0,0,0.4);
   }
   /* C-notes get a slightly different cream so octaves are easy to spot. */
   .key.white.octave-label .key-dot {
@@ -670,14 +670,14 @@
   .key.in-scale .key-dot::before {
     content: "";
     position: absolute;
-    top: 3px; left: 50%;
+    top: 5px; left: 50%;
     transform: translateX(-50%);
-    width: 4px; height: 4px;
+    width: 5px; height: 5px;
     border-radius: 50%;
     background: var(--accent-bright);
     box-shadow:
-      0 0 3px rgba(255, 117, 71, 0.7),
-      0 0 6px rgba(255, 117, 71, 0.4);
+      0 0 4px rgba(255, 117, 71, 0.75),
+      0 0 8px rgba(255, 117, 71, 0.45);
   }
 
   /* Long-press charge — fills the dot with steel blue, then bursts on commit. */
@@ -2377,7 +2377,7 @@
   const PITCH_INDEX = {};
   PITCHES.slice().reverse().forEach((p, i) => { PITCH_INDEX[p.name] = i; });
 
-  const WHITE_KEY_H = 30; // px per white key — drives total scrollable height
+  const WHITE_KEY_H = 44; // px per white key — drives total scrollable height
 
   const CHANNEL_PALETTE = [
     { color: "#ff7547", edge: "#a8421e" }, // glowing orange / bass
