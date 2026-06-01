@@ -993,6 +993,13 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   }
 
   // ---------- Grid render ----------
+  // Tracks the set of (step, channel) keys that had a rendered .note on the
+  // previous renderGrid() pass. We use it to flag genuinely new note blocks
+  // with the .fresh class so the appear-animation only fires for them —
+  // re-rendered existing notes stay still even though renderGrid() rebuilds
+  // the whole grid DOM on every call.
+  let prevRenderedNoteKeys = new Set();
+
   function renderGrid() {
     gridEl.innerHTML = "";
     const h = gridEl.clientHeight || 580;
@@ -1101,7 +1108,8 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       groups.get(k).push(n);
     });
 
-    groups.forEach((notes) => {
+    const nextRenderedNoteKeys = new Set();
+    groups.forEach((notes, groupKey) => {
       const first = notes[0];
       const colIdx = visibleChannels.findIndex(c => c.id === first.channelId);
       if (colIdx < 0) return; // channel muted — skip rendering its notes
@@ -1111,6 +1119,11 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       let cls = "note";
       if (notes.some(n => isSel(n.id))) cls += " selected";
       if (isChord) cls += " chord";
+      // Fresh = this (step, channel) didn't have a rendered note last time.
+      // Drives the appear-animation, so adding a note doesn't make every
+      // already-placed note re-animate.
+      if (!prevRenderedNoteKeys.has(groupKey)) cls += " fresh";
+      nextRenderedNoteKeys.add(groupKey);
       el.className = cls;
       el.dataset.id = first.id;
 
@@ -1147,6 +1160,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       else attachNoteGesture(el, first.id);
       gridEl.appendChild(el);
     });
+    prevRenderedNoteKeys = nextRenderedNoteKeys;
 
     // Keep the keyboard's pitch highlights in sync with wherever the cursor is now.
     refreshKeyHighlights();
