@@ -741,18 +741,21 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     return new Set(offsets.map(o => INDEX_NOTE[(root + o) % 12]));
   }
 
+  // Cached list of piano-key elements. renderKeys() invalidates by setting
+  // this to null. refreshKeyHighlights() hits this hot path on every cursor
+  // tick, so caching saves ~3 querySelectorAll(.key) calls per render.
+  let _cachedKeyEls = null;
   function refreshKeyHighlights() {
-    keysEl.querySelectorAll(".key").forEach(k => {
-      k.classList.remove("in-scale");
-      k.classList.remove("chord-active");
-      k.classList.remove("cursor-pitch");
-    });
+    const keys = _cachedKeyEls || (_cachedKeyEls = Array.from(keysEl.querySelectorAll(".key")));
+    for (let i = 0; i < keys.length; i++) {
+      keys[i].classList.remove("in-scale", "chord-active", "cursor-pitch");
+    }
     if (state.scaleOn) {
       const inScale = getInScaleClasses();
-      keysEl.querySelectorAll(".key").forEach(k => {
-        const cls = k.dataset.pitch.replace(/[0-9]/g, "");
-        if (inScale.has(cls)) k.classList.add("in-scale");
-      });
+      for (let i = 0; i < keys.length; i++) {
+        const cls = keys[i].dataset.pitch.replace(/[0-9]/g, "");
+        if (inScale.has(cls)) keys[i].classList.add("in-scale");
+      }
     }
     const ch = state.activeChannelId;
     if (state.chordMode) {
@@ -760,9 +763,9 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       const pitches = new Set(state.notes
         .filter(n => n.channelId === ch && Math.abs(n.step - state.chordStep) < 1e-6)
         .map(n => n.pitch));
-      keysEl.querySelectorAll(".key").forEach(k => {
-        if (pitches.has(k.dataset.pitch)) k.classList.add("chord-active");
-      });
+      for (let i = 0; i < keys.length; i++) {
+        if (pitches.has(keys[i].dataset.pitch)) keys[i].classList.add("chord-active");
+      }
     } else {
       // Normal mode: softer "cursor-pitch" hint on any pitch the cursor is sitting on
       // in the input channel — accounts for a note's full duration (step → step + size).
@@ -770,13 +773,14 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       const pitches = new Set(state.notes
         .filter(n => n.channelId === ch && c >= n.step - 1e-6 && c < n.step + n.size - 1e-6)
         .map(n => n.pitch));
-      keysEl.querySelectorAll(".key").forEach(k => {
-        if (pitches.has(k.dataset.pitch)) k.classList.add("cursor-pitch");
-      });
+      for (let i = 0; i < keys.length; i++) {
+        if (pitches.has(keys[i].dataset.pitch)) keys[i].classList.add("cursor-pitch");
+      }
     }
   }
 
   function renderKeys() {
+    _cachedKeyEls = null; // piano DOM is being rebuilt — drop the cached list
     keysEl.innerHTML = "";
     const whites = PITCHES.filter(p => !p.isBlack);
     const wh = WHITE_KEY_H * state.keyboardZoom;
@@ -1001,30 +1005,91 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   // the whole grid DOM on every call.
   let prevRenderedNoteKeys = new Set();
 
+  // Performance scaffolding:
+  //
+  // 1. rAF coalescing — knob drags fire setCursorFromClientY at touch-event
+  //    rate (often 60–120 Hz). Each call previously triggered a full
+  //    renderGrid, which at 32–64 steps + many notes meant hundreds of DOM
+  //    ops per frame and visible lag. We now coalesce all renderGrid()
+  //    requests within a frame into a single requestAnimationFrame, so the
+  //    grid rebuilds at most once per paint.
+  //
+  // 2. Row reuse — the row scaffolding (numbers, beat lines) only depends on
+  //    state.steps and the rendered height. When neither changed, we keep
+  //    the existing rows in place and only toggle the .cursor class on the
+  //    single row that needs it. At 64 steps that's ~128 DOM ops saved per
+  //    render.
+  let _renderRaf = 0;
+  let _lastRowSteps = -1;
+  let _lastRowH = -1;
+
   function renderGrid() {
-    gridEl.innerHTML = "";
+    if (_renderRaf) return;
+    _renderRaf = requestAnimationFrame(() => {
+      _renderRaf = 0;
+      // Skip if the component was torn down between schedule and fire.
+      if (!gridEl.isConnected) return;
+      _renderGridNow();
+    });
+  }
+
+  function _renderGridNow() {
     const h = gridEl.clientHeight || 580;
     const rowH = h / state.steps;
-
     const cursorInt = Math.round(state.cursor);
-    for (let i = 0; i < state.steps; i++) {
-      const row = document.createElement("div");
-      row.className = "row" + (i % 4 === 0 ? " beat" : "") + (i === cursorInt ? " cursor" : "");
-      row.style.top = (i * rowH) + "px";
-      row.style.height = rowH + "px";
-      const num = document.createElement("span");
-      num.className = "num";
-      num.textContent = String(i + 1).padStart(2, "0");
-      row.appendChild(num);
-      gridEl.appendChild(row);
+
+    const rowsNeedRebuild = (
+      state.steps !== _lastRowSteps ||
+      Math.abs(rowH - _lastRowH) > 0.5
+    );
+
+    if (rowsNeedRebuild) {
+      gridEl.innerHTML = "";
+      // Build all rows into a fragment so the single appendChild at the end
+      // is the only paint-trigger.
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < state.steps; i++) {
+        const row = document.createElement("div");
+        row.className = "row" + (i % 4 === 0 ? " beat" : "") + (i === cursorInt ? " cursor" : "");
+        row.style.top = (i * rowH) + "px";
+        row.style.height = rowH + "px";
+        const num = document.createElement("span");
+        num.className = "num";
+        num.textContent = String(i + 1).padStart(2, "0");
+        row.appendChild(num);
+        frag.appendChild(row);
+      }
+      gridEl.appendChild(frag);
+      _lastRowSteps = state.steps;
+      _lastRowH = rowH;
+    } else {
+      // Selectively drop every non-row child; keep the row scaffolding intact.
+      const toRemove = [];
+      for (const child of gridEl.children) {
+        if (!child.classList.contains("row")) toRemove.push(child);
+      }
+      for (const el of toRemove) el.remove();
+      // After the removal pass every child is a row, so index === row index.
+      const rows = gridEl.children;
+      for (let i = 0; i < rows.length; i++) {
+        const want = i === cursorInt;
+        if (want !== rows[i].classList.contains("cursor")) {
+          rows[i].classList.toggle("cursor", want);
+        }
+      }
     }
+
+    // Build every per-render element into a single fragment, then attach
+    // the whole fragment in one go at the end. That coalesces dozens of
+    // appendChild() calls into a single style/layout invalidation.
+    const frag = document.createDocumentFragment();
 
     // Cursor line — sits at the TOP of the cursor's row so a new note placed at
     // step=cursor renders right below the line (the note starts where the cursor is).
     const cursorLine = document.createElement("div");
     cursorLine.className = "cursor-line" + (state.cursor !== Math.round(state.cursor) ? " fractional" : "");
     cursorLine.style.top = (state.cursor * rowH) + "px";
-    gridEl.appendChild(cursorLine);
+    frag.appendChild(cursorLine);
 
     // Independent playhead during playback — lets the user keep editing at the
     // cursor while the sequence runs.
@@ -1032,7 +1097,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       const ph = document.createElement("div");
       ph.className = "playhead-line";
       ph.style.top = (state.playhead * rowH) + "px";
-      gridEl.appendChild(ph);
+      frag.appendChild(ph);
     }
 
     // Only unmuted channels claim grid columns; muted channels keep their (dimmed)
@@ -1050,7 +1115,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       const div = document.createElement("div");
       div.className = "col-divider";
       div.style.left = (colLeft + i * colW) + "px";
-      gridEl.appendChild(div);
+      frag.appendChild(div);
     }
 
     // ⋯ button next to the cursor line — opens the per-cursor mini menu.
@@ -1066,7 +1131,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       // when the cursor is at the very top or very bottom.
       cursorBtn.style.top = Math.max(0, Math.min(state.cursor * rowH - 11, h - 22)) + "px";
       cursorBtn.addEventListener("click", openCursorMenu);
-      gridEl.appendChild(cursorBtn);
+      frag.appendChild(cursorBtn);
     }
 
     // Ghost note in the input channel column — previews where a key-press will land.
@@ -1084,7 +1149,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
         ghost.style.height = Math.max(6, ghostSize * rowH - 6) + "px";
         ghost.style.setProperty("--ch-color", inputCh.color);
         ghost.style.setProperty("--ch-edge", inputCh.edge);
-        gridEl.appendChild(ghost);
+        frag.appendChild(ghost);
       }
       // Range selection box in the input channel column.
       if (state.rangeSelectAnchor !== null) {
@@ -1096,7 +1161,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
         box.style.width  = (colW - 4) + "px";
         box.style.top    = (a * rowH) + "px";
         box.style.height = Math.max(2, (b - a) * rowH) + "px";
-        gridEl.appendChild(box);
+        frag.appendChild(box);
       }
     }
 
@@ -1159,9 +1224,12 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
 
       if (isChord) attachChordGesture(el, notes);
       else attachNoteGesture(el, first.id);
-      gridEl.appendChild(el);
+      frag.appendChild(el);
     });
     prevRenderedNoteKeys = nextRenderedNoteKeys;
+
+    // One-shot attach — all per-render elements go in together.
+    gridEl.appendChild(frag);
 
     // Keep the keyboard's pitch highlights in sync with wherever the cursor is now.
     refreshKeyHighlights();
