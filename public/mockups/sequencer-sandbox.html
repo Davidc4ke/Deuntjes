@@ -3401,6 +3401,15 @@
   let _lastRowSteps = -1;
   let _lastRowH = -1;
 
+  // Cached references to the per-render overlay elements. The fast
+  // cursor-update path (updateCursorVisuals) reads these instead of doing a
+  // querySelector on every knob-drag tick. _renderGridNow refreshes them
+  // after the fragment is appended.
+  let _cachedCursorLine = null;
+  let _cachedCursorBtn = null;
+  let _cachedGhost = null;
+  let _cachedRangeBox = null;
+
   function renderGrid() {
     if (_renderRaf) return;
     _renderRaf = requestAnimationFrame(() => {
@@ -3570,6 +3579,11 @@
       nextRenderedNoteKeys.add(groupKey);
       el.className = cls;
       el.dataset.id = first.id;
+      // Stamp step + channel on the element so the fast cursor-update path
+      // (updateCursorVisuals) can re-toggle the will-overwrite hint without
+      // rebuilding any DOM.
+      el.dataset.step = first.step;
+      el.dataset.channel = first.channelId;
 
       const label = document.createElement("span");
       label.className = "note-label" + (isChord ? " chord-label" : "");
@@ -3608,6 +3622,13 @@
 
     // One-shot attach — all per-render elements go in together.
     gridEl.appendChild(frag);
+
+    // Refresh the overlay-element cache so updateCursorVisuals can update
+    // them in place without querying the DOM on every tick.
+    _cachedCursorLine = gridEl.querySelector(".cursor-line");
+    _cachedCursorBtn  = gridEl.querySelector(".cursor-action");
+    _cachedGhost      = gridEl.querySelector(".cursor-ghost");
+    _cachedRangeBox   = gridEl.querySelector(".range-box");
 
     // Keep the keyboard's pitch highlights in sync with wherever the cursor is now.
     refreshKeyHighlights();
@@ -5011,6 +5032,127 @@
     return Math.round(clamped * 100) / 100; // "off" — keep some quantization for sanity
   }
 
+  // Fast cursor-update path. The knob drag (touch / mouse) and scroller tap
+  // both fire this at touch-event rate (60–120 Hz). The naive approach is
+  // to call renderGrid every tick, which rebuilds every note element from
+  // scratch — at 32–64 steps × dozens of notes that's the dominant render
+  // cost the user reported as lag. Cursor moves don't actually need to
+  // touch the notes at all, so we reposition only the overlay elements
+  // (cursor line / button / ghost / range box) plus the .cursor class on
+  // the active row and refresh the piano-key highlights. Notes stay
+  // exactly where they are.
+  //
+  // When something happens that *does* need a full rebuild (range select
+  // changing selection, or the ghost / range-box not existing yet so we
+  // can't reposition it), we fall through to renderGrid().
+  function updateCursorVisuals() {
+    // A full render is already scheduled — let it handle the cursor too.
+    if (_renderRaf) return;
+    // First frame after mount: nothing to update yet, do the full render.
+    if (!_cachedCursorLine || !_cachedCursorLine.isConnected) {
+      renderGrid();
+      return;
+    }
+    const h = gridEl.clientHeight || 580;
+    const rowH = h / state.steps;
+    const cursorInt = Math.round(state.cursor);
+
+    // Cursor line position + fractional marker.
+    _cachedCursorLine.style.top = (state.cursor * rowH) + "px";
+    const isFrac = state.cursor !== Math.round(state.cursor);
+    if (isFrac !== _cachedCursorLine.classList.contains("fractional")) {
+      _cachedCursorLine.classList.toggle("fractional", isFrac);
+    }
+
+    // Cursor button position + chord-mode style/text.
+    if (_cachedCursorBtn) {
+      _cachedCursorBtn.style.top = Math.max(0, Math.min(state.cursor * rowH - 11, h - 22)) + "px";
+      const inChord = state.chordMode;
+      if (inChord !== _cachedCursorBtn.classList.contains("chord-mode")) {
+        _cachedCursorBtn.classList.toggle("chord-mode", inChord);
+        _cachedCursorBtn.textContent = inChord ? "♪" : "⋯";
+        _cachedCursorBtn.title = inChord ? "Chord mode (tap keys to toggle pitches)" : "Cursor actions";
+      }
+    }
+
+    // Move the .cursor class to whichever row the cursor is on.
+    let idx = 0;
+    for (const child of gridEl.children) {
+      if (!child.classList.contains("row")) continue;
+      const want = idx === cursorInt;
+      if (want !== child.classList.contains("cursor")) {
+        child.classList.toggle("cursor", want);
+      }
+      idx++;
+    }
+
+    // Ghost preview: reposition / show / hide.
+    const visibleChannels = state.channels.filter(c => !c.muted);
+    const inputIdx = visibleChannels.findIndex(c => c.id === state.activeChannelId);
+    const showGhost = inputIdx >= 0 && state.rangeSelectAnchor === null && !state.chordMode;
+    if (showGhost) {
+      const ghostStep = effectivePlacementStep();
+      const ghostSize = Math.min(state.defaultSize, state.steps - ghostStep);
+      if (ghostSize > 0) {
+        if (!_cachedGhost || !_cachedGhost.isConnected) {
+          // The ghost doesn't exist yet — full render is needed to create it.
+          renderGrid();
+          return;
+        }
+        _cachedGhost.style.top = (ghostStep * rowH + 3) + "px";
+        _cachedGhost.style.height = Math.max(6, ghostSize * rowH - 6) + "px";
+        if (_cachedGhost.style.display === "none") _cachedGhost.style.display = "";
+      } else if (_cachedGhost && _cachedGhost.isConnected) {
+        _cachedGhost.style.display = "none";
+      }
+    } else if (_cachedGhost && _cachedGhost.isConnected && _cachedGhost.style.display !== "none") {
+      _cachedGhost.style.display = "none";
+    }
+
+    // Range selection box. If active, also force a full render so the
+    // .selected class on the affected notes updates (selectedIds may have
+    // shifted as the cursor moved).
+    if (state.rangeSelectAnchor !== null) {
+      renderGrid();
+      return;
+    } else if (_cachedRangeBox && _cachedRangeBox.isConnected) {
+      _cachedRangeBox.remove();
+      _cachedRangeBox = null;
+    }
+
+    // Will-overwrite hint: the single (non-chord) note at the cursor step
+    // in the active channel gets a highlighted label so the user can see
+    // what their next key-press will overwrite. We toggle the class on
+    // existing .note elements rather than rebuilding them.
+    {
+      const cursorStep = effectivePlacementStep();
+      const activeCh = state.activeChannelId;
+      const noteEls = gridEl.getElementsByClassName("note");
+      const inChord = state.chordMode;
+      for (let i = 0; i < noteEls.length; i++) {
+        const el = noteEls[i];
+        const isChordBlock = el.classList.contains("chord");
+        let want = false;
+        if (!inChord && !isChordBlock) {
+          const stepMatches = Math.abs(parseFloat(el.dataset.step) - cursorStep) < 1e-6;
+          const chMatches = parseInt(el.dataset.channel, 10) === activeCh;
+          want = stepMatches && chMatches;
+        }
+        const label = el.firstChild; // .note-label is appended first
+        if (label && label.classList) {
+          const has = label.classList.contains("will-overwrite");
+          if (want !== has) label.classList.toggle("will-overwrite", want);
+        }
+      }
+    }
+
+    // Piano key highlights — cursor-pitch / chord-active follow the cursor.
+    refreshKeyHighlights();
+
+    // Floating delete button depends on whether any notes sit at the cursor.
+    updateFloatingDelete();
+  }
+
   function setCursorFromClientY(clientY) {
     const r = scrollerEl.getBoundingClientRect();
     const pad = 18;
@@ -5020,10 +5162,10 @@
     const next = snapCursor(frac * state.steps);
     if (Math.abs(next - state.cursor) > 1e-6) {
       state.cursor = next;
-      if (state.chordMode) exitChordMode();
+      if (state.chordMode) exitChordMode();   // exitChordMode queues renderGrid; rAF coalesces
       autoEnterChordIfOnChord();
       updateRangeSelection();
-      renderGrid();
+      updateCursorVisuals();                   // fast path; falls back to renderGrid if needed
       updateSelectedBar();
     }
     positionKnobFromCursor();
