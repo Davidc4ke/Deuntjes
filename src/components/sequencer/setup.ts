@@ -232,6 +232,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     // Per-channel synths whose preset/adsr/eq/fx might have changed: rebuild.
     state.channels.forEach(ch => disposeChannelSynth(ch.id));
     if (lengthEl) { lengthEl.value = state.steps; lengthValEl.textContent = state.steps; }
+    if (typeof updateLengthActionButtons === "function") updateLengthActionButtons();
     applyActiveChannelStyle();
     renderChannelStrip();
     renderPresetButtons();
@@ -2490,16 +2491,64 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   });
 
   // ---------- Length ----------
+  const halveLenBtn = $("halveLenBtn");
+  const doubleLenBtn = $("doubleLenBtn");
+  function lengthMin() { return parseInt(lengthEl.min, 10); }
+  function lengthMax() { return parseInt(lengthEl.max, 10); }
+  function updateLengthActionButtons() {
+    if (halveLenBtn) halveLenBtn.disabled = state.steps / 2 < lengthMin();
+    if (doubleLenBtn) doubleLenBtn.disabled = state.steps * 2 > lengthMax();
+  }
+  function syncLengthUI() {
+    lengthEl.value = state.steps;
+    lengthValEl.textContent = state.steps;
+    updateLengthActionButtons();
+  }
   lengthEl.addEventListener("input", () => {
     beginSliderSession(lengthEl);
     state.steps = parseInt(lengthEl.value, 10);
     lengthValEl.textContent = state.steps;
     state.cursor = Math.min(state.cursor, state.steps);
+    updateLengthActionButtons();
     // do NOT remove out-of-range notes — they stay in state and reappear when length grows again
     renderGrid();
     positionKnobFromCursor();
     updateSelectedBar();
   });
+  if (halveLenBtn) halveLenBtn.addEventListener("click", () => {
+    if (state.steps / 2 < lengthMin()) return;
+    pushUndo();
+    state.steps = Math.floor(state.steps / 2);
+    state.cursor = Math.min(state.cursor, state.steps);
+    // Out-of-range notes stay in state.notes (mirrors slider-shrink behavior)
+    // so doubling back restores them.
+    syncLengthUI();
+    renderGrid();
+    positionKnobFromCursor();
+    updateSelectedBar();
+  });
+  if (doubleLenBtn) doubleLenBtn.addEventListener("click", () => {
+    if (state.steps * 2 > lengthMax()) return;
+    pushUndo();
+    const origLen = state.steps;
+    // Duplicate every note whose start is inside the original range so the
+    // pattern repeats in the new second half. Deep-clone to keep per-note
+    // overrides (volume/adsr/tone/eq/fx) intact, then assign a fresh id and
+    // shift the step.
+    const toClone = state.notes.filter(n => n.step < origLen);
+    toClone.forEach(n => {
+      const clone = JSON.parse(JSON.stringify(n));
+      clone.id = state.nextId++;
+      clone.step = n.step + origLen;
+      state.notes.push(clone);
+    });
+    state.steps = origLen * 2;
+    syncLengthUI();
+    renderGrid();
+    positionKnobFromCursor();
+    updateSelectedBar();
+  });
+  updateLengthActionButtons();
 
   // ---------- Scroller knob ----------
   function positionKnobFromCursor() {
