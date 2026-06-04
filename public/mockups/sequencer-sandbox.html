@@ -5169,18 +5169,31 @@
   //
   // A flag stops the two paths from double-applying on Safari (where both
   // gesture* and touch* fire).
-  let _gestureActive = false, _gestureStartZoom = 1;
-  gridEl.addEventListener("gesturestart", (e) => {
-    e.preventDefault();
+  // Gesture listeners go on DOCUMENT (not the grid) with { passive:false } —
+  // the documented-reliable way to intercept WebKit pinch on iOS. We block the
+  // page-zoom for any pinch, and additionally zoom the grid when the pinch
+  // started over it.
+  let _gestureActive = false, _gestureInGrid = false, _gestureStartZoom = 1;
+  function eventInGrid(e) {
+    const t = e.target;
+    return !!(t && t.nodeType === 1 && t.closest && t.closest("#grid"));
+  }
+  document.addEventListener("gesturestart", (e) => {
+    e.preventDefault();                  // never let the whole page zoom
     _gestureActive = true;
+    _gestureInGrid = eventInGrid(e);
     _gestureStartZoom = state.gridZoom;
   }, { passive: false });
-  gridEl.addEventListener("gesturechange", (e) => {
+  document.addEventListener("gesturechange", (e) => {
     e.preventDefault();
-    setGridZoom(_gestureStartZoom * e.scale, e.clientY);
+    if (_gestureInGrid) setGridZoom(_gestureStartZoom * e.scale, e.clientY);
   }, { passive: false });
-  const endGesture = (e) => { e.preventDefault(); _gestureActive = false; };
-  gridEl.addEventListener("gestureend", endGesture, { passive: false });
+  const endGesture = (e) => { e.preventDefault(); _gestureActive = false; _gestureInGrid = false; };
+  document.addEventListener("gestureend", endGesture, { passive: false });
+  // Belt-and-braces: block iOS double-tap-ish multi-touch page zoom globally.
+  document.addEventListener("touchmove", (e) => {
+    if (e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
 
   // --- Two-finger pinch via touch events (iOS Chrome + Android) ---
   let _pinchStartDist = 0, _pinchStartZoom = 1, _pinching = false;
@@ -5759,6 +5772,16 @@
     updateSelectedBar();
     updateStackNav();
     scrollPianoTo("C4");
+    // One-time "build check": flashes the zoom badge ~1s after load so it's
+    // obvious whether THIS (pinch-zoom) build is the one being served. If you
+    // don't see a brief "PINCH ⤢" pill top-right of the grid, you're on a
+    // stale cache or the wrong preview URL.
+    setTimeout(() => {
+      if (!gridZoomBadge) return;
+      gridZoomBadge.textContent = "PINCH ⤢";
+      gridZoomBadge.classList.add("show");
+      setTimeout(() => gridZoomBadge.classList.remove("show"), 1600);
+    }, 600);
     window.addEventListener("resize", () => {
       renderKeys(); renderGrid(); positionKnobFromCursor();
     });
