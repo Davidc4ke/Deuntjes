@@ -6,43 +6,80 @@
 <title>Sequencer Sandbox — Mockup</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Major+Mono+Display&display=swap" rel="stylesheet">
 <style>
   :root {
     /* iPhone 17 logical portrait viewport */
     --phone-w: 402px;
     --phone-h: 874px;
 
-    /* Palette — restrained, DAW-inspired */
-    --backdrop: #0b0b0d;
-    --backdrop-2: #161618;
-    --frame-edge: #1f1f23;
-    --frame-line: #2a2a30;
+    /* ===== Cassette futurism palette =====
+       Inspired by vintage analog electronics: cream plastic panels,
+       glowing orange indicators, dark steel-blue frames. */
 
-    --stage: #fafaf9;
-    --stage-line: #e6e6e3;
-    --stage-line-strong: #d4d4cf;
-    --stage-text: #1d1d1f;
-    --stage-text-mute: #7a7a7f;
+    --backdrop: #1c2330;           /* deep steel blue outer */
+    --backdrop-2: #232b3a;         /* slightly lighter inner */
+    --frame-edge: #0d1118;         /* very dark bezel edge */
+    --frame-line: #3a4658;         /* mid blue-gray separator */
 
-    --bar: #313137;
-    --bar-text: #d4d4d8;
-    --bar-text-mute: #8b8b92;
+    --stage: #e6e1d1;              /* warm cream panel */
+    --stage-2: #d8d2bf;            /* shaded cream */
+    --stage-line: #c5beaa;         /* gentle panel divider */
+    --stage-line-strong: #aaa48f;  /* strong divider */
+    --stage-text: #1d2530;         /* deep navy ink */
+    --stage-text-mute: #5e6878;    /* muted slate */
 
-    --accent: #e9925c;          /* warm coral, less candy than the mockup */
-    --accent-edge: #c47338;
-    --accent-soft: #f4caaa;
+    --bar: #2a3445;                /* dark blue-gray bar */
+    --bar-2: #344056;              /* lighter blue-gray */
+    --bar-text: #e6e1d1;           /* cream text on dark */
+    --bar-text-mute: #8794a8;      /* dusty steel-blue text */
 
-    --cursor: #6b5fd9;          /* dialed-back purple */
-    --cursor-strong: #5246c9;
+    /* === Signature glowing orange === */
+    --accent: #e85d35;             /* warm vintage orange */
+    --accent-glow: #ff7547;        /* brighter orange for glow */
+    --accent-bright: #ff8c5f;      /* hot LED orange */
+    --accent-edge: #a8421e;        /* deep burnt orange edge */
+    --accent-soft: #f5b48e;        /* peach highlight */
+    --accent-deep: #6b2a13;        /* shadow / inset color */
 
-    --bottom: #2c2a4a;          /* deep indigo, not the daytime purple */
-    --bottom-2: #3a3760;
-    --bottom-line: #4a4870;
+    /* === Steel blue (replaces editing purple) === */
+    --cursor: #3f6f9d;             /* analog meter blue */
+    --cursor-strong: #2d5780;      /* deeper meter blue */
+    --cursor-soft: #7ea3c6;        /* light steel blue */
 
-    /* Type */
-    --ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    /* === Bottom panel === */
+    --bottom: #232b3a;
+    --bottom-2: #2c3648;
+    --bottom-line: #3a4658;
+
+    /* === Type — cassette futurism fonts === */
+    --ui: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: "Space Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --display: "Major Mono Display", "Space Mono", monospace;
+
+    /* === Easing curves for retro-smooth motion === */
+    --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-snap: cubic-bezier(0.34, 1.4, 0.64, 1);
+    --ease-vintage: cubic-bezier(0.65, 0.05, 0.36, 1);
+
+    /* === Reusable glow effects === */
+    --glow-orange:
+      0 0 4px rgba(255, 117, 71, 0.55),
+      0 0 12px rgba(255, 117, 71, 0.35),
+      0 0 22px rgba(255, 117, 71, 0.18);
+    --glow-orange-soft:
+      0 0 3px rgba(255, 117, 71, 0.45),
+      0 0 8px rgba(255, 117, 71, 0.22);
+    --glow-orange-strong:
+      0 0 6px rgba(255, 140, 95, 0.85),
+      0 0 16px rgba(255, 117, 71, 0.55),
+      0 0 32px rgba(255, 100, 60, 0.28);
+    --bevel-cream:
+      inset 0 1px 0 rgba(255, 255, 255, 0.55),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.10);
+    --bevel-dark:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; background: var(--backdrop); color: var(--bar-text); font-family: var(--ui); font-feature-settings: "cv11", "ss01"; }
@@ -51,22 +88,41 @@
     display: flex; align-items: center; justify-content: center;
     padding: 24px;
     background:
-      radial-gradient(1200px 600px at 50% -10%, #1a1a1e 0%, transparent 60%),
+      radial-gradient(1200px 600px at 50% -10%, #2a3548 0%, transparent 60%),
+      radial-gradient(800px 400px at 80% 100%, #1a3247 0%, transparent 55%),
       var(--backdrop);
+    background-attachment: fixed;
+  }
+  /* Subtle scanline texture across the whole page for that CRT feel. */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background-image: repeating-linear-gradient(
+      0deg,
+      rgba(255,255,255,0.012) 0,
+      rgba(255,255,255,0.012) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events: none;
+    z-index: 9999;
+    mix-blend-mode: overlay;
   }
 
-  /* ---- Phone frame ---- */
+  /* ---- Phone frame (styled as a cassette deck chassis) ---- */
   .device {
     width: var(--phone-w);
     height: var(--phone-h);
-    background: #000;
+    background:
+      linear-gradient(180deg, #1a2230 0%, #0c1018 100%);
     border-radius: 44px;
     padding: 8px;
     box-shadow:
-      0 1px 0 rgba(255,255,255,0.04) inset,
+      0 1px 0 rgba(255,255,255,0.06) inset,
       0 0 0 1px var(--frame-edge),
-      0 30px 60px rgba(0,0,0,0.6),
-      0 0 0 8px #050507;
+      0 30px 60px rgba(0,0,0,0.65),
+      0 0 0 8px #07090c,
+      0 0 0 9px rgba(255,255,255,0.04);
     position: relative;
   }
   .device::before {
@@ -75,6 +131,20 @@
     transform: translateX(-50%);
     width: 110px; height: 32px; background: #000;
     border-radius: 999px; z-index: 10;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.05),
+      inset 0 0 12px rgba(0,0,0,0.8);
+  }
+  /* Tiny glowing power LED at the top-left of the chassis. */
+  .device::after {
+    content: ""; position: absolute;
+    top: 24px; left: 28px;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent-bright);
+    box-shadow: var(--glow-orange-strong);
+    z-index: 11;
+    animation: ledPulse 2.4s ease-in-out infinite;
   }
   .screen {
     width: 100%; height: 100%;
@@ -84,12 +154,37 @@
     position: relative;
     display: grid;
     grid-template-rows: 44px 56px 1fr auto;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+  }
+  @keyframes ledPulse {
+    0%, 100% {
+      box-shadow:
+        0 0 4px rgba(255, 117, 71, 0.6),
+        0 0 10px rgba(255, 117, 71, 0.35),
+        0 0 20px rgba(255, 117, 71, 0.2);
+    }
+    50% {
+      box-shadow:
+        0 0 6px rgba(255, 140, 95, 0.9),
+        0 0 16px rgba(255, 117, 71, 0.6),
+        0 0 32px rgba(255, 100, 60, 0.35);
+    }
+  }
+  @keyframes glowPulse {
+    0%, 100% { box-shadow: var(--glow-orange-soft); }
+    50%      { box-shadow: var(--glow-orange); }
+  }
+  @keyframes glowPulseStrong {
+    0%, 100% { box-shadow: var(--glow-orange); }
+    50%      { box-shadow: var(--glow-orange-strong); }
   }
   /* status bar simulation */
   .status {
     display: flex; align-items: center; justify-content: space-between;
     padding: 14px 22px 4px;
-    color: var(--bar-text); font-size: 13px; font-weight: 600;
+    color: var(--bar-text);
+    font: 700 13px var(--mono);
+    letter-spacing: 0.04em;
     font-variant-numeric: tabular-nums;
   }
   .status .right { display: flex; gap: 6px; align-items: center; opacity: 0.85; }
@@ -103,54 +198,82 @@
   .topbar-left {
     display: flex; align-items: center; gap: 6px;
     padding: 8px 10px;
-    background: var(--bar);
-    border-bottom: 1px solid var(--frame-line);
+    background:
+      linear-gradient(180deg, var(--bar-2) 0%, var(--bar) 100%);
+    border-bottom: 1px solid var(--frame-edge);
+    box-shadow: var(--bevel-dark);
   }
   .icon-btn {
     appearance: none;
-    background: transparent;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.18) 100%);
     border: 1px solid rgba(255,255,255,0.10);
     color: var(--bar-text-mute);
     padding: 6px 8px;
-    border-radius: 10px;
+    border-radius: 8px;
     cursor: pointer;
     display: inline-flex; align-items: center; justify-content: center;
     flex-shrink: 0;
+    transition: background 220ms var(--ease-smooth),
+                color 220ms var(--ease-smooth),
+                transform 120ms var(--ease-snap),
+                box-shadow 220ms var(--ease-smooth);
+    box-shadow: var(--bevel-dark);
   }
-  .icon-btn:hover { background: rgba(255,255,255,0.06); color: var(--bar-text); }
+  .icon-btn:hover {
+    background:
+      linear-gradient(180deg, rgba(255,117,71,0.12) 0%, rgba(0,0,0,0.18) 100%);
+    color: var(--accent-soft);
+    box-shadow: var(--bevel-dark), 0 0 6px rgba(255,117,71,0.18);
+  }
+  .icon-btn:active { transform: translateY(1px); }
   .icon-btn svg { display: block; width: 20px; height: 20px; }
   .pill {
     appearance: none; border: 1px solid rgba(255,255,255,0.08);
-    background: #404049; color: var(--bar-text);
-    padding: 7px 12px; border-radius: 10px;
+    background:
+      linear-gradient(180deg, #4a5670 0%, #364259 100%);
+    color: var(--bar-text);
+    padding: 7px 12px; border-radius: 8px;
     font: 600 13px var(--ui); cursor: pointer;
     letter-spacing: -0.005em;
     flex-shrink: 0;
+    box-shadow: var(--bevel-dark);
+    transition: background 220ms var(--ease-smooth),
+                transform 120ms var(--ease-snap);
   }
-  .pill:hover { background: #4a4a55; }
-  .pill.ghost { background: transparent; color: var(--bar-text-mute); }
+  .pill:hover {
+    background:
+      linear-gradient(180deg, #56627d 0%, #404e66 100%);
+  }
+  .pill:active { transform: translateY(1px); }
+  .pill.ghost { background: transparent; color: var(--bar-text-mute); box-shadow: none; }
 
   .channel-headers {
     display: flex; gap: 4px; align-items: stretch;
     padding: 8px 10px 6px 10px;
-    background: var(--stage);
+    background:
+      linear-gradient(180deg, var(--stage) 0%, var(--stage-2) 100%);
     border-bottom: 1px solid var(--stage-line-strong);
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.5),
+      inset 0 -1px 0 rgba(0,0,0,0.08);
   }
   .channel-headers::-webkit-scrollbar { display: none; }
   .channel-col-header {
     flex: 1 1 0;
     min-width: 64px;
     appearance: none;
-    background: transparent;
+    background: rgba(255,255,255,0.25);
     color: var(--ch, var(--stage-text));
-    border: 1.5px solid var(--ch, rgba(0,0,0,0.15));
+    border: 1.5px solid var(--ch, rgba(0,0,0,0.18));
     border-radius: 999px;
     padding: 5px 8px;
-    font: 700 12px var(--ui);
-    letter-spacing: 0.02em;
+    font: 700 11px var(--ui);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
@@ -158,10 +281,23 @@
     user-select: none;
     -webkit-user-select: none;
     touch-action: manipulation;
+    transition: background 240ms var(--ease-smooth),
+                color 240ms var(--ease-smooth),
+                box-shadow 240ms var(--ease-smooth),
+                transform 120ms var(--ease-snap);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.6),
+      0 1px 0 rgba(0,0,0,0.04);
   }
+  .channel-col-header:active { transform: translateY(1px); }
   .channel-col-header.input {
     background: var(--ch);
     color: #1a1a1f;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.45),
+      inset 0 -1px 0 rgba(0,0,0,0.15),
+      0 0 0 1px rgba(0,0,0,0.08),
+      0 0 8px color-mix(in srgb, var(--ch) 50%, transparent);
   }
   .channel-col-header.muted {
     opacity: 0.32;
@@ -169,7 +305,7 @@
   .channel-col-add {
     flex: 0 0 36px;
     appearance: none;
-    background: transparent;
+    background: rgba(255,255,255,0.3);
     color: var(--stage-text-mute);
     border: 1px solid rgba(0,0,0,0.18);
     border-radius: 999px;
@@ -177,71 +313,124 @@
     padding: 0;
     display: inline-flex; align-items: center; justify-content: center;
     white-space: nowrap;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.6),
+      0 1px 0 rgba(0,0,0,0.04);
+    transition: background 220ms var(--ease-smooth),
+                color 220ms var(--ease-smooth),
+                transform 120ms var(--ease-snap);
   }
-  .channel-col-add:hover { background: rgba(0,0,0,0.06); color: #4a4a4a; }
+  .channel-col-add:hover { background: rgba(255,117,71,0.12); color: var(--accent-edge); }
+  .channel-col-add:active { transform: translateY(1px); }
   .channel-col-add svg { width: 18px; height: 18px; display: block; }
 
   /* Channels popup card list */
   .channel-list { display: grid; gap: 10px; margin-bottom: 14px; }
   .channel-card {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.08);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.1) 100%);
+    border: 1px solid rgba(0,0,0,0.3);
     border-left: 4px solid var(--ch, var(--accent));
-    border-radius: 10px;
+    border-radius: 8px;
     padding: 12px;
     display: grid;
     gap: 10px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.06),
+      0 1px 2px rgba(0,0,0,0.2);
   }
   .channel-card-header {
     display: flex; align-items: center; gap: 10px;
   }
   .channel-card .name {
     flex: 1;
-    background: transparent; border: none; color: #fff;
-    font: 700 13px var(--ui); padding: 4px 0;
+    background: transparent; border: none; color: var(--bar-text);
+    font: 700 13px var(--mono); padding: 4px 0;
+    letter-spacing: 0.04em;
     outline: none;
-    border-bottom: 1px dashed rgba(255,255,255,0.1);
+    border-bottom: 1px dashed rgba(255,255,255,0.12);
+    transition: border-bottom-color 220ms var(--ease-smooth);
   }
-  .channel-card .name:focus { border-bottom-color: rgba(255,255,255,0.4); }
+  .channel-card .name:focus { border-bottom-color: var(--accent); }
   .channel-card .remove {
-    appearance: none; background: rgba(255,80,90,0.10); color: #ff9c9c;
-    border: 1px solid rgba(255,80,90,0.3); border-radius: 8px;
+    appearance: none;
+    background: rgba(232, 93, 53, 0.14);
+    color: var(--accent-soft);
+    border: 1px solid rgba(232, 93, 53, 0.4);
+    border-radius: 6px;
     width: 30px; height: 30px;
-    font: 600 16px var(--ui); cursor: pointer; line-height: 1;
+    font: 700 16px var(--ui); cursor: pointer; line-height: 1;
     flex-shrink: 0;
+    transition: background 220ms var(--ease-smooth),
+                color 220ms var(--ease-smooth),
+                box-shadow 220ms var(--ease-smooth);
   }
-  .channel-card .remove:hover { background: rgba(255,80,90,0.2); color: #fff; }
+  .channel-card .remove:hover {
+    background: rgba(232, 93, 53, 0.32);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(255, 117, 71, 0.35);
+  }
   .channel-card .remove:disabled { opacity: 0.3; cursor: not-allowed; }
   .channel-card .reorder {
     display: flex; gap: 4px; flex-shrink: 0;
   }
   .channel-card .reorder button {
-    appearance: none; background: rgba(255,255,255,0.06); color: #fff;
-    border: 1px solid rgba(255,255,255,0.18); border-radius: 8px;
+    appearance: none;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.15) 100%);
+    color: var(--bar-text);
+    border: 1px solid rgba(0,0,0,0.3);
+    border-radius: 6px;
     width: 32px; height: 32px;
     cursor: pointer; line-height: 1;
     display: inline-flex; align-items: center; justify-content: center;
     padding: 0;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      inset 0 -1px 0 rgba(0,0,0,0.2);
+    transition: background 220ms var(--ease-smooth),
+                transform 120ms var(--ease-snap);
   }
-  .channel-card .reorder button:hover { background: rgba(255,255,255,0.12); }
+  .channel-card .reorder button:hover { background: rgba(255,255,255,0.14); }
+  .channel-card .reorder button:active { transform: translateY(1px); }
   .channel-card .reorder button:disabled { opacity: 0.3; cursor: not-allowed; }
   .channel-card .reorder svg { width: 18px; height: 18px; display: block; stroke: currentColor; }
   .channel-card .mute {
-    appearance: none; background: rgba(255,255,255,0.06); color: #fff;
-    border: 1px solid rgba(255,255,255,0.18); border-radius: 8px;
+    appearance: none;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.15) 100%);
+    color: var(--bar-text);
+    border: 1px solid rgba(0,0,0,0.3);
+    border-radius: 6px;
     width: 56px; height: 32px;
-    font: 700 10px var(--ui); letter-spacing: 0.12em; text-transform: uppercase;
+    font: 700 10px var(--mono); letter-spacing: 0.16em; text-transform: uppercase;
     cursor: pointer;
     flex-shrink: 0;
     padding: 0;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      inset 0 -1px 0 rgba(0,0,0,0.2);
+    transition: background 220ms var(--ease-smooth),
+                color 220ms var(--ease-smooth),
+                box-shadow 220ms var(--ease-smooth),
+                transform 120ms var(--ease-snap);
   }
+  .channel-card .mute:active { transform: translateY(1px); }
   .channel-card .mute.muted {
-    background: rgba(255,80,90,0.16);
-    color: #ffb4b4;
-    border-color: rgba(255,80,90,0.36);
+    background:
+      linear-gradient(180deg, var(--accent-bright) 0%, var(--accent) 100%);
+    color: #2a1a0d;
+    border-color: var(--accent-edge);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.4),
+      inset 0 -1px 0 rgba(0,0,0,0.18),
+      var(--glow-orange-soft);
   }
-  .channel-card .mute:hover { background: rgba(255,255,255,0.12); }
-  .channel-card .mute.muted:hover { background: rgba(255,80,90,0.26); }
+  .channel-card .mute:hover { background: rgba(255,255,255,0.14); }
+  .channel-card .mute.muted:hover {
+    background:
+      linear-gradient(180deg, #ff9670 0%, var(--accent-bright) 100%);
+  }
   .channel-card .swatches {
     display: flex; gap: 6px; flex-wrap: wrap;
   }
@@ -251,37 +440,63 @@
     border: 2px solid transparent;
     padding: 0;
     appearance: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.25),
+      0 1px 2px rgba(0,0,0,0.3);
+    transition: transform 160ms var(--ease-snap),
+                box-shadow 220ms var(--ease-smooth);
   }
+  .channel-card .swatch:hover { transform: scale(1.1); }
   .channel-card .swatch.active {
-    border-color: rgba(255,255,255,0.7);
-    box-shadow: 0 0 0 1px rgba(0,0,0,0.3);
+    border-color: rgba(255,255,255,0.85);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.25),
+      0 0 0 1px rgba(0,0,0,0.4),
+      0 0 8px rgba(255,255,255,0.25);
   }
   .add-channel {
     appearance: none; width: 100%;
     background: rgba(255,255,255,0.03);
-    color: var(--bar-text);
-    border: 1px dashed rgba(255,255,255,0.18);
-    border-radius: 10px;
+    color: var(--bar-text-mute);
+    border: 1px dashed rgba(255,255,255,0.2);
+    border-radius: 8px;
     padding: 11px;
-    font: 700 11px var(--ui); cursor: pointer;
-    letter-spacing: 0.12em;
+    font: 700 11px var(--mono); cursor: pointer;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
+    transition: background 240ms var(--ease-smooth),
+                color 240ms var(--ease-smooth),
+                border-color 240ms var(--ease-smooth);
   }
-  .add-channel:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.3); }
+  .add-channel:hover {
+    background: rgba(255, 117, 71, 0.08);
+    color: var(--accent-soft);
+    border-color: var(--accent);
+  }
 
   /* ---- Stage (piano + grid + scroller) ---- */
   .stage {
     display: grid;
     grid-template-columns: 116px 1fr 32px;
-    background: var(--stage);
+    background:
+      linear-gradient(180deg, var(--stage) 0%, var(--stage-2) 100%);
     color: var(--stage-text);
     position: relative;
     overflow: hidden;
   }
 
-  /* Piano */
+  /* Piano — cream control-panel column with circular keys.
+     Inspired by the second reference image: two columns of dots
+     (white keys on the right, black keys on the left). */
   .piano {
-    position: relative; background: #fff;
+    position: relative;
+    background:
+      linear-gradient(90deg,
+        #ddd6c3 0%,
+        #e8e3d3 6%,
+        #e6e1d1 50%,
+        #e8e3d3 94%,
+        #ddd6c3 100%);
     border-right: 1px solid var(--stage-line-strong);
     overflow-y: auto; overflow-x: hidden;
     user-select: none;
@@ -289,6 +504,10 @@
     overscroll-behavior: contain;
     scrollbar-width: thin;
     scrollbar-color: var(--stage-line-strong) transparent;
+    box-shadow:
+      inset 1px 0 0 rgba(255,255,255,0.5),
+      inset -1px 0 0 rgba(0,0,0,0.08),
+      inset 0 2px 4px rgba(0,0,0,0.06);
   }
   .piano::-webkit-scrollbar { width: 4px; }
   .piano::-webkit-scrollbar-track { background: transparent; }
@@ -300,98 +519,197 @@
     padding-bottom: 60px;
   }
 
-  /* Floating red delete: sits over the bottom-left of the piano column,
-     pinned to .stage so it doesn't scroll with the keys. Tapping deletes
-     all notes in the active channel whose duration the cursor sits inside. */
+  /* Floating delete: glowing analog warning button — vintage device style. */
   .floating-delete {
     position: absolute;
     left: 10px; bottom: 10px;
     width: 44px; height: 44px;
     border-radius: 50%;
-    background: #e94c5c;
+    background:
+      radial-gradient(circle at 35% 30%, var(--accent-bright) 0%, var(--accent) 55%, var(--accent-edge) 100%);
     color: #fff;
-    border: 1px solid rgba(0,0,0,0.06);
+    border: 1px solid var(--accent-deep);
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.18) inset;
+    box-shadow:
+      0 2px 8px rgba(0,0,0,0.25),
+      inset 0 1px 0 rgba(255,255,255,0.4),
+      inset 0 -2px 4px rgba(0,0,0,0.18),
+      0 0 8px rgba(255, 117, 71, 0.4),
+      0 0 18px rgba(255, 117, 71, 0.22);
     z-index: 5;
-    transition: background 120ms, opacity 120ms, transform 120ms;
+    transition: background 220ms var(--ease-smooth),
+                opacity 220ms var(--ease-smooth),
+                transform 160ms var(--ease-snap),
+                box-shadow 220ms var(--ease-smooth);
   }
-  .floating-delete svg { width: 20px; height: 20px; }
-  .floating-delete:hover { background: #d93b4b; }
+  .floating-delete svg { width: 20px; height: 20px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3)); }
+  .floating-delete:hover {
+    box-shadow:
+      0 2px 10px rgba(0,0,0,0.3),
+      inset 0 1px 0 rgba(255,255,255,0.5),
+      inset 0 -2px 4px rgba(0,0,0,0.18),
+      0 0 12px rgba(255, 140, 95, 0.65),
+      0 0 28px rgba(255, 117, 71, 0.35);
+  }
   .floating-delete:active { transform: scale(0.94); }
   .floating-delete:disabled {
     opacity: 0.35;
     cursor: not-allowed;
     box-shadow: 0 1px 3px rgba(0,0,0,0.15);
   }
+  /* Each .key is the row-wide hit target. The actual circular visual lives
+     inside a .key-dot child so all state styles (flash / cursor-pitch /
+     chord-active / charging) can simply restyle the dot. */
   .key {
     position: absolute; left: 0; right: 0; cursor: pointer;
-    display: flex; align-items: flex-end; justify-content: flex-end;
-    padding: 0 8px 4px;
-    font: 600 10px var(--mono); letter-spacing: 0.02em;
-    color: var(--stage-text);
+    display: flex; align-items: center;
+    background: transparent;
+    border: none;
   }
-  .key.white { background: #fff; border-bottom: 1px solid #ececea; }
-  .key.white:nth-child(7n) { border-bottom-color: #d8d8d4; } /* slight emphasis */
+  .key.white { justify-content: flex-end; padding-right: 12px; }
   .key.black {
-    background: #1f1f23; right: 38%; left: 0;
-    z-index: 2; color: #fff;
-    border-bottom: 1px solid #000;
-    box-shadow: 1px 0 0 rgba(0,0,0,0.5) inset, -2px 2px 4px rgba(0,0,0,0.12);
-  }
-  .key.octave-label {
-    color: var(--stage-text); font-weight: 700;
-    background: #ececea;
-    border-bottom-color: #cfcfcb;
-  }
-  .key.flash { background: var(--accent) !important; color: #2a1a0d !important; transition: background 100ms; }
-  .key.black.flash { color: #2a1a0d !important; }
-  /* Key whose pitch is part of the chord currently being built. */
-  .key.chord-active {
-    background: var(--cursor) !important;
-    color: #fff !important;
-    box-shadow: inset 0 0 0 2px var(--cursor-strong);
-  }
-  .key.black.chord-active { color: #fff !important; }
-  /* Softer hint: a key the cursor is currently sitting on in the input channel. */
-  .key.cursor-pitch {
-    background: rgba(107,95,217,0.18) !important;
-    box-shadow: inset 0 0 0 2px var(--cursor);
-  }
-  .key.black.cursor-pitch {
-    background: rgba(107,95,217,0.55) !important;
-    color: #fff !important;
+    /* Sit in the left column. Stays above white keys so the dot can
+       overlap the row above without being eaten by it. */
+    right: 50%; left: 0;
+    z-index: 2;
+    justify-content: flex-end;
+    padding-right: 6px;
   }
 
-  /* Long-press to enter chord mode — 600ms fill sweep + burst on commit. */
-  .key.charging {
-    z-index: 4;
-  }
-  .key.charging::before {
-    content: ""; position: absolute; inset: 0;
+  .key-dot {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    font: 700 10px var(--mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     pointer-events: none;
-    background: linear-gradient(to right, rgba(107,95,217,0.32), rgba(107,95,217,0.32)) left center / 0% 100% no-repeat;
+    transition:
+      background 240ms var(--ease-smooth),
+      color 240ms var(--ease-smooth),
+      box-shadow 240ms var(--ease-smooth),
+      transform 160ms var(--ease-snap);
+  }
+  .key.white .key-dot {
+    width: 40px; height: 40px;
+    background:
+      radial-gradient(circle at 35% 30%, #fbf6e6 0%, #ebe5d3 70%, #d6d0bd 100%);
+    color: var(--stage-text);
+    border: 1px solid #b8b0a0;
+    box-shadow:
+      inset 0 1px 1px rgba(255,255,255,0.7),
+      inset 0 -2px 3px rgba(0,0,0,0.08),
+      0 1px 3px rgba(0,0,0,0.25);
+  }
+  .key.black .key-dot {
+    width: 36px; height: 36px;
+    background:
+      radial-gradient(circle at 35% 30%, #3a4658 0%, #1c2330 70%, #0d1218 100%);
+    color: var(--stage);
+    border: 1px solid #000;
+    font-size: 9px;
+    box-shadow:
+      inset 0 1px 1px rgba(255,255,255,0.18),
+      inset 0 -2px 3px rgba(0,0,0,0.55),
+      0 2px 4px rgba(0,0,0,0.4);
+  }
+  /* C-notes get a slightly different cream so octaves are easy to spot. */
+  .key.white.octave-label .key-dot {
+    background:
+      radial-gradient(circle at 35% 30%, #f0e9d2 0%, #d8d2bf 70%, #c0baaa 100%);
+    border-color: #9d977f;
+  }
+
+  /* Hover lift — subtle on a phone but obvious with a mouse. */
+  .key:hover .key-dot { transform: scale(1.06); }
+  .key:active .key-dot { transform: scale(0.92); }
+
+  /* Flash — playback / preview ping. Pulses orange with the cassette glow. */
+  .key.flash .key-dot {
+    background:
+      radial-gradient(circle at 35% 30%, var(--accent-bright) 0%, var(--accent) 70%, var(--accent-edge) 100%) !important;
+    color: var(--accent-ink) !important;
+    border-color: var(--accent-edge);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.4),
+      inset 0 -1px 2px rgba(0,0,0,0.18),
+      var(--glow-orange);
+    transition: background 100ms, box-shadow 100ms;
+  }
+
+  /* Key the cursor is currently parked on in the input channel — soft blue hint. */
+  .key.cursor-pitch .key-dot {
+    background:
+      radial-gradient(circle at 35% 30%,
+        rgba(126, 163, 198, 0.95) 0%,
+        rgba(63, 111, 157, 0.85) 70%,
+        rgba(45, 87, 128, 0.95) 100%) !important;
+    color: #fff !important;
+    border-color: var(--cursor-strong);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.3),
+      inset 0 -1px 2px rgba(0,0,0,0.2),
+      0 0 6px rgba(63, 111, 157, 0.35);
+  }
+
+  /* Key that's part of an active chord — full steel-blue with glow. */
+  .key.chord-active .key-dot {
+    background:
+      radial-gradient(circle at 35% 30%, var(--cursor-soft) 0%, var(--cursor) 70%, var(--cursor-strong) 100%) !important;
+    color: #fff !important;
+    border-color: var(--cursor-strong);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.35),
+      inset 0 -1px 2px rgba(0,0,0,0.2),
+      0 0 6px rgba(63, 111, 157, 0.45),
+      0 0 14px rgba(63, 111, 157, 0.25);
+  }
+
+  /* In-scale indicator — small glowing orange LED inside the circle. */
+  .key.in-scale .key-dot::before {
+    content: "";
+    position: absolute;
+    top: 5px; left: 50%;
+    transform: translateX(-50%);
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent-bright);
+    box-shadow:
+      0 0 4px rgba(255, 117, 71, 0.75),
+      0 0 8px rgba(255, 117, 71, 0.45);
+  }
+
+  /* Long-press charge — fills the dot with steel blue, then bursts on commit. */
+  .key.charging { z-index: 4; }
+  .key.charging .key-dot::after {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    background: linear-gradient(to right, rgba(63, 111, 157, 0.45), rgba(63, 111, 157, 0.45)) left center / 0% 100% no-repeat;
     box-shadow: inset 0 0 0 0 var(--cursor);
-    animation: chargeFill 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: chargeFill 600ms var(--ease-smooth) forwards;
   }
-  .key.black.charging::before {
-    background: linear-gradient(to right, rgba(140,128,250,0.55), rgba(140,128,250,0.55)) left center / 0% 100% no-repeat;
+  .key.black.charging .key-dot::after {
+    background: linear-gradient(to right, rgba(126, 163, 198, 0.65), rgba(126, 163, 198, 0.65)) left center / 0% 100% no-repeat;
   }
-  .key.charge-complete::after {
-    content: ""; position: absolute; inset: -1px;
+  .key.charge-complete .key-dot::after {
+    content: "";
+    position: absolute; inset: -2px;
+    border-radius: 50%;
     pointer-events: none;
     box-shadow: 0 0 0 2px var(--cursor);
     animation: chargeBurst 360ms ease-out forwards;
-    z-index: 5;
+    background: transparent;
   }
 
   /* Grid */
   .grid {
     position: relative;
     background:
-      linear-gradient(to bottom, rgba(0,0,0,0.015), transparent 40%),
-      var(--stage);
+      linear-gradient(to bottom, rgba(0,0,0,0.02), transparent 40%),
+      linear-gradient(180deg, var(--stage) 0%, var(--stage-2) 100%);
   }
   .row {
     position: absolute; left: 0; right: 0;
@@ -404,10 +722,10 @@
   }
   .row.beat::before {
     height: 2px;
-    background: #9d9d99;
+    background: #8e8772;
   }
   .row .num {
-    font: 600 10px var(--mono);
+    font: 700 10px var(--mono);
     color: var(--stage-text-mute);
     width: 18px; text-align: right;
     font-variant-numeric: tabular-nums;
@@ -417,20 +735,30 @@
   }
   .cursor-line {
     position: absolute; left: 36px; right: 8px;
-    height: 1.5px; background: var(--cursor);
-    box-shadow: 0 0 0 2px rgba(107,95,217,0.12);
+    height: 1.5px;
+    background: var(--cursor);
+    box-shadow:
+      0 0 0 2px rgba(63, 111, 157, 0.14),
+      0 0 6px rgba(63, 111, 157, 0.3);
     pointer-events: none;
     z-index: 3;
     transform: translateY(-0.75px);
+    transition: top 220ms var(--ease-smooth);
   }
   .cursor-line.fractional { background: var(--cursor); opacity: 0.85; }
 
   /* Playhead — independent of the cursor; sweeps through the pattern during
-     playback while the user keeps editing at the cursor's position. */
+     playback while the user keeps editing at the cursor's position.
+     Now styled as a glowing orange laser line. */
   .playhead-line {
     position: absolute; left: 36px; right: 8px;
-    height: 1.5px; background: var(--accent);
-    box-shadow: 0 0 0 2px rgba(233,146,92,0.18);
+    height: 1.5px;
+    background: var(--accent-bright);
+    box-shadow:
+      0 0 0 1px rgba(255, 117, 71, 0.3),
+      0 0 6px rgba(255, 117, 71, 0.55),
+      0 0 14px rgba(255, 117, 71, 0.35),
+      0 0 24px rgba(255, 117, 71, 0.18);
     pointer-events: none;
     z-index: 2;
     transform: translateY(-0.75px);
@@ -438,40 +766,69 @@
 
   .note {
     position: absolute; left: 38px; right: 14px;
-    background: var(--ch-color, var(--accent));
+    background:
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--ch-color, var(--accent)) 90%, white 10%) 0%,
+        var(--ch-color, var(--accent)) 100%);
     color: #1a1a1f;
     border-radius: 5px;
-    font: 600 11px var(--mono);
+    font: 700 11px var(--mono);
     display: flex; align-items: flex-start; padding: 5px 7px;
     cursor: pointer;
     border: 1px solid var(--ch-edge, var(--accent-edge));
     box-shadow:
-      0 1px 0 rgba(255,255,255,0.4) inset,
-      0 1px 2px rgba(0,0,0,0.06);
+      0 1px 0 rgba(255,255,255,0.45) inset,
+      0 -1px 0 rgba(0,0,0,0.12) inset,
+      0 1px 3px rgba(0,0,0,0.18),
+      0 0 8px color-mix(in srgb, var(--ch-color, var(--accent)) 32%, transparent);
+    transition: box-shadow 220ms var(--ease-smooth),
+                transform 160ms var(--ease-snap);
+  }
+  /* Appear animation only on notes the JS flags as freshly placed; existing
+     notes re-rendered by renderGrid() stay still. */
+  .note.fresh {
+    animation: noteAppear 280ms var(--ease-snap);
+  }
+  @keyframes noteAppear {
+    0%   { transform: scaleY(0.4); opacity: 0; }
+    60%  { transform: scaleY(1.04); opacity: 1; }
+    100% { transform: scaleY(1); opacity: 1; }
   }
   .note.selected {
     outline: 2px solid var(--cursor); outline-offset: 1px;
     box-shadow:
-      0 1px 0 rgba(255,255,255,0.4) inset,
-      0 2px 8px rgba(107,95,217,0.25);
+      0 1px 0 rgba(255,255,255,0.45) inset,
+      0 -1px 0 rgba(0,0,0,0.12) inset,
+      0 2px 10px rgba(63, 111, 157, 0.35);
   }
-  .note.playing { background: var(--ch-edge, var(--accent-edge)); color: #fff; }
+  .note.playing {
+    background:
+      linear-gradient(180deg, var(--accent-bright) 0%, var(--accent) 100%) !important;
+    color: #fff;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.5) inset,
+      0 -1px 0 rgba(0,0,0,0.15) inset,
+      0 0 10px rgba(255, 140, 95, 0.85),
+      0 0 22px rgba(255, 117, 71, 0.5),
+      0 0 36px rgba(255, 100, 60, 0.25);
+    transform: scale(1.02);
+  }
   .note.muted { opacity: 0.32; }
 
   .note-label {
     position: absolute;
     top: -8px;
     left: 4px;
-    background: #fff;
-    color: #1a1a1f;
+    background: var(--stage);
+    color: var(--stage-text);
     border: 1px solid rgba(0,0,0,0.55);
-    border-radius: 6px;
+    border-radius: 4px;
     padding: 1px 5px;
-    font: 600 10px var(--mono);
+    font: 700 10px var(--mono);
     line-height: 1;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.04em;
     white-space: nowrap;
-    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.06);
     pointer-events: none;
     z-index: 1;
   }
@@ -480,7 +837,7 @@
   }
   .note-label.chord-label {
     font: 700 9.5px var(--mono);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.05em;
     padding: 1px 5px;
   }
   .note-label.will-overwrite {
@@ -489,8 +846,8 @@
     border-color: var(--cursor-strong);
   }
   .note.playing .note-label {
-    background: #fff;
-    color: #1a1a1f;
+    background: var(--stage);
+    color: var(--stage-text);
   }
 
   .col-divider {
@@ -510,7 +867,9 @@
     opacity: 0.28;
     pointer-events: none;
     z-index: 2;
-    transition: opacity 120ms ease, transform 120ms ease, border-style 120ms ease;
+    transition: opacity 220ms var(--ease-smooth),
+                transform 220ms var(--ease-smooth),
+                border-style 220ms var(--ease-smooth);
   }
   /* When a piano key is charging for chord mode, pulse the ghost step to
      show where the chord will land. */
@@ -518,7 +877,7 @@
     opacity: 0.55;
     border-style: solid;
     border-width: 2px;
-    animation: ghostCharge 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: ghostCharge 600ms var(--ease-smooth) forwards;
   }
   @keyframes ghostCharge {
     0%   { opacity: 0.28; transform: scale(1); }
@@ -533,12 +892,13 @@
     animation: chargeBurst 360ms ease-out forwards;
   }
 
-  /* Small ⋯ button next to the cursor line, gateway to per-cursor actions. */
+  /* Small ⋯ button next to the cursor line — analog meter button style. */
   .cursor-action {
     position: absolute;
     left: 2px;
     width: 22px; height: 22px;
-    background: var(--cursor);
+    background:
+      radial-gradient(circle at 35% 30%, var(--cursor-soft) 0%, var(--cursor) 60%, var(--cursor-strong) 100%);
     color: #fff;
     border: 1px solid var(--cursor-strong);
     border-radius: 50%;
@@ -547,59 +907,98 @@
     display: flex; align-items: center; justify-content: center;
     font: 700 14px var(--ui); line-height: 1;
     padding: 0;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    box-shadow:
+      0 2px 6px rgba(0,0,0,0.22),
+      inset 0 1px 0 rgba(255,255,255,0.45),
+      inset 0 -1px 2px rgba(0,0,0,0.18);
+    transition: transform 160ms var(--ease-snap),
+                box-shadow 220ms var(--ease-smooth);
   }
-  .cursor-action:hover { background: var(--cursor-strong); }
+  .cursor-action:hover { transform: scale(1.06); }
+  .cursor-action:active { transform: scale(0.94); }
   .cursor-action.chord-mode {
-    background: var(--accent);
+    background:
+      radial-gradient(circle at 35% 30%, var(--accent-bright) 0%, var(--accent) 55%, var(--accent-edge) 100%);
     border-color: var(--accent-edge);
     color: #2a1a0d;
-    box-shadow: 0 0 0 3px rgba(233, 146, 92, 0.35);
+    box-shadow:
+      0 2px 6px rgba(0,0,0,0.22),
+      inset 0 1px 0 rgba(255,255,255,0.45),
+      inset 0 -1px 2px rgba(0,0,0,0.18),
+      var(--glow-orange);
+    animation: glowPulse 1.8s ease-in-out infinite;
   }
 
-  /* Mini dropdown anchored to the cursor-action button. */
+  /* Mini dropdown anchored to the cursor-action button. NOTE: this element is
+     mounted on document.body (outside .sequencer-app), so .sequencer-app-scoped
+     CSS variables don't resolve here — colours are hardcoded. */
   .cursor-menu {
     position: fixed;
-    background: #fff;
-    border: 1px solid rgba(0,0,0,0.12);
+    background:
+      linear-gradient(180deg, #2c3648 0%, #1c2330 100%);
+    border: 1px solid #0d1218;
     border-radius: 8px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+    box-shadow:
+      0 10px 28px rgba(0,0,0,0.55),
+      inset 0 1px 0 rgba(255,255,255,0.10),
+      0 0 0 1px rgba(255, 117, 71, 0.25);
     padding: 4px;
-    z-index: 1000;
+    z-index: 1100;
     display: flex; flex-direction: column;
-    min-width: 140px;
+    min-width: 150px;
+    animation: menuSlideIn 220ms cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  @keyframes menuSlideIn {
+    0%   { opacity: 0; transform: translateY(-6px) scale(0.96); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
   }
   .cursor-menu button {
     appearance: none; background: transparent; border: none;
     text-align: left;
-    padding: 8px 10px;
-    font: 600 13px var(--ui);
-    color: #1a1a1f;
+    padding: 10px 12px;
+    font: 700 11px "Space Mono", ui-monospace, monospace;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #e6e1d1;
     border-radius: 6px;
     cursor: pointer;
+    transition: background 220ms cubic-bezier(0.22, 1, 0.36, 1),
+                color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+                text-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1);
   }
-  .cursor-menu button:hover { background: rgba(0,0,0,0.05); }
+  .cursor-menu button:hover {
+    background:
+      linear-gradient(180deg, rgba(255, 117, 71, 0.22) 0%, rgba(255, 117, 71, 0.12) 100%);
+    color: #ff8c5f;
+    text-shadow: 0 0 6px rgba(255, 117, 71, 0.5);
+  }
 
-  /* Inline toast — brief message anchored near the bottom of the screen. */
+  /* Inline toast — brief message anchored near the bottom of the screen.
+     Mounted on document.body so colours/fonts are hardcoded. */
   .toast {
     position: fixed;
     bottom: 96px; left: 50%;
     transform: translateX(-50%) translateY(8px);
-    background: rgba(20, 20, 32, 0.94);
-    color: #fff;
+    background:
+      linear-gradient(180deg, #2c3648 0%, #1c2330 100%);
+    color: #e6e1d1;
     padding: 11px 18px;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.10);
-    font: 600 13px var(--ui);
-    letter-spacing: 0.005em;
+    border-radius: 8px;
+    border: 1px solid #0d1218;
+    font: 700 12px "Space Mono", ui-monospace, monospace;
+    letter-spacing: 0.08em;
     max-width: 320px;
     text-align: center;
     line-height: 1.35;
     z-index: 2000;
     opacity: 0;
     pointer-events: none;
-    box-shadow: 0 10px 28px rgba(0,0,0,0.45);
-    transition: opacity 200ms ease-out, transform 200ms ease-out;
+    box-shadow:
+      0 14px 36px rgba(0,0,0,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      0 0 0 1px rgba(255, 117, 71, 0.2);
+    transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1),
+                transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   .toast.show {
     opacity: 1;
@@ -609,11 +1008,12 @@
   /* Range selection box drawn in the input channel column. */
   .range-box {
     position: absolute;
-    background: rgba(107,95,217,0.12);
+    background: rgba(63, 111, 157, 0.12);
     border: 2px solid var(--cursor);
     border-radius: 6px;
     pointer-events: none;
     z-index: 2;
+    box-shadow: 0 0 8px rgba(63, 111, 157, 0.3);
   }
 
   /* Long-press charging animation */
@@ -625,7 +1025,7 @@
     content: ""; position: absolute; inset: 0;
     border-radius: inherit;
     pointer-events: none;
-    background: linear-gradient(to right, rgba(107,95,217,0.25), rgba(107,95,217,0.25)) left center / 0% 100% no-repeat;
+    background: linear-gradient(to right, rgba(63, 111, 157, 0.25), rgba(63, 111, 157, 0.25)) left center / 0% 100% no-repeat;
     box-shadow: inset 0 0 0 0 var(--cursor);
     animation: chargeFill 450ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
@@ -642,12 +1042,12 @@
     100% { transform: scale(1.04); }
   }
   @keyframes chargeFill {
-    0%   { background-size: 0%   100%; box-shadow: inset 0 0 0 0 rgba(107,95,217,0); }
+    0%   { background-size: 0%   100%; box-shadow: inset 0 0 0 0 rgba(63, 111, 157, 0); }
     100% { background-size: 100% 100%; box-shadow: inset 0 0 0 2px var(--cursor); }
   }
   @keyframes chargeBurst {
     0%   { transform: scale(1);   opacity: 1; box-shadow: 0 0 0 2px var(--cursor); }
-    100% { transform: scale(1.5); opacity: 0; box-shadow: 0 0 0 14px rgba(107,95,217,0); }
+    100% { transform: scale(1.5); opacity: 0; box-shadow: 0 0 0 14px rgba(63, 111, 157, 0); }
   }
 
   /* Long-press charging on a channel column header (pill-shaped). */
@@ -660,7 +1060,7 @@
     content: ""; position: absolute; inset: 0;
     border-radius: inherit;
     pointer-events: none;
-    background: linear-gradient(to right, rgba(107,95,217,0.30), rgba(107,95,217,0.30)) left center / 0% 100% no-repeat;
+    background: linear-gradient(to right, rgba(63, 111, 157, 0.30), rgba(63, 111, 157, 0.30)) left center / 0% 100% no-repeat;
     box-shadow: inset 0 0 0 0 var(--cursor);
     animation: chargeFill 450ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
@@ -679,23 +1079,48 @@
   /* Scroller */
   .scroller {
     position: relative;
-    background: linear-gradient(to right, rgba(0,0,0,0.04), transparent);
+    background:
+      linear-gradient(to right, rgba(0,0,0,0.08), transparent),
+      linear-gradient(180deg, var(--stage) 0%, var(--stage-2) 100%);
     border-left: 1px solid var(--stage-line);
+    box-shadow: inset 1px 0 0 rgba(255,255,255,0.4);
   }
   .scroller .track {
     position: absolute; top: 10px; bottom: 10px;
     left: 50%; transform: translateX(-50%);
-    width: 4px; background: var(--stage-line-strong); border-radius: 2px;
+    width: 4px;
+    background: linear-gradient(180deg, #999280 0%, #b6b09a 50%, #999280 100%);
+    border-radius: 2px;
+    box-shadow:
+      inset 0 0 2px rgba(0,0,0,0.25),
+      0 1px 0 rgba(255,255,255,0.4);
   }
+  /* Knob — styled as an analog dial. */
   .knob {
     position: absolute; left: 50%; transform: translate(-50%, -50%);
-    width: 22px; height: 22px; background: var(--cursor);
+    width: 24px; height: 24px;
+    background:
+      radial-gradient(circle at 35% 30%, var(--cursor-soft) 0%, var(--cursor) 55%, var(--cursor-strong) 100%);
     border-radius: 50%; cursor: grab;
     box-shadow:
-      0 1px 0 rgba(255,255,255,0.25) inset,
-      0 2px 6px rgba(0,0,0,0.25);
+      inset 0 1px 0 rgba(255,255,255,0.5),
+      inset 0 -2px 3px rgba(0,0,0,0.25),
+      0 2px 6px rgba(0,0,0,0.35),
+      0 0 0 1px rgba(0,0,0,0.15);
     border: 1px solid var(--cursor-strong);
     touch-action: none;
+    transition: box-shadow 220ms var(--ease-smooth),
+                transform 160ms var(--ease-snap);
+  }
+  /* Tiny tick mark on the knob — like a real analog dial indicator. */
+  .knob::after {
+    content: ""; position: absolute;
+    top: 2px; left: 50%;
+    transform: translateX(-50%);
+    width: 2px; height: 5px;
+    background: var(--stage);
+    border-radius: 1px;
+    box-shadow: 0 0 2px rgba(0,0,0,0.4);
   }
   /* Invisible hit-area extension so the knob is comfortable to grab on a
      phone (Apple HIG recommends ≥44pt). The ::before sits behind the visible
@@ -706,13 +1131,22 @@
     inset: -14px;
     border-radius: 50%;
   }
-  .knob:active { cursor: grabbing; background: var(--cursor-strong); }
+  .knob:active {
+    cursor: grabbing;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.5),
+      inset 0 -2px 3px rgba(0,0,0,0.25),
+      0 2px 6px rgba(0,0,0,0.35),
+      0 0 0 1px rgba(0,0,0,0.15),
+      0 0 10px rgba(63, 111, 157, 0.55);
+  }
 
-  /* ---- Bottom bar ---- */
+  /* ---- Bottom bar (cassette deck control panel) ---- */
   .bottom {
-    background: var(--bottom);
-    color: #e9e8ff;
-    border-top: 1px solid var(--bottom-line);
+    background:
+      linear-gradient(180deg, var(--bottom-2) 0%, var(--bottom) 100%);
+    color: var(--bar-text);
+    border-top: 1px solid var(--frame-edge);
     padding: 10px 12px 0;
     display: flex;
     flex-direction: row;
@@ -720,6 +1154,23 @@
     justify-content: space-between;
     gap: 12px;
     height: 148px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.06),
+      inset 0 8px 16px rgba(0,0,0,0.2);
+    position: relative;
+  }
+  /* Subtle texture lines across the bottom panel for that brushed-metal look. */
+  .bottom::before {
+    content: "";
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background-image: repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.015) 0,
+      rgba(255,255,255,0.015) 1px,
+      transparent 1px,
+      transparent 4px
+    );
   }
   .bottom .col-left {
     display: grid;
@@ -755,30 +1206,34 @@
     display: flex; align-items: center; justify-content: center;
   }
   .stack-nav .dot {
-    width: 9px; height: 9px;
+    width: 8px; height: 8px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.22);
-    transition: transform 120ms, background 120ms, box-shadow 120ms;
+    background: rgba(230,225,209,0.18);
+    box-shadow: inset 0 0 2px rgba(0,0,0,0.3);
+    transition: transform 280ms var(--ease-snap),
+                background 280ms var(--ease-smooth),
+                box-shadow 280ms var(--ease-smooth);
   }
-  .stack-nav button:hover .dot { background: rgba(255,255,255,0.4); }
+  .stack-nav button:hover .dot { background: rgba(230,225,209,0.4); }
   .stack-nav button.active .dot {
     background: var(--stack-c, var(--cursor));
-    transform: scale(1.5);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--stack-c, var(--cursor)) 25%, transparent);
+    transform: scale(1.55);
+    box-shadow:
+      inset 0 0 2px rgba(0,0,0,0.2),
+      0 0 6px color-mix(in srgb, var(--stack-c, var(--cursor)) 70%, transparent),
+      0 0 14px color-mix(in srgb, var(--stack-c, var(--cursor)) 35%, transparent);
   }
-  /* Each stack gets its own accent colour — picked up by the active dot,
-     the stack label, and the pill borders so it's immediately clear which
-     section you're on. */
+  /* Each stack gets its own accent colour — cassette futurism palette. */
   .stack[data-stack="edit"],
-  .stack-nav button[data-stack="edit"]  { --stack-c: #6b5fd9; }  /* cursor purple */
+  .stack-nav button[data-stack="edit"]  { --stack-c: #3f6f9d; }  /* steel blue */
   .stack[data-stack="voice"],
-  .stack-nav button[data-stack="voice"] { --stack-c: #e9925c; }  /* warm coral */
+  .stack-nav button[data-stack="voice"] { --stack-c: #ff7547; }  /* glowing orange */
   .stack[data-stack="tone"],
-  .stack-nav button[data-stack="tone"]  { --stack-c: #d6c25a; }  /* warm gold */
+  .stack-nav button[data-stack="tone"]  { --stack-c: #e0b860; }  /* vintage amber */
   .stack[data-stack="eq"],
-  .stack-nav button[data-stack="eq"]    { --stack-c: #5cd3c6; }  /* mint teal */
+  .stack-nav button[data-stack="eq"]    { --stack-c: #6db0a5; }  /* muted teal */
   .stack[data-stack="fx"],
-  .stack-nav button[data-stack="fx"]    { --stack-c: #c47ccf; }  /* magenta */
+  .stack-nav button[data-stack="fx"]    { --stack-c: #b585a8; }  /* dusty mauve */
   .stack-scroller {
     position: relative;
     overflow-y: auto;
@@ -801,23 +1256,39 @@
     box-sizing: border-box;
   }
   .stack-label {
-    font: 700 9px var(--ui);
-    letter-spacing: 0.18em;
+    font: 700 9px var(--mono);
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: var(--stack-c, rgba(255,255,255,0.45));
-    opacity: 0.85;
+    color: var(--stack-c, rgba(230,225,209,0.55));
+    opacity: 0.95;
     padding: 0 2px;
+    text-shadow:
+      0 0 6px color-mix(in srgb, var(--stack-c, transparent) 35%, transparent);
   }
   /* Tint pill borders + chip outlines with the stack's accent so each
      section's row looks visually distinct. Subtle — backgrounds stay dark. */
   .stack .param-pill {
-    border-color: color-mix(in srgb, var(--stack-c, rgba(255,255,255,0.10)) 35%, rgba(255,255,255,0.10));
+    border-color: color-mix(in srgb, var(--stack-c, rgba(0,0,0,0.35)) 35%, rgba(0,0,0,0.35));
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      inset 0 -1px 0 rgba(0,0,0,0.2),
+      0 0 0 0 color-mix(in srgb, var(--stack-c, transparent) 0%, transparent),
+      0 1px 2px rgba(0,0,0,0.2);
+    transition: background 240ms var(--ease-smooth),
+                color 240ms var(--ease-smooth),
+                box-shadow 240ms var(--ease-smooth),
+                transform 120ms var(--ease-snap);
   }
   .stack .param-pill:hover {
-    background: color-mix(in srgb, var(--stack-c, rgba(255,255,255,0.10)) 12%, rgba(255,255,255,0.06));
+    background: color-mix(in srgb, var(--stack-c, rgba(255,255,255,0.10)) 16%, rgba(255,255,255,0.07));
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      inset 0 -1px 0 rgba(0,0,0,0.2),
+      0 0 8px color-mix(in srgb, var(--stack-c, transparent) 25%, transparent),
+      0 1px 2px rgba(0,0,0,0.2);
   }
   .stack[data-stack="edit"] .chip:not(.primary):not(.danger):not(:disabled) {
-    border-color: color-mix(in srgb, var(--stack-c) 35%, rgba(255,255,255,0.08));
+    border-color: color-mix(in srgb, var(--stack-c) 35%, rgba(0,0,0,0.35));
   }
   .stack-row {
     display: flex; gap: 6px; align-items: center;
@@ -830,42 +1301,79 @@
   .stack-row::-webkit-scrollbar { display: none; }
   .stack-row > * { flex-shrink: 0; }
 
-  /* Chips — small unified button used in both rows */
+  /* Chips — small unified button used in both rows. Cassette button style. */
   .chip {
     appearance: none;
-    background: #2f2c4d;
-    color: #d8d4ff;
-    border: 1px solid rgba(255,255,255,0.08);
+    background:
+      linear-gradient(180deg, #3a4658 0%, #2a3445 100%);
+    color: var(--bar-text);
+    border: 1px solid rgba(0,0,0,0.35);
     padding: 6px 11px;
-    border-radius: 8px;
-    font: 700 11px var(--ui);
-    letter-spacing: 0.06em;
+    border-radius: 6px;
+    font: 700 10px var(--mono);
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     cursor: pointer;
     font-variant-numeric: tabular-nums;
     line-height: 1.2;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      inset 0 -1px 0 rgba(0,0,0,0.25),
+      0 1px 2px rgba(0,0,0,0.25);
+    transition: background 220ms var(--ease-smooth),
+                color 220ms var(--ease-smooth),
+                transform 120ms var(--ease-snap),
+                box-shadow 220ms var(--ease-smooth);
   }
-  .chip:hover { background: #3a3760; color: #fff; }
+  .chip:hover {
+    background:
+      linear-gradient(180deg, #45526a 0%, #344056 100%);
+    color: #fff;
+  }
+  .chip:active { transform: translateY(1px); }
   .chip:disabled {
     opacity: 0.35;
     cursor: not-allowed;
   }
-  .chip:disabled:hover { background: #2f2c4d; color: #d8d4ff; }
+  .chip:disabled:hover {
+    background:
+      linear-gradient(180deg, #3a4658 0%, #2a3445 100%);
+    color: var(--bar-text);
+  }
   .chip.settings {
     background: rgba(255,255,255,0.04);
-    color: #aaa6d6;
+    color: var(--bar-text-mute);
     letter-spacing: 0.14em;
   }
   .chip.settings:hover { background: rgba(255,255,255,0.10); color: #fff; }
   .chip.primary {
-    background: var(--cursor); color: #fff;
-    border-color: var(--cursor-strong);
+    background:
+      linear-gradient(180deg, var(--accent-bright) 0%, var(--accent) 100%);
+    color: #2a1a0d;
+    border-color: var(--accent-edge);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.4),
+      inset 0 -1px 0 rgba(0,0,0,0.18),
+      var(--glow-orange);
+    animation: glowPulse 2s ease-in-out infinite;
   }
-  .chip.primary:hover { background: var(--cursor-strong); }
+  .chip.primary:hover {
+    background:
+      linear-gradient(180deg, #ff9670 0%, var(--accent-bright) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.45),
+      inset 0 -1px 0 rgba(0,0,0,0.18),
+      var(--glow-orange-strong);
+  }
   .chip.danger:hover {
-    background: rgba(255,80,90,0.18);
-    border-color: rgba(255,80,90,0.4);
-    color: #ffcfd2;
+    background:
+      linear-gradient(180deg, #c84a3a 0%, #a8421e 100%);
+    border-color: var(--accent-edge);
+    color: #fff;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.2),
+      inset 0 -1px 0 rgba(0,0,0,0.3),
+      0 0 8px rgba(232, 93, 53, 0.4);
   }
   .chip-row {
     display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
@@ -882,14 +1390,17 @@
   /* Action chips (Paste / Copy / Delete / Reset) adopt the transport-button
      proportions — same height, radius, font, shadow as STOP — so the bottom
      bar reads as two parallel button rows rather than chips + transport.
-     Colours stay dark to differentiate from the white transport buttons. */
+     Colours stay dark to differentiate from the cream transport buttons. */
   #actionsRow .chip {
     flex-shrink: 0;
     padding: 14px 16px;
-    border-radius: 12px;
-    font: 700 13px var(--ui);
-    letter-spacing: 0.1em;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 1px 3px rgba(0,0,0,0.25);
+    border-radius: 8px;
+    font: 700 12px var(--mono);
+    letter-spacing: 0.14em;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      inset 0 -1px 0 rgba(0,0,0,0.25),
+      0 1px 3px rgba(0,0,0,0.3);
   }
 
   /* Value-pills row (Design A) — visible during multi-select. */
@@ -903,48 +1414,72 @@
   .params-row::-webkit-scrollbar { display: none; }
   .param-pill {
     appearance: none;
-    background: rgba(255,255,255,0.06);
-    color: #d8d4ff;
-    border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 10px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(0,0,0,0.15) 100%);
+    color: var(--bar-text);
+    border: 1px solid rgba(0,0,0,0.35);
+    border-radius: 8px;
     padding: 0 13px;
     height: 38px;
-    font: 700 12px var(--ui);
-    letter-spacing: 0.04em;
+    font: 700 11px var(--mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
     cursor: pointer;
     display: inline-flex; align-items: center; gap: 8px;
     flex-shrink: 0;
     white-space: nowrap;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      inset 0 -1px 0 rgba(0,0,0,0.2),
+      0 1px 2px rgba(0,0,0,0.2);
+    transition: background 240ms var(--ease-smooth),
+                color 240ms var(--ease-smooth),
+                transform 120ms var(--ease-snap);
   }
-  .param-pill:hover { background: rgba(255,255,255,0.10); }
+  .param-pill:hover {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(0,0,0,0.15) 100%);
+  }
+  .param-pill:active { transform: translateY(1px); }
   .param-pill .val {
-    color: rgba(255,255,255,0.55);
+    color: var(--accent-soft);
     font-weight: 700; font-size: 11px;
     font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 6px rgba(255, 117, 71, 0.4);
   }
 
-  /* Small popover anchored to a param-pill, shows a single slider. */
+  /* Small popover anchored to a param-pill, shows a single slider. NOTE:
+     mounted on document.body — colours hardcoded so they resolve outside
+     .sequencer-app's variable scope. */
   .param-popover {
     position: fixed;
-    background: #2a2640;
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 12px;
+    background:
+      linear-gradient(180deg, #2c3648 0%, #1c2330 100%);
+    border: 1px solid #0d1218;
+    border-radius: 10px;
     padding: 14px 16px 12px;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+    box-shadow:
+      0 14px 36px rgba(0,0,0,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      0 0 0 1px rgba(255, 117, 71, 0.2);
     z-index: 1100;
     min-width: 240px;
-    color: #e9e8ff;
+    color: #e6e1d1;
+    animation: menuSlideIn 280ms cubic-bezier(0.34, 1.4, 0.64, 1);
   }
   .param-popover .pop-head {
     display: flex; align-items: baseline; justify-content: space-between;
     margin-bottom: 8px;
   }
   .param-popover .pop-head .lab {
-    font: 700 11px var(--ui); letter-spacing: 0.10em; text-transform: uppercase;
-    color: rgba(255,255,255,0.55);
+    font: 700 10px "Space Mono", ui-monospace, monospace;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: #8794a8;
   }
   .param-popover .pop-head .v {
-    font: 700 14px var(--mono);
+    font: 700 14px "Space Mono", ui-monospace, monospace;
+    color: #f5b48e;
+    text-shadow: 0 0 6px rgba(255, 117, 71, 0.45);
   }
   .param-popover input[type=range] { width: 100%; }
   .param-popover .pop-options {
@@ -952,39 +1487,53 @@
   }
   .param-popover .pop-option {
     appearance: none;
-    background: rgba(255,255,255,0.05);
-    color: #d8d4ff;
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 8px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.2) 100%);
+    color: #e6e1d1;
+    border: 1px solid rgba(0,0,0,0.4);
+    border-radius: 6px;
     padding: 8px 10px;
     min-width: 44px;
-    font: 700 12px var(--ui);
+    font: 700 12px "Space Mono", ui-monospace, monospace;
     cursor: pointer;
     flex: 0 0 auto;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      inset 0 -1px 0 rgba(0,0,0,0.25);
+    transition: background 220ms cubic-bezier(0.22, 1, 0.36, 1);
   }
-  .param-popover .pop-option:hover { background: rgba(255,255,255,0.10); }
+  .param-popover .pop-option:hover { background: rgba(255,255,255,0.14); }
   .param-popover .pop-option.active {
-    background: var(--accent);
+    background:
+      linear-gradient(180deg, #ff8c5f 0%, #e85d35 100%);
     color: #2a1a0d;
-    border-color: var(--accent-edge);
+    border-color: #a8421e;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.4),
+      inset 0 -1px 0 rgba(0,0,0,0.18),
+      0 0 3px rgba(255, 117, 71, 0.45),
+      0 0 8px rgba(255, 117, 71, 0.22);
   }
   .chip-row .label {
-    font: 600 10px var(--ui); letter-spacing: 0.12em;
-    text-transform: uppercase; color: rgba(233,232,255,0.55);
+    font: 700 10px var(--mono); letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--bar-text-mute);
     margin-right: 4px;
   }
 
   /* Selected meta */
   .selected-meta-row {
     display: flex; align-items: center; gap: 8px;
-    font: 600 11px var(--ui);
-    color: rgba(233,232,255,0.85);
+    font: 700 11px var(--mono);
+    letter-spacing: 0.08em;
+    color: var(--bar-text);
   }
   .selected-meta-row .pitch {
     font: 700 11px var(--mono);
-    background: rgba(255,255,255,0.08);
+    background: rgba(0,0,0,0.25);
     padding: 3px 7px; border-radius: 4px;
-    color: #fff;
+    color: var(--accent-soft);
+    box-shadow: inset 0 1px 1px rgba(0,0,0,0.3);
+    text-shadow: 0 0 6px rgba(255, 117, 71, 0.3);
   }
   .selected-meta-row .size-control {
     flex: 1; display: flex; align-items: center; gap: 8px;
@@ -1002,25 +1551,66 @@
     height: 18px;
   }
   input[type="range"]::-webkit-slider-runnable-track {
-    height: 3px; background: rgba(255,255,255,0.18); border-radius: 2px;
+    height: 4px;
+    background:
+      linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.25) 100%);
+    border-radius: 2px;
+    box-shadow:
+      inset 0 1px 1px rgba(0,0,0,0.4),
+      0 1px 0 rgba(255,255,255,0.08);
   }
   input[type="range"]::-moz-range-track {
-    height: 3px; background: rgba(255,255,255,0.18); border-radius: 2px;
+    height: 4px;
+    background:
+      linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.25) 100%);
+    border-radius: 2px;
+    box-shadow: inset 0 1px 1px rgba(0,0,0,0.4);
   }
+  /* Slider thumb — analog fader knob with orange glow. */
   input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none; appearance: none;
     margin-top: -7px;
-    width: 16px; height: 16px; background: var(--accent);
-    border: 2px solid #fff; border-radius: 50%;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    width: 18px; height: 18px;
+    background:
+      radial-gradient(circle at 35% 30%, var(--accent-bright) 0%, var(--accent) 60%, var(--accent-edge) 100%);
+    border: 1px solid var(--accent-deep);
+    border-radius: 50%;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.45),
+      inset 0 -1px 1px rgba(0,0,0,0.2),
+      0 1px 2px rgba(0,0,0,0.4),
+      0 0 6px rgba(255, 117, 71, 0.45),
+      0 0 14px rgba(255, 117, 71, 0.22);
+    transition: box-shadow 220ms var(--ease-smooth),
+                transform 160ms var(--ease-snap);
+  }
+  input[type="range"]::-webkit-slider-thumb:hover,
+  input[type="range"]::-webkit-slider-thumb:active {
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.45),
+      inset 0 -1px 1px rgba(0,0,0,0.2),
+      0 1px 2px rgba(0,0,0,0.4),
+      var(--glow-orange-strong);
   }
   input[type="range"]::-moz-range-thumb {
-    width: 16px; height: 16px; background: var(--accent);
-    border: 2px solid #fff; border-radius: 50%;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    width: 18px; height: 18px;
+    background:
+      radial-gradient(circle at 35% 30%, var(--accent-bright) 0%, var(--accent) 60%, var(--accent-edge) 100%);
+    border: 1px solid var(--accent-deep);
+    border-radius: 50%;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.45),
+      0 1px 2px rgba(0,0,0,0.4),
+      0 0 6px rgba(255, 117, 71, 0.45);
   }
-  input[type="range"]:disabled::-webkit-slider-thumb { background: #6f6f7a; }
-  input[type="range"]:disabled::-moz-range-thumb { background: #6f6f7a; }
+  input[type="range"]:disabled::-webkit-slider-thumb {
+    background: #6f6f7a;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  }
+  input[type="range"]:disabled::-moz-range-thumb {
+    background: #6f6f7a;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  }
 
   .adsr {
     display: grid; grid-template-columns: repeat(4, 1fr);
@@ -1046,29 +1636,52 @@
   }
   .move-btn {
     appearance: none; border: 1px solid var(--cursor);
-    background: rgba(107,95,217,0.18); color: #e0dcff;
-    padding: 7px 12px; border-radius: 8px;
-    font: 600 12px var(--ui); cursor: pointer;
+    background: rgba(63, 111, 157, 0.18); color: var(--bar-text);
+    padding: 7px 12px; border-radius: 6px;
+    font: 700 12px var(--mono); cursor: pointer;
+    letter-spacing: 0.08em;
     font-variant-numeric: tabular-nums;
+    transition: background 220ms var(--ease-smooth);
   }
-  .move-btn:hover { background: rgba(107,95,217,0.32); color: #fff; }
+  .move-btn:hover { background: rgba(63, 111, 157, 0.32); color: #fff; }
   .selected-meta {
-    font: 600 12px var(--ui);
-    color: rgba(233,232,255,0.85);
+    font: 700 12px var(--mono);
+    letter-spacing: 0.06em;
+    color: var(--bar-text);
     display: flex; align-items: center; gap: 8px;
   }
   .selected-meta .pitch {
-    font: 600 12px var(--mono); color: #fff;
-    background: rgba(255,255,255,0.08);
+    font: 700 12px var(--mono); color: var(--accent-soft);
+    background: rgba(0,0,0,0.25);
     padding: 3px 7px; border-radius: 4px;
+    box-shadow: inset 0 1px 1px rgba(0,0,0,0.3);
+    text-shadow: 0 0 6px rgba(255, 117, 71, 0.3);
   }
   .delete-btn {
-    appearance: none; border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.06); color: #fff;
-    padding: 7px 12px; border-radius: 8px;
-    font: 600 12px var(--ui); cursor: pointer;
+    appearance: none; border: 1px solid rgba(0,0,0,0.3);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.15) 100%);
+    color: var(--bar-text);
+    padding: 7px 12px; border-radius: 6px;
+    font: 700 12px var(--mono); cursor: pointer;
+    letter-spacing: 0.08em;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      inset 0 -1px 0 rgba(0,0,0,0.2);
+    transition: background 220ms var(--ease-smooth),
+                color 220ms var(--ease-smooth),
+                box-shadow 220ms var(--ease-smooth);
   }
-  .delete-btn:hover { background: rgba(255,80,90,0.18); border-color: rgba(255,80,90,0.4); color: #ffcfd2; }
+  .delete-btn:hover {
+    background:
+      linear-gradient(180deg, #c84a3a 0%, #a8421e 100%);
+    border-color: var(--accent-edge);
+    color: #fff;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.15),
+      inset 0 -1px 0 rgba(0,0,0,0.2),
+      0 0 8px rgba(232, 93, 53, 0.4);
+  }
 
   .hidden { display: none !important; }
 
@@ -1079,51 +1692,100 @@
   .paste-row { display: flex; }
   .paste-btn {
     appearance: none; flex: 1;
-    background: var(--cursor); color: #fff;
+    background:
+      linear-gradient(180deg, var(--cursor-soft) 0%, var(--cursor) 100%);
+    color: #fff;
     border: 1px solid var(--cursor-strong);
-    border-radius: 10px;
+    border-radius: 8px;
     padding: 9px 12px;
-    font: 700 12px var(--ui);
-    letter-spacing: 0.08em;
+    font: 700 12px var(--mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     cursor: pointer;
     font-variant-numeric: tabular-nums;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.18) inset, 0 1px 3px rgba(0,0,0,0.2);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.35),
+      inset 0 -1px 0 rgba(0,0,0,0.18),
+      0 1px 3px rgba(0,0,0,0.25);
+    transition: background 220ms var(--ease-smooth),
+                transform 120ms var(--ease-snap);
   }
-  .paste-btn:hover { background: var(--cursor-strong); }
+  .paste-btn:hover {
+    background:
+      linear-gradient(180deg, #93b4d3 0%, var(--cursor-soft) 100%);
+  }
+  .paste-btn:active { transform: translateY(1px); }
+  /* Transport buttons — chunky cream-plastic faders */
   .transport button {
-    appearance: none; border: 1px solid rgba(0,0,0,0.08);
-    background: #fff; color: #1d1d1f;
-    border-radius: 12px;
-    font: 700 13px var(--ui);
-    letter-spacing: 0.1em;
+    appearance: none;
+    border: 1px solid rgba(0,0,0,0.4);
+    background:
+      linear-gradient(180deg, #f4efde 0%, #d8d2bf 100%);
+    color: var(--stage-text);
+    border-radius: 8px;
+    font: 700 14px var(--mono);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
     cursor: pointer;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 1px 3px rgba(0,0,0,0.25);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.7),
+      inset 0 -2px 0 rgba(0,0,0,0.12),
+      0 2px 4px rgba(0,0,0,0.35);
+    transition: background 280ms var(--ease-smooth),
+                color 280ms var(--ease-smooth),
+                box-shadow 280ms var(--ease-smooth),
+                transform 120ms var(--ease-snap);
   }
-  .transport button:hover { background: #f5f5f4; }
+  .transport button:hover {
+    background:
+      linear-gradient(180deg, #fdf8e7 0%, #ebe5d3 100%);
+  }
+  .transport button:active { transform: translateY(1px); }
   .transport button#playBtn[data-state="playing"] {
-    background: var(--accent); color: #2a1a0d; border-color: var(--accent-edge);
+    background:
+      linear-gradient(180deg, var(--accent-bright) 0%, var(--accent) 100%);
+    color: #2a1a0d;
+    border-color: var(--accent-edge);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.45),
+      inset 0 -2px 0 rgba(0,0,0,0.18),
+      0 2px 4px rgba(0,0,0,0.35),
+      var(--glow-orange);
+    animation: glowPulseStrong 1.6s ease-in-out infinite;
   }
 
-  /* ---- Popup ---- */
+  /* ---- Popup (vintage control panel sliding up from the bottom) ---- */
   .popup-layer {
     position: absolute; inset: 0;
     background: rgba(0,0,0,0.55);
     display: flex; align-items: flex-end;
     z-index: 100;
+    animation: popupOverlayFade 240ms var(--ease-smooth);
+  }
+  @keyframes popupOverlayFade {
+    0%   { background: rgba(0,0,0,0); }
+    100% { background: rgba(0,0,0,0.55); }
   }
   .popup {
-    background: #1a1a1f;
-    border-top: 1px solid rgba(255,255,255,0.08);
-    border-radius: 18px 18px 0 0;
+    background:
+      linear-gradient(180deg, var(--bottom-2) 0%, var(--bottom) 100%);
+    border-top: 1px solid var(--frame-line);
+    border-radius: 14px 14px 0 0;
     padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0));
     width: 100%; max-height: 78%;
     overflow-y: auto;
     color: var(--bar-text);
-    box-shadow: 0 -12px 28px rgba(0,0,0,0.55);
-    /* Slim, dark scrollbar — matches .piano. The default chunky bar covered
-       slider value labels on the right edge. */
+    box-shadow:
+      0 -12px 28px rgba(0,0,0,0.55),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+    /* Slim, dark scrollbar — matches .piano. */
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,0.16) transparent;
+    animation: popupSlideUp 320ms var(--ease-snap);
+  }
+  @keyframes popupSlideUp {
+    0%   { transform: translateY(100%); }
+    100% { transform: translateY(0); }
   }
   .popup::-webkit-scrollbar { width: 4px; }
   .popup::-webkit-scrollbar-track { background: transparent; }
@@ -1136,9 +1798,10 @@
     margin-bottom: 16px;
   }
   .popup-header h3 {
-    margin: 0; font: 700 12px var(--ui);
-    letter-spacing: 0.14em; text-transform: uppercase;
-    color: #fff;
+    margin: 0; font: 700 12px var(--mono);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent-soft);
+    text-shadow: 0 0 8px rgba(255, 117, 71, 0.35);
     display: flex; align-items: baseline; gap: 6px;
     min-width: 0;
   }
@@ -1158,22 +1821,41 @@
   }
   .ins-channel-name:focus {
     outline: none;
-    color: #fff;
+    color: var(--accent-soft);
     border-bottom-color: var(--accent);
     border-bottom-style: solid;
   }
   .popup-close {
-    appearance: none; background: var(--accent); color: #2a1a0d;
+    appearance: none;
+    background:
+      linear-gradient(180deg, var(--accent-bright) 0%, var(--accent) 100%);
+    color: #2a1a0d;
     border: 1px solid var(--accent-edge);
-    border-radius: 8px; padding: 6px 14px;
-    font: 700 11px var(--ui); cursor: pointer;
-    letter-spacing: 0.1em;
+    border-radius: 6px; padding: 6px 14px;
+    font: 700 11px var(--mono); cursor: pointer;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.4),
+      inset 0 -1px 0 rgba(0,0,0,0.18),
+      var(--glow-orange-soft);
+    transition: background 220ms var(--ease-smooth),
+                box-shadow 220ms var(--ease-smooth),
+                transform 120ms var(--ease-snap);
   }
-  .popup-close:hover { background: #ec9d6e; }
+  .popup-close:hover {
+    background:
+      linear-gradient(180deg, #ff9670 0%, var(--accent-bright) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.45),
+      inset 0 -1px 0 rgba(0,0,0,0.18),
+      var(--glow-orange);
+  }
+  .popup-close:active { transform: translateY(1px); }
   .popup-section { margin-bottom: 20px; }
   .popup-section:last-child { margin-bottom: 0; }
   .popup-section-label {
-    font: 600 10px var(--ui); letter-spacing: 0.14em;
+    font: 700 10px var(--mono); letter-spacing: 0.18em;
     text-transform: uppercase; color: var(--bar-text-mute);
     margin-bottom: 10px;
     padding-bottom: 6px;
@@ -1182,41 +1864,89 @@
   .popup #songTitleInput {
     width: 100%;
     appearance: none;
-    background: rgba(255,255,255,0.04);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 10px;
+    background: rgba(0,0,0,0.25);
+    color: var(--bar-text);
+    border: 1px solid rgba(0,0,0,0.4);
+    border-radius: 6px;
     padding: 10px 12px;
-    font: 600 15px var(--ui);
+    font: 700 15px var(--mono);
+    letter-spacing: 0.02em;
+    box-shadow:
+      inset 0 1px 2px rgba(0,0,0,0.4),
+      0 1px 0 rgba(255,255,255,0.06);
+    transition: border-color 220ms var(--ease-smooth),
+                box-shadow 220ms var(--ease-smooth);
   }
   .popup #songTitleInput:focus {
     outline: none;
     border-color: var(--accent);
-    background: rgba(255,255,255,0.06);
+    box-shadow:
+      inset 0 1px 2px rgba(0,0,0,0.4),
+      0 0 0 1px var(--accent),
+      0 0 8px rgba(255, 117, 71, 0.4);
   }
   .popup #songCopyBtn { width: 100%; }
   .popup .field { display: grid; gap: 6px; margin-bottom: 16px; }
   .popup .field:last-child { margin-bottom: 0; }
   .popup .field label {
-    font: 600 10px var(--ui); letter-spacing: 0.14em;
+    font: 700 10px var(--mono); letter-spacing: 0.18em;
     text-transform: uppercase; color: var(--bar-text-mute);
     display: flex; justify-content: space-between; align-items: baseline;
   }
   .popup .field label .val {
-    color: #fff; font: 600 11px var(--mono);
+    color: var(--accent-soft);
+    font: 700 11px var(--mono);
+    text-shadow: 0 0 6px rgba(255, 117, 71, 0.35);
   }
   .popup .seg {
     display: flex; gap: 4px; flex-wrap: wrap;
   }
   .popup .seg button {
-    appearance: none; background: rgba(255,255,255,0.04);
-    color: var(--bar-text); border: 1px solid rgba(255,255,255,0.08);
-    padding: 6px 10px; border-radius: 6px;
-    font: 600 11px var(--ui); cursor: pointer;
+    appearance: none;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.15) 100%);
+    color: var(--bar-text);
+    border: 1px solid rgba(0,0,0,0.35);
+    padding: 6px 10px;
+    border-radius: 5px;
+    font: 700 11px var(--mono);
+    cursor: pointer;
     min-width: 36px; text-align: center;
+    letter-spacing: 0.06em;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      inset 0 -1px 0 rgba(0,0,0,0.2);
+    transition: background 220ms var(--ease-smooth),
+                color 220ms var(--ease-smooth),
+                transform 120ms var(--ease-snap);
   }
+  .popup .seg button:hover {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(0,0,0,0.15) 100%);
+  }
+  .popup .seg button:active { transform: translateY(1px); }
+  .popup .seg button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .popup .seg button:disabled:hover {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.15) 100%);
+  }
+  .popup .field .length-actions {
+    display: flex; gap: 6px;
+    margin-top: 4px;
+  }
+  .popup .field .length-actions button { flex: 1; }
   .popup .seg button.active {
-    background: var(--accent); color: #2a1a0d; border-color: var(--accent-edge);
+    background:
+      linear-gradient(180deg, var(--accent-bright) 0%, var(--accent) 100%);
+    color: #2a1a0d;
+    border-color: var(--accent-edge);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.4),
+      inset 0 -1px 0 rgba(0,0,0,0.18),
+      var(--glow-orange-soft);
   }
   /* Tiny dot on preset buttons that produce polyphonic (chord-capable) synths. */
   .popup .seg.seg-presets button[data-poly="1"] { position: relative; }
@@ -1224,9 +1954,11 @@
     content: ""; position: absolute; top: 4px; right: 4px;
     width: 5px; height: 5px; border-radius: 50%;
     background: var(--cursor);
+    box-shadow: 0 0 4px rgba(63, 111, 157, 0.5);
   }
   .popup .seg.seg-presets button.active[data-poly="1"]::after {
     background: rgba(255,255,255,0.9);
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
   }
 
   /* Tab strip at the top of the Instrument popup. */
@@ -1241,16 +1973,19 @@
     color: var(--bar-text-mute);
     border: 0;
     padding: 8px 14px;
-    font: 700 11px var(--ui); letter-spacing: 0.12em;
+    font: 700 11px var(--mono); letter-spacing: 0.18em;
     text-transform: uppercase;
     cursor: pointer;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
+    transition: color 280ms var(--ease-smooth),
+                border-bottom-color 280ms var(--ease-smooth);
   }
-  .ins-tab:hover { color: #fff; }
+  .ins-tab:hover { color: var(--bar-text); }
   .ins-tab.active {
-    color: #fff;
+    color: var(--accent-soft);
     border-bottom-color: var(--accent);
+    text-shadow: 0 0 8px rgba(255, 117, 71, 0.4);
   }
   .ins-tab-pane.hidden { display: none; }
 
@@ -1258,8 +1993,8 @@
   .preset-group { margin-bottom: 14px; }
   .preset-group:last-child { margin-bottom: 0; }
   .preset-group-label {
-    font: 700 9px var(--ui);
-    letter-spacing: 0.18em;
+    font: 700 9px var(--mono);
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--bar-text-mute);
     margin-bottom: 6px;
@@ -1267,47 +2002,53 @@
 
   /* FX tab: one card per effect with a heading. */
   .fx-section {
-    background: rgba(255,255,255,0.025);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 10px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(0,0,0,0.08) 100%);
+    border: 1px solid rgba(0,0,0,0.3);
+    border-radius: 8px;
     padding: 10px 12px;
     margin-bottom: 12px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.06),
+      0 1px 2px rgba(0,0,0,0.15);
   }
   .fx-section:last-child { margin-bottom: 0; }
   .fx-section h4 {
     margin: 0 0 10px;
-    font: 700 11px var(--ui);
-    letter-spacing: 0.14em;
+    font: 700 11px var(--mono);
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--accent-soft);
+    text-shadow: 0 0 6px rgba(255, 117, 71, 0.35);
   }
   .fx-section .field { margin-bottom: 10px; }
   .fx-section .field:last-child { margin-bottom: 0; }
 
-  /* In-scale key dot */
-  .key.in-scale::after {
-    content: ""; position: absolute;
-    left: 6px; top: 50%; transform: translateY(-50%);
-    width: 5px; height: 5px; border-radius: 50%;
-    background: var(--accent);
-  }
-  .key.black.in-scale::after { background: var(--accent-soft); }
+  /* In-scale indicator is rendered inside .key-dot (see above); no extra
+     ::after needed on .key. */
 
   /* ---- Caption + hint (outside device) ---- */
   .caption {
     position: fixed; top: 24px; left: 24px;
     max-width: 220px;
-    color: #a4a4ad;
+    color: var(--bar-text-mute);
     font: 500 12px var(--ui);
     line-height: 1.55;
   }
   .caption h1 {
-    font: 600 12px var(--ui); letter-spacing: 0.12em;
-    text-transform: uppercase; color: #d8d8dd;
+    font: 700 11px var(--mono); letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
     margin: 0 0 8px;
+    text-shadow: 0 0 8px rgba(255, 117, 71, 0.4);
   }
   .caption p { margin: 0 0 6px; }
-  .caption .num { display: inline-block; width: 16px; color: #6b5fd9; font-weight: 700; }
+  .caption .num {
+    display: inline-block; width: 16px;
+    color: var(--accent);
+    font-weight: 700;
+    font-family: var(--mono);
+  }
 
   @media (max-width: 900px) {
     body { padding: 0; align-items: stretch; }
@@ -1452,7 +2193,11 @@
           </header>
           <div class="field">
             <label>Length <span class="val"><span id="lengthVal">16</span> steps</span></label>
-            <input type="range" id="length" min="4" max="32" value="16" step="1">
+            <input type="range" id="length" min="4" max="64" value="16" step="1">
+            <div class="seg length-actions">
+              <button id="halveLenBtn" type="button" title="Halve length (notes past the new end are kept in memory)">½ Halve</button>
+              <button id="doubleLenBtn" type="button" title="Double length and duplicate all notes so the pattern repeats">2× Double</button>
+            </div>
           </div>
           <div class="field">
             <label>Default note size <span class="val"><span id="defaultSizeVal">1</span>×</span></label>
@@ -1669,17 +2414,17 @@
   const PITCH_INDEX = {};
   PITCHES.slice().reverse().forEach((p, i) => { PITCH_INDEX[p.name] = i; });
 
-  const WHITE_KEY_H = 30; // px per white key — drives total scrollable height
+  const WHITE_KEY_H = 44; // px per white key — drives total scrollable height
 
   const CHANNEL_PALETTE = [
-    { color: "#e9925c", edge: "#c47338" }, // coral / bass
-    { color: "#4ea6e9", edge: "#2d83c5" }, // blue / drum
-    { color: "#6dc97a", edge: "#499b56" }, // green / lead
-    { color: "#c47ccf", edge: "#985ba5" }, // magenta / chord
-    { color: "#f0c04b", edge: "#c69829" }, // amber / pad
-    { color: "#7e8dff", edge: "#5a6acc" }, // periwinkle / aux
-    { color: "#ff7e9a", edge: "#cc5772" }, // rose
-    { color: "#5cd3c6", edge: "#349a90" }, // teal
+    { color: "#ff7547", edge: "#a8421e" }, // glowing orange / bass
+    { color: "#3f6f9d", edge: "#2d5780" }, // steel blue / drum
+    { color: "#e0b860", edge: "#a48433" }, // vintage amber / lead
+    { color: "#6db0a5", edge: "#3f7a70" }, // muted teal / chord
+    { color: "#c87a3a", edge: "#8c5022" }, // burnt orange / pad
+    { color: "#7e9bb3", edge: "#4f6c84" }, // dusty steel / aux
+    { color: "#b585a8", edge: "#7a5470" }, // dusty mauve / rose
+    { color: "#a8a285", edge: "#736e56" }, // olive khaki / perc
   ];
 
   // synth: how the preset's voice is built (mono = subtractive MonoSynth, fm = FMSynth,
@@ -1866,6 +2611,7 @@
     // Per-channel synths whose preset/adsr/eq/fx might have changed: rebuild.
     state.channels.forEach(ch => disposeChannelSynth(ch.id));
     if (lengthEl) { lengthEl.value = state.steps; lengthValEl.textContent = state.steps; }
+    if (typeof updateLengthActionButtons === "function") updateLengthActionButtons();
     applyActiveChannelStyle();
     renderChannelStrip();
     renderPresetButtons();
@@ -2373,42 +3119,89 @@
     return new Set(offsets.map(o => INDEX_NOTE[(root + o) % 12]));
   }
 
+  // Cached list of piano-key elements. renderKeys() invalidates by setting
+  // this to null. refreshKeyHighlights() hits this hot path on every cursor
+  // tick, so caching saves ~3 querySelectorAll(.key) calls per render.
+  let _cachedKeyEls = null;
+  // Pitch ("C4", "A#5", …) → key element. Built once by renderKeys, used by
+  // the differential refreshKeyHighlights to flip class state on just the
+  // keys whose state actually changed (vs. iterating all 108 keys every tick).
+  const _keyByPitch = new Map();
+  // Highlight sets from the previous refresh. Diffing against these lets us
+  // turn off classes only on keys that left the set and turn on classes only
+  // on keys that joined it — typically 0–2 DOM ops per cursor tick instead
+  // of ~400 (clear all 108 keys × 3 classes, then re-add).
+  let _prevCursorPitches = new Set();
+  let _prevChordPitches = new Set();
+  let _prevInScalePitches = new Set();
   function refreshKeyHighlights() {
-    keysEl.querySelectorAll(".key").forEach(k => {
-      k.classList.remove("in-scale");
-      k.classList.remove("chord-active");
-      k.classList.remove("cursor-pitch");
-    });
+    // Compute the three target sets fresh from state.
+    const newCursorPitches = new Set();
+    const newChordPitches = new Set();
+    const newInScalePitches = new Set();
+
     if (state.scaleOn) {
       const inScale = getInScaleClasses();
-      keysEl.querySelectorAll(".key").forEach(k => {
-        const cls = k.dataset.pitch.replace(/[0-9]/g, "");
-        if (inScale.has(cls)) k.classList.add("in-scale");
-      });
+      for (let i = 0; i < PITCHES.length; i++) {
+        const p = PITCHES[i];
+        const cls = p.name.replace(/[0-9]/g, "");
+        if (inScale.has(cls)) newInScalePitches.add(p.name);
+      }
     }
+
     const ch = state.activeChannelId;
     if (state.chordMode) {
-      // Chord mode: strong purple highlight on every pitch currently in the chord.
-      const pitches = new Set(state.notes
-        .filter(n => n.channelId === ch && Math.abs(n.step - state.chordStep) < 1e-6)
-        .map(n => n.pitch));
-      keysEl.querySelectorAll(".key").forEach(k => {
-        if (pitches.has(k.dataset.pitch)) k.classList.add("chord-active");
-      });
+      for (let i = 0; i < state.notes.length; i++) {
+        const n = state.notes[i];
+        if (n.channelId === ch && Math.abs(n.step - state.chordStep) < 1e-6) {
+          newChordPitches.add(n.pitch);
+        }
+      }
     } else {
-      // Normal mode: softer "cursor-pitch" hint on any pitch the cursor is sitting on
-      // in the input channel — accounts for a note's full duration (step → step + size).
       const c = state.cursor;
-      const pitches = new Set(state.notes
-        .filter(n => n.channelId === ch && c >= n.step - 1e-6 && c < n.step + n.size - 1e-6)
-        .map(n => n.pitch));
-      keysEl.querySelectorAll(".key").forEach(k => {
-        if (pitches.has(k.dataset.pitch)) k.classList.add("cursor-pitch");
-      });
+      for (let i = 0; i < state.notes.length; i++) {
+        const n = state.notes[i];
+        if (n.channelId === ch && c >= n.step - 1e-6 && c < n.step + n.size - 1e-6) {
+          newCursorPitches.add(n.pitch);
+        }
+      }
+    }
+
+    // Diff each set against the previous render and only touch the keys
+    // whose membership flipped. removeAll() is rare (changing scale or
+    // chord mode), so the steady-state work is just adding/removing a
+    // handful of cursor-pitch classes as the cursor crosses note edges.
+    diffPitchClass(_prevInScalePitches, newInScalePitches, "in-scale");
+    diffPitchClass(_prevChordPitches,   newChordPitches,   "chord-active");
+    diffPitchClass(_prevCursorPitches,  newCursorPitches,  "cursor-pitch");
+
+    _prevInScalePitches = newInScalePitches;
+    _prevChordPitches   = newChordPitches;
+    _prevCursorPitches  = newCursorPitches;
+  }
+  function diffPitchClass(oldSet, newSet, cls) {
+    // Remove class from keys that left the set.
+    for (const pitch of oldSet) {
+      if (newSet.has(pitch)) continue;
+      const el = _keyByPitch.get(pitch);
+      if (el) el.classList.remove(cls);
+    }
+    // Add class to keys that joined the set.
+    for (const pitch of newSet) {
+      if (oldSet.has(pitch)) continue;
+      const el = _keyByPitch.get(pitch);
+      if (el) el.classList.add(cls);
     }
   }
 
   function renderKeys() {
+    _cachedKeyEls = null;        // piano DOM is being rebuilt — drop the cached list
+    _keyByPitch.clear();          // and the pitch→element map used by diffing
+    // Highlight sets are tied to specific DOM nodes; nuke them so the next
+    // refreshKeyHighlights() reapplies every active class on the fresh keys.
+    _prevCursorPitches  = new Set();
+    _prevChordPitches   = new Set();
+    _prevInScalePitches = new Set();
     keysEl.innerHTML = "";
     const whites = PITCHES.filter(p => !p.isBlack);
     const wh = WHITE_KEY_H * state.keyboardZoom;
@@ -2427,28 +3220,40 @@
       }
     });
 
+    // Build all 108 keys into a fragment, one appendChild at the end.
+    const frag = document.createDocumentFragment();
     PITCHES.forEach(p => {
       if (p.isBlack) return;
       const el = document.createElement("div");
       el.className = "key white";
       if (p.name.startsWith("C") && !p.name.includes("#")) el.classList.add("octave-label");
-      el.textContent = p.name;
+      const dot = document.createElement("span");
+      dot.className = "key-dot";
+      dot.textContent = p.name;
+      el.appendChild(dot);
       el.dataset.pitch = p.name;
       const L = layout[p.name];
       el.style.top = L.top + "px"; el.style.height = L.h + "px";
       attachPianoKeyGesture(el, p.name, false);
-      keysEl.appendChild(el);
+      frag.appendChild(el);
+      _keyByPitch.set(p.name, el);
     });
     PITCHES.forEach(p => {
       if (!p.isBlack || !layout[p.name]) return;
       const el = document.createElement("div");
       el.className = "key black";
       el.dataset.pitch = p.name;
+      const dot = document.createElement("span");
+      dot.className = "key-dot";
+      dot.textContent = p.name;
+      el.appendChild(dot);
       const L = layout[p.name];
       el.style.top = L.top + "px"; el.style.height = L.h + "px";
       attachPianoKeyGesture(el, p.name, true);
-      keysEl.appendChild(el);
+      frag.appendChild(el);
+      _keyByPitch.set(p.name, el);
     });
+    keysEl.appendChild(frag);
     refreshKeyHighlights();
   }
 
@@ -2619,30 +3424,107 @@
   }
 
   // ---------- Grid render ----------
+  // Tracks the set of (step, channel) keys that had a rendered .note on the
+  // previous renderGrid() pass. We use it to flag genuinely new note blocks
+  // with the .fresh class so the appear-animation only fires for them —
+  // re-rendered existing notes stay still even though renderGrid() rebuilds
+  // the whole grid DOM on every call.
+  let prevRenderedNoteKeys = new Set();
+
+  // Performance scaffolding:
+  //
+  // 1. rAF coalescing — knob drags fire setCursorFromClientY at touch-event
+  //    rate (often 60–120 Hz). Each call previously triggered a full
+  //    renderGrid, which at 32–64 steps + many notes meant hundreds of DOM
+  //    ops per frame and visible lag. We now coalesce all renderGrid()
+  //    requests within a frame into a single requestAnimationFrame, so the
+  //    grid rebuilds at most once per paint.
+  //
+  // 2. Row reuse — the row scaffolding (numbers, beat lines) only depends on
+  //    state.steps and the rendered height. When neither changed, we keep
+  //    the existing rows in place and only toggle the .cursor class on the
+  //    single row that needs it. At 64 steps that's ~128 DOM ops saved per
+  //    render.
+  let _renderRaf = 0;
+  let _lastRowSteps = -1;
+  let _lastRowH = -1;
+
+  // Cached references to the per-render overlay elements. The fast
+  // cursor-update path (updateCursorVisuals) reads these instead of doing a
+  // querySelector on every knob-drag tick. _renderGridNow refreshes them
+  // after the fragment is appended.
+  let _cachedCursorLine = null;
+  let _cachedCursorBtn = null;
+  let _cachedGhost = null;
+  let _cachedRangeBox = null;
+
   function renderGrid() {
-    gridEl.innerHTML = "";
+    if (_renderRaf) return;
+    _renderRaf = requestAnimationFrame(() => {
+      _renderRaf = 0;
+      // Skip if the component was torn down between schedule and fire.
+      if (!gridEl.isConnected) return;
+      _renderGridNow();
+    });
+  }
+
+  function _renderGridNow() {
     const h = gridEl.clientHeight || 580;
     const rowH = h / state.steps;
-
     const cursorInt = Math.round(state.cursor);
-    for (let i = 0; i < state.steps; i++) {
-      const row = document.createElement("div");
-      row.className = "row" + (i % 4 === 0 ? " beat" : "") + (i === cursorInt ? " cursor" : "");
-      row.style.top = (i * rowH) + "px";
-      row.style.height = rowH + "px";
-      const num = document.createElement("span");
-      num.className = "num";
-      num.textContent = String(i + 1).padStart(2, "0");
-      row.appendChild(num);
-      gridEl.appendChild(row);
+
+    const rowsNeedRebuild = (
+      state.steps !== _lastRowSteps ||
+      Math.abs(rowH - _lastRowH) > 0.5
+    );
+
+    if (rowsNeedRebuild) {
+      gridEl.innerHTML = "";
+      // Build all rows into a fragment so the single appendChild at the end
+      // is the only paint-trigger.
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < state.steps; i++) {
+        const row = document.createElement("div");
+        row.className = "row" + (i % 4 === 0 ? " beat" : "") + (i === cursorInt ? " cursor" : "");
+        row.style.top = (i * rowH) + "px";
+        row.style.height = rowH + "px";
+        const num = document.createElement("span");
+        num.className = "num";
+        num.textContent = String(i + 1).padStart(2, "0");
+        row.appendChild(num);
+        frag.appendChild(row);
+      }
+      gridEl.appendChild(frag);
+      _lastRowSteps = state.steps;
+      _lastRowH = rowH;
+    } else {
+      // Selectively drop every non-row child; keep the row scaffolding intact.
+      const toRemove = [];
+      for (const child of gridEl.children) {
+        if (!child.classList.contains("row")) toRemove.push(child);
+      }
+      for (const el of toRemove) el.remove();
+      // After the removal pass every child is a row, so index === row index.
+      const rows = gridEl.children;
+      for (let i = 0; i < rows.length; i++) {
+        const want = i === cursorInt;
+        if (want !== rows[i].classList.contains("cursor")) {
+          rows[i].classList.toggle("cursor", want);
+        }
+      }
     }
+
+    // Build every per-render element into a single fragment, then attach
+    // the whole fragment in one go at the end. That coalesces dozens of
+    // appendChild() calls into a single style/layout invalidation.
+    const frag = document.createDocumentFragment();
 
     // Cursor line — sits at the TOP of the cursor's row so a new note placed at
     // step=cursor renders right below the line (the note starts where the cursor is).
     const cursorLine = document.createElement("div");
     cursorLine.className = "cursor-line" + (state.cursor !== Math.round(state.cursor) ? " fractional" : "");
     cursorLine.style.top = (state.cursor * rowH) + "px";
-    gridEl.appendChild(cursorLine);
+    frag.appendChild(cursorLine);
 
     // Independent playhead during playback — lets the user keep editing at the
     // cursor while the sequence runs.
@@ -2650,7 +3532,7 @@
       const ph = document.createElement("div");
       ph.className = "playhead-line";
       ph.style.top = (state.playhead * rowH) + "px";
-      gridEl.appendChild(ph);
+      frag.appendChild(ph);
     }
 
     // Only unmuted channels claim grid columns; muted channels keep their (dimmed)
@@ -2668,7 +3550,7 @@
       const div = document.createElement("div");
       div.className = "col-divider";
       div.style.left = (colLeft + i * colW) + "px";
-      gridEl.appendChild(div);
+      frag.appendChild(div);
     }
 
     // ⋯ button next to the cursor line — opens the per-cursor mini menu.
@@ -2684,7 +3566,7 @@
       // when the cursor is at the very top or very bottom.
       cursorBtn.style.top = Math.max(0, Math.min(state.cursor * rowH - 11, h - 22)) + "px";
       cursorBtn.addEventListener("click", openCursorMenu);
-      gridEl.appendChild(cursorBtn);
+      frag.appendChild(cursorBtn);
     }
 
     // Ghost note in the input channel column — previews where a key-press will land.
@@ -2702,7 +3584,7 @@
         ghost.style.height = Math.max(6, ghostSize * rowH - 6) + "px";
         ghost.style.setProperty("--ch-color", inputCh.color);
         ghost.style.setProperty("--ch-edge", inputCh.edge);
-        gridEl.appendChild(ghost);
+        frag.appendChild(ghost);
       }
       // Range selection box in the input channel column.
       if (state.rangeSelectAnchor !== null) {
@@ -2714,7 +3596,7 @@
         box.style.width  = (colW - 4) + "px";
         box.style.top    = (a * rowH) + "px";
         box.style.height = Math.max(2, (b - a) * rowH) + "px";
-        gridEl.appendChild(box);
+        frag.appendChild(box);
       }
     }
 
@@ -2727,7 +3609,8 @@
       groups.get(k).push(n);
     });
 
-    groups.forEach((notes) => {
+    const nextRenderedNoteKeys = new Set();
+    groups.forEach((notes, groupKey) => {
       const first = notes[0];
       const colIdx = visibleChannels.findIndex(c => c.id === first.channelId);
       if (colIdx < 0) return; // channel muted — skip rendering its notes
@@ -2737,8 +3620,18 @@
       let cls = "note";
       if (notes.some(n => isSel(n.id))) cls += " selected";
       if (isChord) cls += " chord";
+      // Fresh = this (step, channel) didn't have a rendered note last time.
+      // Drives the appear-animation, so adding a note doesn't make every
+      // already-placed note re-animate.
+      if (!prevRenderedNoteKeys.has(groupKey)) cls += " fresh";
+      nextRenderedNoteKeys.add(groupKey);
       el.className = cls;
       el.dataset.id = first.id;
+      // Stamp step + channel on the element so the fast cursor-update path
+      // (updateCursorVisuals) can re-toggle the will-overwrite hint without
+      // rebuilding any DOM.
+      el.dataset.step = first.step;
+      el.dataset.channel = first.channelId;
 
       const label = document.createElement("span");
       label.className = "note-label" + (isChord ? " chord-label" : "");
@@ -2769,62 +3662,38 @@
       el.style.setProperty("--ch-color", ch.color);
       el.style.setProperty("--ch-edge", ch.edge);
 
-      if (isChord) attachChordGesture(el, notes);
-      else attachNoteGesture(el, first.id);
-      gridEl.appendChild(el);
+      // No per-note event listeners — gridEl carries delegated handlers
+      // (see setupNoteDelegation). Removing N×3 addEventListener calls
+      // per render is a meaningful win on dense patterns.
+      frag.appendChild(el);
     });
+    prevRenderedNoteKeys = nextRenderedNoteKeys;
+
+    // One-shot attach — all per-render elements go in together.
+    gridEl.appendChild(frag);
+
+    // Refresh the overlay-element cache so updateCursorVisuals can update
+    // them in place without querying the DOM on every tick.
+    _cachedCursorLine = gridEl.querySelector(".cursor-line");
+    _cachedCursorBtn  = gridEl.querySelector(".cursor-action");
+    _cachedGhost      = gridEl.querySelector(".cursor-ghost");
+    _cachedRangeBox   = gridEl.querySelector(".range-box");
 
     // Keep the keyboard's pitch highlights in sync with wherever the cursor is now.
     refreshKeyHighlights();
     updateFloatingDelete();
   }
 
-  // Tapping a chord block (or any note on a poly channel) opens chord mode at
-  // that step so the user can directly add or remove pitches. Long-press still
-  // enters multi-select so the chord can be copied / deleted as a group.
-  function attachChordGesture(el, notes) {
-    let suppress = false;
-    el.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (suppressNextClick) { suppressNextClick = false; return; }
-      if (suppress) { suppress = false; return; }
-      enterChordModeAtNote(notes[0]);
-    });
-    el.addEventListener("pointerdown", (e) => {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      e.stopPropagation();
-      const sx = e.clientX, sy = e.clientY;
-      el.classList.add("charging");
-      let timer = setTimeout(() => {
-        timer = null;
-        el.classList.remove("charging");
-        el.classList.add("charge-complete");
-        setTimeout(() => el.classList.remove("charge-complete"), 360);
-        suppress = true;
-        suppressNextClick = true;
-        // Long-press: select every note in the chord block (multi-select).
-        if (state.chordMode) exitChordMode();
-        state.multiSelect = true;
-        state.selectedId = null;
-        state.selectedIds = new Set(notes.map(n => n.id));
-        state.cursor = notes[0].step;
-        positionKnobFromCursor();
-        renderGrid();
-        updateSelectedBar();
-      }, LONG_PRESS_MS);
-      const cancel = () => { if (timer) { clearTimeout(timer); timer = null; el.classList.remove("charging"); } };
-      const onMove = (ev) => { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) cancel(); };
-      const onUp = () => {
-        cancel();
-        el.removeEventListener("pointermove", onMove);
-        el.removeEventListener("pointerup", onUp);
-        el.removeEventListener("pointercancel", onUp);
-      };
-      el.addEventListener("pointermove", onMove);
-      el.addEventListener("pointerup", onUp);
-      el.addEventListener("pointercancel", onUp);
-    });
-  }
+  // Note-interaction event delegation. The original code attached
+  // click + pointerdown + 3 conditional move/up listeners to every .note
+  // element on every renderGrid — at 30+ notes that's a lot of
+  // addEventListener churn for every full render. With delegation a single
+  // pair of listeners on gridEl handles every note via e.target.closest,
+  // and tracks the long-press charge using closure state.
+  //
+  // Multi-touch safety: chargePointerId pins the charge to the specific
+  // pointer that started it, so a second finger landing elsewhere can't
+  // cancel the first one's long-press.
 
   // Open chord mode anchored at this note's step, with the existing notes (one
   // or many) as the seed. Cursor + scroller jump to the step. If the note is on
@@ -2849,50 +3718,113 @@
   const LONG_PRESS_MS = 450;
   let suppressNextClick = false;
 
-  function attachNoteGesture(el, noteId) {
-    el.addEventListener("click", (e) => {
+  (function setupNoteDelegation() {
+    let chargeNote = null;          // currently long-pressing note element
+    let chargeNoteId = null;         // its data-id (survives a DOM rebuild)
+    let chargeIsChord = false;       // chord-block long-press triggers the chord select path
+    let chargePointerId = null;      // pin to the pointer that started the charge
+    let chargeTimer = null;
+    let chargeStartX = 0, chargeStartY = 0;
+
+    function endCharge() {
+      if (chargeTimer) { clearTimeout(chargeTimer); chargeTimer = null; }
+      if (chargeNote) {
+        chargeNote.classList.remove("charging");
+        chargeNote = null;
+      }
+      chargeNoteId = null;
+      chargeIsChord = false;
+      chargePointerId = null;
+    }
+
+    gridEl.addEventListener("click", (e) => {
+      const el = e.target.closest(".note");
+      if (!el || !gridEl.contains(el)) return;
       e.stopPropagation();
       if (suppressNextClick) { suppressNextClick = false; return; }
-      const n = state.notes.find(x => x.id === noteId);
-      const ch = n && state.channels.find(c => c.id === n.channelId);
-      // Tapping a note on a poly channel opens chord mode at that step so the
-      // user can immediately start growing/shrinking the chord.
-      if (n && ch && isPolyPreset(ch.presetName)) {
+      const id = parseInt(el.dataset.id, 10);
+      const n = state.notes.find(x => x.id === id);
+      if (!n) return;
+      if (el.classList.contains("chord")) {
+        // n shares (step, channel) with every note in the block, which is
+        // all enterChordModeAtNote uses to anchor itself.
         enterChordModeAtNote(n);
       } else {
-        selectNote(noteId);
+        const ch = state.channels.find(c => c.id === n.channelId);
+        // Tapping a note on a poly channel opens chord mode at that step so the
+        // user can immediately start growing/shrinking the chord.
+        if (ch && isPolyPreset(ch.presetName)) enterChordModeAtNote(n);
+        else selectNote(id);
       }
     });
-    el.addEventListener("pointerdown", (e) => {
+
+    gridEl.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
+      const el = e.target.closest(".note");
+      if (!el || !gridEl.contains(el)) return;
       e.stopPropagation();
-      const sx = e.clientX, sy = e.clientY;
+      const id = parseInt(el.dataset.id, 10);
+      const n = state.notes.find(x => x.id === id);
+      if (!n) return;
+
+      endCharge(); // a previous unfinished charge — clear it before starting fresh
+      chargeStartX = e.clientX;
+      chargeStartY = e.clientY;
+      chargeNote = el;
+      chargeNoteId = id;
+      chargeIsChord = el.classList.contains("chord");
+      chargePointerId = e.pointerId;
       el.classList.add("charging");
-      let timer = setTimeout(() => {
-        timer = null;
-        el.classList.remove("charging");
-        el.classList.add("charge-complete");
-        setTimeout(() => el.classList.remove("charge-complete"), 360);
+
+      chargeTimer = setTimeout(() => {
+        chargeTimer = null;
+        const localId = chargeNoteId;
+        const wasChord = chargeIsChord;
+        const noteEl = chargeNote;
+        if (noteEl) {
+          noteEl.classList.remove("charging");
+          noteEl.classList.add("charge-complete");
+          setTimeout(() => {
+            if (noteEl.isConnected) noteEl.classList.remove("charge-complete");
+          }, 360);
+        }
         suppressNextClick = true;
-        enterMultiSelectWith(noteId);
+        chargeNote = null;
+        chargeNoteId = null;
+        chargePointerId = null;
+        const note = state.notes.find(x => x.id === localId);
+        if (!note) return;
+        if (wasChord) {
+          // Long-press a chord block: select every note in the (step, channel) group.
+          const block = state.notes.filter(x =>
+            x.channelId === note.channelId && Math.abs(x.step - note.step) < 1e-6);
+          if (state.chordMode) exitChordMode();
+          state.multiSelect = true;
+          state.selectedId = null;
+          state.selectedIds = new Set(block.map(x => x.id));
+          state.cursor = block[0].step;
+          positionKnobFromCursor();
+          renderGrid();
+          updateSelectedBar();
+        } else {
+          enterMultiSelectWith(localId);
+        }
       }, LONG_PRESS_MS);
-      const cancel = () => {
-        if (timer) { clearTimeout(timer); timer = null; el.classList.remove("charging"); }
-      };
-      const onMove = (ev) => {
-        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) cancel();
-      };
-      const onUp = () => {
-        cancel();
-        el.removeEventListener("pointermove", onMove);
-        el.removeEventListener("pointerup", onUp);
-        el.removeEventListener("pointercancel", onUp);
-      };
-      el.addEventListener("pointermove", onMove);
-      el.addEventListener("pointerup", onUp);
-      el.addEventListener("pointercancel", onUp);
     });
-  }
+
+    gridEl.addEventListener("pointermove", (ev) => {
+      if (chargeNote === null || ev.pointerId !== chargePointerId) return;
+      if (Math.hypot(ev.clientX - chargeStartX, ev.clientY - chargeStartY) > 8) endCharge();
+    });
+    function endIfSamePointer(ev) {
+      if (chargeNote && ev.pointerId === chargePointerId) endCharge();
+    }
+    gridEl.addEventListener("pointerup", endIfSamePointer);
+    gridEl.addEventListener("pointercancel", endIfSamePointer);
+    gridEl.addEventListener("pointerleave", () => {
+      if (chargeNote) endCharge();
+    });
+  })();
 
   function enterMultiSelectWith(noteId) {
     if (state.multiSelect && state.selectedIds.has(noteId)) {
@@ -4102,16 +5034,64 @@
   });
 
   // ---------- Length ----------
+  const halveLenBtn = $("halveLenBtn");
+  const doubleLenBtn = $("doubleLenBtn");
+  function lengthMin() { return parseInt(lengthEl.min, 10); }
+  function lengthMax() { return parseInt(lengthEl.max, 10); }
+  function updateLengthActionButtons() {
+    if (halveLenBtn) halveLenBtn.disabled = state.steps / 2 < lengthMin();
+    if (doubleLenBtn) doubleLenBtn.disabled = state.steps * 2 > lengthMax();
+  }
+  function syncLengthUI() {
+    lengthEl.value = state.steps;
+    lengthValEl.textContent = state.steps;
+    updateLengthActionButtons();
+  }
   lengthEl.addEventListener("input", () => {
     beginSliderSession(lengthEl);
     state.steps = parseInt(lengthEl.value, 10);
     lengthValEl.textContent = state.steps;
     state.cursor = Math.min(state.cursor, state.steps);
+    updateLengthActionButtons();
     // do NOT remove out-of-range notes — they stay in state and reappear when length grows again
     renderGrid();
     positionKnobFromCursor();
     updateSelectedBar();
   });
+  if (halveLenBtn) halveLenBtn.addEventListener("click", () => {
+    if (state.steps / 2 < lengthMin()) return;
+    pushUndo();
+    state.steps = Math.floor(state.steps / 2);
+    state.cursor = Math.min(state.cursor, state.steps);
+    // Out-of-range notes stay in state.notes (mirrors slider-shrink behavior)
+    // so doubling back restores them.
+    syncLengthUI();
+    renderGrid();
+    positionKnobFromCursor();
+    updateSelectedBar();
+  });
+  if (doubleLenBtn) doubleLenBtn.addEventListener("click", () => {
+    if (state.steps * 2 > lengthMax()) return;
+    pushUndo();
+    const origLen = state.steps;
+    // Duplicate every note whose start is inside the original range so the
+    // pattern repeats in the new second half. Deep-clone to keep per-note
+    // overrides (volume/adsr/tone/eq/fx) intact, then assign a fresh id and
+    // shift the step.
+    const toClone = state.notes.filter(n => n.step < origLen);
+    toClone.forEach(n => {
+      const clone = JSON.parse(JSON.stringify(n));
+      clone.id = state.nextId++;
+      clone.step = n.step + origLen;
+      state.notes.push(clone);
+    });
+    state.steps = origLen * 2;
+    syncLengthUI();
+    renderGrid();
+    positionKnobFromCursor();
+    updateSelectedBar();
+  });
+  updateLengthActionButtons();
 
   // ---------- Scroller knob ----------
   function positionKnobFromCursor() {
@@ -4128,6 +5108,127 @@
     return Math.round(clamped * 100) / 100; // "off" — keep some quantization for sanity
   }
 
+  // Fast cursor-update path. The knob drag (touch / mouse) and scroller tap
+  // both fire this at touch-event rate (60–120 Hz). The naive approach is
+  // to call renderGrid every tick, which rebuilds every note element from
+  // scratch — at 32–64 steps × dozens of notes that's the dominant render
+  // cost the user reported as lag. Cursor moves don't actually need to
+  // touch the notes at all, so we reposition only the overlay elements
+  // (cursor line / button / ghost / range box) plus the .cursor class on
+  // the active row and refresh the piano-key highlights. Notes stay
+  // exactly where they are.
+  //
+  // When something happens that *does* need a full rebuild (range select
+  // changing selection, or the ghost / range-box not existing yet so we
+  // can't reposition it), we fall through to renderGrid().
+  function updateCursorVisuals() {
+    // A full render is already scheduled — let it handle the cursor too.
+    if (_renderRaf) return;
+    // First frame after mount: nothing to update yet, do the full render.
+    if (!_cachedCursorLine || !_cachedCursorLine.isConnected) {
+      renderGrid();
+      return;
+    }
+    const h = gridEl.clientHeight || 580;
+    const rowH = h / state.steps;
+    const cursorInt = Math.round(state.cursor);
+
+    // Cursor line position + fractional marker.
+    _cachedCursorLine.style.top = (state.cursor * rowH) + "px";
+    const isFrac = state.cursor !== Math.round(state.cursor);
+    if (isFrac !== _cachedCursorLine.classList.contains("fractional")) {
+      _cachedCursorLine.classList.toggle("fractional", isFrac);
+    }
+
+    // Cursor button position + chord-mode style/text.
+    if (_cachedCursorBtn) {
+      _cachedCursorBtn.style.top = Math.max(0, Math.min(state.cursor * rowH - 11, h - 22)) + "px";
+      const inChord = state.chordMode;
+      if (inChord !== _cachedCursorBtn.classList.contains("chord-mode")) {
+        _cachedCursorBtn.classList.toggle("chord-mode", inChord);
+        _cachedCursorBtn.textContent = inChord ? "♪" : "⋯";
+        _cachedCursorBtn.title = inChord ? "Chord mode (tap keys to toggle pitches)" : "Cursor actions";
+      }
+    }
+
+    // Move the .cursor class to whichever row the cursor is on.
+    let idx = 0;
+    for (const child of gridEl.children) {
+      if (!child.classList.contains("row")) continue;
+      const want = idx === cursorInt;
+      if (want !== child.classList.contains("cursor")) {
+        child.classList.toggle("cursor", want);
+      }
+      idx++;
+    }
+
+    // Ghost preview: reposition / show / hide.
+    const visibleChannels = state.channels.filter(c => !c.muted);
+    const inputIdx = visibleChannels.findIndex(c => c.id === state.activeChannelId);
+    const showGhost = inputIdx >= 0 && state.rangeSelectAnchor === null && !state.chordMode;
+    if (showGhost) {
+      const ghostStep = effectivePlacementStep();
+      const ghostSize = Math.min(state.defaultSize, state.steps - ghostStep);
+      if (ghostSize > 0) {
+        if (!_cachedGhost || !_cachedGhost.isConnected) {
+          // The ghost doesn't exist yet — full render is needed to create it.
+          renderGrid();
+          return;
+        }
+        _cachedGhost.style.top = (ghostStep * rowH + 3) + "px";
+        _cachedGhost.style.height = Math.max(6, ghostSize * rowH - 6) + "px";
+        if (_cachedGhost.style.display === "none") _cachedGhost.style.display = "";
+      } else if (_cachedGhost && _cachedGhost.isConnected) {
+        _cachedGhost.style.display = "none";
+      }
+    } else if (_cachedGhost && _cachedGhost.isConnected && _cachedGhost.style.display !== "none") {
+      _cachedGhost.style.display = "none";
+    }
+
+    // Range selection box. If active, also force a full render so the
+    // .selected class on the affected notes updates (selectedIds may have
+    // shifted as the cursor moved).
+    if (state.rangeSelectAnchor !== null) {
+      renderGrid();
+      return;
+    } else if (_cachedRangeBox && _cachedRangeBox.isConnected) {
+      _cachedRangeBox.remove();
+      _cachedRangeBox = null;
+    }
+
+    // Will-overwrite hint: the single (non-chord) note at the cursor step
+    // in the active channel gets a highlighted label so the user can see
+    // what their next key-press will overwrite. We toggle the class on
+    // existing .note elements rather than rebuilding them.
+    {
+      const cursorStep = effectivePlacementStep();
+      const activeCh = state.activeChannelId;
+      const noteEls = gridEl.getElementsByClassName("note");
+      const inChord = state.chordMode;
+      for (let i = 0; i < noteEls.length; i++) {
+        const el = noteEls[i];
+        const isChordBlock = el.classList.contains("chord");
+        let want = false;
+        if (!inChord && !isChordBlock) {
+          const stepMatches = Math.abs(parseFloat(el.dataset.step) - cursorStep) < 1e-6;
+          const chMatches = parseInt(el.dataset.channel, 10) === activeCh;
+          want = stepMatches && chMatches;
+        }
+        const label = el.firstChild; // .note-label is appended first
+        if (label && label.classList) {
+          const has = label.classList.contains("will-overwrite");
+          if (want !== has) label.classList.toggle("will-overwrite", want);
+        }
+      }
+    }
+
+    // Piano key highlights — cursor-pitch / chord-active follow the cursor.
+    refreshKeyHighlights();
+
+    // Floating delete button depends on whether any notes sit at the cursor.
+    updateFloatingDelete();
+  }
+
   function setCursorFromClientY(clientY) {
     const r = scrollerEl.getBoundingClientRect();
     const pad = 18;
@@ -4137,10 +5238,10 @@
     const next = snapCursor(frac * state.steps);
     if (Math.abs(next - state.cursor) > 1e-6) {
       state.cursor = next;
-      if (state.chordMode) exitChordMode();
+      if (state.chordMode) exitChordMode();   // exitChordMode queues renderGrid; rAF coalesces
       autoEnterChordIfOnChord();
       updateRangeSelection();
-      renderGrid();
+      updateCursorVisuals();                   // fast path; falls back to renderGrid if needed
       updateSelectedBar();
     }
     positionKnobFromCursor();

@@ -35,17 +35,17 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   const PITCH_INDEX = {};
   PITCHES.slice().reverse().forEach((p, i) => { PITCH_INDEX[p.name] = i; });
 
-  const WHITE_KEY_H = 30; // px per white key — drives total scrollable height
+  const WHITE_KEY_H = 44; // px per white key — drives total scrollable height
 
   const CHANNEL_PALETTE = [
-    { color: "#e9925c", edge: "#c47338" }, // coral / bass
-    { color: "#4ea6e9", edge: "#2d83c5" }, // blue / drum
-    { color: "#6dc97a", edge: "#499b56" }, // green / lead
-    { color: "#c47ccf", edge: "#985ba5" }, // magenta / chord
-    { color: "#f0c04b", edge: "#c69829" }, // amber / pad
-    { color: "#7e8dff", edge: "#5a6acc" }, // periwinkle / aux
-    { color: "#ff7e9a", edge: "#cc5772" }, // rose
-    { color: "#5cd3c6", edge: "#349a90" }, // teal
+    { color: "#ff7547", edge: "#a8421e" }, // glowing orange / bass
+    { color: "#3f6f9d", edge: "#2d5780" }, // steel blue / drum
+    { color: "#e0b860", edge: "#a48433" }, // vintage amber / lead
+    { color: "#6db0a5", edge: "#3f7a70" }, // muted teal / chord
+    { color: "#c87a3a", edge: "#8c5022" }, // burnt orange / pad
+    { color: "#7e9bb3", edge: "#4f6c84" }, // dusty steel / aux
+    { color: "#b585a8", edge: "#7a5470" }, // dusty mauve / rose
+    { color: "#a8a285", edge: "#736e56" }, // olive khaki / perc
   ];
 
   // synth: how the preset's voice is built (mono = subtractive MonoSynth, fm = FMSynth,
@@ -232,6 +232,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     // Per-channel synths whose preset/adsr/eq/fx might have changed: rebuild.
     state.channels.forEach(ch => disposeChannelSynth(ch.id));
     if (lengthEl) { lengthEl.value = state.steps; lengthValEl.textContent = state.steps; }
+    if (typeof updateLengthActionButtons === "function") updateLengthActionButtons();
     applyActiveChannelStyle();
     renderChannelStrip();
     renderPresetButtons();
@@ -740,42 +741,89 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     return new Set(offsets.map(o => INDEX_NOTE[(root + o) % 12]));
   }
 
+  // Cached list of piano-key elements. renderKeys() invalidates by setting
+  // this to null. refreshKeyHighlights() hits this hot path on every cursor
+  // tick, so caching saves ~3 querySelectorAll(.key) calls per render.
+  let _cachedKeyEls = null;
+  // Pitch ("C4", "A#5", …) → key element. Built once by renderKeys, used by
+  // the differential refreshKeyHighlights to flip class state on just the
+  // keys whose state actually changed (vs. iterating all 108 keys every tick).
+  const _keyByPitch = new Map();
+  // Highlight sets from the previous refresh. Diffing against these lets us
+  // turn off classes only on keys that left the set and turn on classes only
+  // on keys that joined it — typically 0–2 DOM ops per cursor tick instead
+  // of ~400 (clear all 108 keys × 3 classes, then re-add).
+  let _prevCursorPitches = new Set();
+  let _prevChordPitches = new Set();
+  let _prevInScalePitches = new Set();
   function refreshKeyHighlights() {
-    keysEl.querySelectorAll(".key").forEach(k => {
-      k.classList.remove("in-scale");
-      k.classList.remove("chord-active");
-      k.classList.remove("cursor-pitch");
-    });
+    // Compute the three target sets fresh from state.
+    const newCursorPitches = new Set();
+    const newChordPitches = new Set();
+    const newInScalePitches = new Set();
+
     if (state.scaleOn) {
       const inScale = getInScaleClasses();
-      keysEl.querySelectorAll(".key").forEach(k => {
-        const cls = k.dataset.pitch.replace(/[0-9]/g, "");
-        if (inScale.has(cls)) k.classList.add("in-scale");
-      });
+      for (let i = 0; i < PITCHES.length; i++) {
+        const p = PITCHES[i];
+        const cls = p.name.replace(/[0-9]/g, "");
+        if (inScale.has(cls)) newInScalePitches.add(p.name);
+      }
     }
+
     const ch = state.activeChannelId;
     if (state.chordMode) {
-      // Chord mode: strong purple highlight on every pitch currently in the chord.
-      const pitches = new Set(state.notes
-        .filter(n => n.channelId === ch && Math.abs(n.step - state.chordStep) < 1e-6)
-        .map(n => n.pitch));
-      keysEl.querySelectorAll(".key").forEach(k => {
-        if (pitches.has(k.dataset.pitch)) k.classList.add("chord-active");
-      });
+      for (let i = 0; i < state.notes.length; i++) {
+        const n = state.notes[i];
+        if (n.channelId === ch && Math.abs(n.step - state.chordStep) < 1e-6) {
+          newChordPitches.add(n.pitch);
+        }
+      }
     } else {
-      // Normal mode: softer "cursor-pitch" hint on any pitch the cursor is sitting on
-      // in the input channel — accounts for a note's full duration (step → step + size).
       const c = state.cursor;
-      const pitches = new Set(state.notes
-        .filter(n => n.channelId === ch && c >= n.step - 1e-6 && c < n.step + n.size - 1e-6)
-        .map(n => n.pitch));
-      keysEl.querySelectorAll(".key").forEach(k => {
-        if (pitches.has(k.dataset.pitch)) k.classList.add("cursor-pitch");
-      });
+      for (let i = 0; i < state.notes.length; i++) {
+        const n = state.notes[i];
+        if (n.channelId === ch && c >= n.step - 1e-6 && c < n.step + n.size - 1e-6) {
+          newCursorPitches.add(n.pitch);
+        }
+      }
+    }
+
+    // Diff each set against the previous render and only touch the keys
+    // whose membership flipped. removeAll() is rare (changing scale or
+    // chord mode), so the steady-state work is just adding/removing a
+    // handful of cursor-pitch classes as the cursor crosses note edges.
+    diffPitchClass(_prevInScalePitches, newInScalePitches, "in-scale");
+    diffPitchClass(_prevChordPitches,   newChordPitches,   "chord-active");
+    diffPitchClass(_prevCursorPitches,  newCursorPitches,  "cursor-pitch");
+
+    _prevInScalePitches = newInScalePitches;
+    _prevChordPitches   = newChordPitches;
+    _prevCursorPitches  = newCursorPitches;
+  }
+  function diffPitchClass(oldSet, newSet, cls) {
+    // Remove class from keys that left the set.
+    for (const pitch of oldSet) {
+      if (newSet.has(pitch)) continue;
+      const el = _keyByPitch.get(pitch);
+      if (el) el.classList.remove(cls);
+    }
+    // Add class to keys that joined the set.
+    for (const pitch of newSet) {
+      if (oldSet.has(pitch)) continue;
+      const el = _keyByPitch.get(pitch);
+      if (el) el.classList.add(cls);
     }
   }
 
   function renderKeys() {
+    _cachedKeyEls = null;        // piano DOM is being rebuilt — drop the cached list
+    _keyByPitch.clear();          // and the pitch→element map used by diffing
+    // Highlight sets are tied to specific DOM nodes; nuke them so the next
+    // refreshKeyHighlights() reapplies every active class on the fresh keys.
+    _prevCursorPitches  = new Set();
+    _prevChordPitches   = new Set();
+    _prevInScalePitches = new Set();
     keysEl.innerHTML = "";
     const whites = PITCHES.filter(p => !p.isBlack);
     const wh = WHITE_KEY_H * state.keyboardZoom;
@@ -794,28 +842,40 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       }
     });
 
+    // Build all 108 keys into a fragment, one appendChild at the end.
+    const frag = document.createDocumentFragment();
     PITCHES.forEach(p => {
       if (p.isBlack) return;
       const el = document.createElement("div");
       el.className = "key white";
       if (p.name.startsWith("C") && !p.name.includes("#")) el.classList.add("octave-label");
-      el.textContent = p.name;
+      const dot = document.createElement("span");
+      dot.className = "key-dot";
+      dot.textContent = p.name;
+      el.appendChild(dot);
       el.dataset.pitch = p.name;
       const L = layout[p.name];
       el.style.top = L.top + "px"; el.style.height = L.h + "px";
       attachPianoKeyGesture(el, p.name, false);
-      keysEl.appendChild(el);
+      frag.appendChild(el);
+      _keyByPitch.set(p.name, el);
     });
     PITCHES.forEach(p => {
       if (!p.isBlack || !layout[p.name]) return;
       const el = document.createElement("div");
       el.className = "key black";
       el.dataset.pitch = p.name;
+      const dot = document.createElement("span");
+      dot.className = "key-dot";
+      dot.textContent = p.name;
+      el.appendChild(dot);
       const L = layout[p.name];
       el.style.top = L.top + "px"; el.style.height = L.h + "px";
       attachPianoKeyGesture(el, p.name, true);
-      keysEl.appendChild(el);
+      frag.appendChild(el);
+      _keyByPitch.set(p.name, el);
     });
+    keysEl.appendChild(frag);
     refreshKeyHighlights();
   }
 
@@ -986,30 +1046,107 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   }
 
   // ---------- Grid render ----------
+  // Tracks the set of (step, channel) keys that had a rendered .note on the
+  // previous renderGrid() pass. We use it to flag genuinely new note blocks
+  // with the .fresh class so the appear-animation only fires for them —
+  // re-rendered existing notes stay still even though renderGrid() rebuilds
+  // the whole grid DOM on every call.
+  let prevRenderedNoteKeys = new Set();
+
+  // Performance scaffolding:
+  //
+  // 1. rAF coalescing — knob drags fire setCursorFromClientY at touch-event
+  //    rate (often 60–120 Hz). Each call previously triggered a full
+  //    renderGrid, which at 32–64 steps + many notes meant hundreds of DOM
+  //    ops per frame and visible lag. We now coalesce all renderGrid()
+  //    requests within a frame into a single requestAnimationFrame, so the
+  //    grid rebuilds at most once per paint.
+  //
+  // 2. Row reuse — the row scaffolding (numbers, beat lines) only depends on
+  //    state.steps and the rendered height. When neither changed, we keep
+  //    the existing rows in place and only toggle the .cursor class on the
+  //    single row that needs it. At 64 steps that's ~128 DOM ops saved per
+  //    render.
+  let _renderRaf = 0;
+  let _lastRowSteps = -1;
+  let _lastRowH = -1;
+
+  // Cached references to the per-render overlay elements. The fast
+  // cursor-update path (updateCursorVisuals) reads these instead of doing a
+  // querySelector on every knob-drag tick. _renderGridNow refreshes them
+  // after the fragment is appended.
+  let _cachedCursorLine = null;
+  let _cachedCursorBtn = null;
+  let _cachedGhost = null;
+  let _cachedRangeBox = null;
+
   function renderGrid() {
-    gridEl.innerHTML = "";
+    if (_renderRaf) return;
+    _renderRaf = requestAnimationFrame(() => {
+      _renderRaf = 0;
+      // Skip if the component was torn down between schedule and fire.
+      if (!gridEl.isConnected) return;
+      _renderGridNow();
+    });
+  }
+
+  function _renderGridNow() {
     const h = gridEl.clientHeight || 580;
     const rowH = h / state.steps;
-
     const cursorInt = Math.round(state.cursor);
-    for (let i = 0; i < state.steps; i++) {
-      const row = document.createElement("div");
-      row.className = "row" + (i % 4 === 0 ? " beat" : "") + (i === cursorInt ? " cursor" : "");
-      row.style.top = (i * rowH) + "px";
-      row.style.height = rowH + "px";
-      const num = document.createElement("span");
-      num.className = "num";
-      num.textContent = String(i + 1).padStart(2, "0");
-      row.appendChild(num);
-      gridEl.appendChild(row);
+
+    const rowsNeedRebuild = (
+      state.steps !== _lastRowSteps ||
+      Math.abs(rowH - _lastRowH) > 0.5
+    );
+
+    if (rowsNeedRebuild) {
+      gridEl.innerHTML = "";
+      // Build all rows into a fragment so the single appendChild at the end
+      // is the only paint-trigger.
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < state.steps; i++) {
+        const row = document.createElement("div");
+        row.className = "row" + (i % 4 === 0 ? " beat" : "") + (i === cursorInt ? " cursor" : "");
+        row.style.top = (i * rowH) + "px";
+        row.style.height = rowH + "px";
+        const num = document.createElement("span");
+        num.className = "num";
+        num.textContent = String(i + 1).padStart(2, "0");
+        row.appendChild(num);
+        frag.appendChild(row);
+      }
+      gridEl.appendChild(frag);
+      _lastRowSteps = state.steps;
+      _lastRowH = rowH;
+    } else {
+      // Selectively drop every non-row child; keep the row scaffolding intact.
+      const toRemove = [];
+      for (const child of gridEl.children) {
+        if (!child.classList.contains("row")) toRemove.push(child);
+      }
+      for (const el of toRemove) el.remove();
+      // After the removal pass every child is a row, so index === row index.
+      const rows = gridEl.children;
+      for (let i = 0; i < rows.length; i++) {
+        const want = i === cursorInt;
+        if (want !== rows[i].classList.contains("cursor")) {
+          rows[i].classList.toggle("cursor", want);
+        }
+      }
     }
+
+    // Build every per-render element into a single fragment, then attach
+    // the whole fragment in one go at the end. That coalesces dozens of
+    // appendChild() calls into a single style/layout invalidation.
+    const frag = document.createDocumentFragment();
 
     // Cursor line — sits at the TOP of the cursor's row so a new note placed at
     // step=cursor renders right below the line (the note starts where the cursor is).
     const cursorLine = document.createElement("div");
     cursorLine.className = "cursor-line" + (state.cursor !== Math.round(state.cursor) ? " fractional" : "");
     cursorLine.style.top = (state.cursor * rowH) + "px";
-    gridEl.appendChild(cursorLine);
+    frag.appendChild(cursorLine);
 
     // Independent playhead during playback — lets the user keep editing at the
     // cursor while the sequence runs.
@@ -1017,7 +1154,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       const ph = document.createElement("div");
       ph.className = "playhead-line";
       ph.style.top = (state.playhead * rowH) + "px";
-      gridEl.appendChild(ph);
+      frag.appendChild(ph);
     }
 
     // Only unmuted channels claim grid columns; muted channels keep their (dimmed)
@@ -1035,7 +1172,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       const div = document.createElement("div");
       div.className = "col-divider";
       div.style.left = (colLeft + i * colW) + "px";
-      gridEl.appendChild(div);
+      frag.appendChild(div);
     }
 
     // ⋯ button next to the cursor line — opens the per-cursor mini menu.
@@ -1051,7 +1188,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       // when the cursor is at the very top or very bottom.
       cursorBtn.style.top = Math.max(0, Math.min(state.cursor * rowH - 11, h - 22)) + "px";
       cursorBtn.addEventListener("click", openCursorMenu);
-      gridEl.appendChild(cursorBtn);
+      frag.appendChild(cursorBtn);
     }
 
     // Ghost note in the input channel column — previews where a key-press will land.
@@ -1069,7 +1206,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
         ghost.style.height = Math.max(6, ghostSize * rowH - 6) + "px";
         ghost.style.setProperty("--ch-color", inputCh.color);
         ghost.style.setProperty("--ch-edge", inputCh.edge);
-        gridEl.appendChild(ghost);
+        frag.appendChild(ghost);
       }
       // Range selection box in the input channel column.
       if (state.rangeSelectAnchor !== null) {
@@ -1081,7 +1218,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
         box.style.width  = (colW - 4) + "px";
         box.style.top    = (a * rowH) + "px";
         box.style.height = Math.max(2, (b - a) * rowH) + "px";
-        gridEl.appendChild(box);
+        frag.appendChild(box);
       }
     }
 
@@ -1094,7 +1231,8 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       groups.get(k).push(n);
     });
 
-    groups.forEach((notes) => {
+    const nextRenderedNoteKeys = new Set();
+    groups.forEach((notes, groupKey) => {
       const first = notes[0];
       const colIdx = visibleChannels.findIndex(c => c.id === first.channelId);
       if (colIdx < 0) return; // channel muted — skip rendering its notes
@@ -1104,8 +1242,18 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       let cls = "note";
       if (notes.some(n => isSel(n.id))) cls += " selected";
       if (isChord) cls += " chord";
+      // Fresh = this (step, channel) didn't have a rendered note last time.
+      // Drives the appear-animation, so adding a note doesn't make every
+      // already-placed note re-animate.
+      if (!prevRenderedNoteKeys.has(groupKey)) cls += " fresh";
+      nextRenderedNoteKeys.add(groupKey);
       el.className = cls;
       el.dataset.id = first.id;
+      // Stamp step + channel on the element so the fast cursor-update path
+      // (updateCursorVisuals) can re-toggle the will-overwrite hint without
+      // rebuilding any DOM.
+      el.dataset.step = first.step;
+      el.dataset.channel = first.channelId;
 
       const label = document.createElement("span");
       label.className = "note-label" + (isChord ? " chord-label" : "");
@@ -1136,62 +1284,38 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       el.style.setProperty("--ch-color", ch.color);
       el.style.setProperty("--ch-edge", ch.edge);
 
-      if (isChord) attachChordGesture(el, notes);
-      else attachNoteGesture(el, first.id);
-      gridEl.appendChild(el);
+      // No per-note event listeners — gridEl carries delegated handlers
+      // (see setupNoteDelegation). Removing N×3 addEventListener calls
+      // per render is a meaningful win on dense patterns.
+      frag.appendChild(el);
     });
+    prevRenderedNoteKeys = nextRenderedNoteKeys;
+
+    // One-shot attach — all per-render elements go in together.
+    gridEl.appendChild(frag);
+
+    // Refresh the overlay-element cache so updateCursorVisuals can update
+    // them in place without querying the DOM on every tick.
+    _cachedCursorLine = gridEl.querySelector(".cursor-line");
+    _cachedCursorBtn  = gridEl.querySelector(".cursor-action");
+    _cachedGhost      = gridEl.querySelector(".cursor-ghost");
+    _cachedRangeBox   = gridEl.querySelector(".range-box");
 
     // Keep the keyboard's pitch highlights in sync with wherever the cursor is now.
     refreshKeyHighlights();
     updateFloatingDelete();
   }
 
-  // Tapping a chord block (or any note on a poly channel) opens chord mode at
-  // that step so the user can directly add or remove pitches. Long-press still
-  // enters multi-select so the chord can be copied / deleted as a group.
-  function attachChordGesture(el, notes) {
-    let suppress = false;
-    el.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (suppressNextClick) { suppressNextClick = false; return; }
-      if (suppress) { suppress = false; return; }
-      enterChordModeAtNote(notes[0]);
-    });
-    el.addEventListener("pointerdown", (e) => {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      e.stopPropagation();
-      const sx = e.clientX, sy = e.clientY;
-      el.classList.add("charging");
-      let timer = setTimeout(() => {
-        timer = null;
-        el.classList.remove("charging");
-        el.classList.add("charge-complete");
-        setTimeout(() => el.classList.remove("charge-complete"), 360);
-        suppress = true;
-        suppressNextClick = true;
-        // Long-press: select every note in the chord block (multi-select).
-        if (state.chordMode) exitChordMode();
-        state.multiSelect = true;
-        state.selectedId = null;
-        state.selectedIds = new Set(notes.map(n => n.id));
-        state.cursor = notes[0].step;
-        positionKnobFromCursor();
-        renderGrid();
-        updateSelectedBar();
-      }, LONG_PRESS_MS);
-      const cancel = () => { if (timer) { clearTimeout(timer); timer = null; el.classList.remove("charging"); } };
-      const onMove = (ev) => { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) cancel(); };
-      const onUp = () => {
-        cancel();
-        el.removeEventListener("pointermove", onMove);
-        el.removeEventListener("pointerup", onUp);
-        el.removeEventListener("pointercancel", onUp);
-      };
-      el.addEventListener("pointermove", onMove);
-      el.addEventListener("pointerup", onUp);
-      el.addEventListener("pointercancel", onUp);
-    });
-  }
+  // Note-interaction event delegation. The original code attached
+  // click + pointerdown + 3 conditional move/up listeners to every .note
+  // element on every renderGrid — at 30+ notes that's a lot of
+  // addEventListener churn for every full render. With delegation a single
+  // pair of listeners on gridEl handles every note via e.target.closest,
+  // and tracks the long-press charge using closure state.
+  //
+  // Multi-touch safety: chargePointerId pins the charge to the specific
+  // pointer that started it, so a second finger landing elsewhere can't
+  // cancel the first one's long-press.
 
   // Open chord mode anchored at this note's step, with the existing notes (one
   // or many) as the seed. Cursor + scroller jump to the step. If the note is on
@@ -1216,50 +1340,113 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   const LONG_PRESS_MS = 450;
   let suppressNextClick = false;
 
-  function attachNoteGesture(el, noteId) {
-    el.addEventListener("click", (e) => {
+  (function setupNoteDelegation() {
+    let chargeNote = null;          // currently long-pressing note element
+    let chargeNoteId = null;         // its data-id (survives a DOM rebuild)
+    let chargeIsChord = false;       // chord-block long-press triggers the chord select path
+    let chargePointerId = null;      // pin to the pointer that started the charge
+    let chargeTimer = null;
+    let chargeStartX = 0, chargeStartY = 0;
+
+    function endCharge() {
+      if (chargeTimer) { clearTimeout(chargeTimer); chargeTimer = null; }
+      if (chargeNote) {
+        chargeNote.classList.remove("charging");
+        chargeNote = null;
+      }
+      chargeNoteId = null;
+      chargeIsChord = false;
+      chargePointerId = null;
+    }
+
+    gridEl.addEventListener("click", (e) => {
+      const el = e.target.closest(".note");
+      if (!el || !gridEl.contains(el)) return;
       e.stopPropagation();
       if (suppressNextClick) { suppressNextClick = false; return; }
-      const n = state.notes.find(x => x.id === noteId);
-      const ch = n && state.channels.find(c => c.id === n.channelId);
-      // Tapping a note on a poly channel opens chord mode at that step so the
-      // user can immediately start growing/shrinking the chord.
-      if (n && ch && isPolyPreset(ch.presetName)) {
+      const id = parseInt(el.dataset.id, 10);
+      const n = state.notes.find(x => x.id === id);
+      if (!n) return;
+      if (el.classList.contains("chord")) {
+        // n shares (step, channel) with every note in the block, which is
+        // all enterChordModeAtNote uses to anchor itself.
         enterChordModeAtNote(n);
       } else {
-        selectNote(noteId);
+        const ch = state.channels.find(c => c.id === n.channelId);
+        // Tapping a note on a poly channel opens chord mode at that step so the
+        // user can immediately start growing/shrinking the chord.
+        if (ch && isPolyPreset(ch.presetName)) enterChordModeAtNote(n);
+        else selectNote(id);
       }
     });
-    el.addEventListener("pointerdown", (e) => {
+
+    gridEl.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
+      const el = e.target.closest(".note");
+      if (!el || !gridEl.contains(el)) return;
       e.stopPropagation();
-      const sx = e.clientX, sy = e.clientY;
+      const id = parseInt(el.dataset.id, 10);
+      const n = state.notes.find(x => x.id === id);
+      if (!n) return;
+
+      endCharge(); // a previous unfinished charge — clear it before starting fresh
+      chargeStartX = e.clientX;
+      chargeStartY = e.clientY;
+      chargeNote = el;
+      chargeNoteId = id;
+      chargeIsChord = el.classList.contains("chord");
+      chargePointerId = e.pointerId;
       el.classList.add("charging");
-      let timer = setTimeout(() => {
-        timer = null;
-        el.classList.remove("charging");
-        el.classList.add("charge-complete");
-        setTimeout(() => el.classList.remove("charge-complete"), 360);
+
+      chargeTimer = setTimeout(() => {
+        chargeTimer = null;
+        const localId = chargeNoteId;
+        const wasChord = chargeIsChord;
+        const noteEl = chargeNote;
+        if (noteEl) {
+          noteEl.classList.remove("charging");
+          noteEl.classList.add("charge-complete");
+          setTimeout(() => {
+            if (noteEl.isConnected) noteEl.classList.remove("charge-complete");
+          }, 360);
+        }
         suppressNextClick = true;
-        enterMultiSelectWith(noteId);
+        chargeNote = null;
+        chargeNoteId = null;
+        chargePointerId = null;
+        const note = state.notes.find(x => x.id === localId);
+        if (!note) return;
+        if (wasChord) {
+          // Long-press a chord block: select every note in the (step, channel) group.
+          const block = state.notes.filter(x =>
+            x.channelId === note.channelId && Math.abs(x.step - note.step) < 1e-6);
+          if (state.chordMode) exitChordMode();
+          state.multiSelect = true;
+          state.selectedId = null;
+          state.selectedIds = new Set(block.map(x => x.id));
+          state.cursor = block[0].step;
+          positionKnobFromCursor();
+          renderGrid();
+          updateSelectedBar();
+        } else {
+          enterMultiSelectWith(localId);
+        }
       }, LONG_PRESS_MS);
-      const cancel = () => {
-        if (timer) { clearTimeout(timer); timer = null; el.classList.remove("charging"); }
-      };
-      const onMove = (ev) => {
-        if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) cancel();
-      };
-      const onUp = () => {
-        cancel();
-        el.removeEventListener("pointermove", onMove);
-        el.removeEventListener("pointerup", onUp);
-        el.removeEventListener("pointercancel", onUp);
-      };
-      el.addEventListener("pointermove", onMove);
-      el.addEventListener("pointerup", onUp);
-      el.addEventListener("pointercancel", onUp);
     });
-  }
+
+    gridEl.addEventListener("pointermove", (ev) => {
+      if (chargeNote === null || ev.pointerId !== chargePointerId) return;
+      if (Math.hypot(ev.clientX - chargeStartX, ev.clientY - chargeStartY) > 8) endCharge();
+    });
+    function endIfSamePointer(ev) {
+      if (chargeNote && ev.pointerId === chargePointerId) endCharge();
+    }
+    gridEl.addEventListener("pointerup", endIfSamePointer);
+    gridEl.addEventListener("pointercancel", endIfSamePointer);
+    gridEl.addEventListener("pointerleave", () => {
+      if (chargeNote) endCharge();
+    });
+  })();
 
   function enterMultiSelectWith(noteId) {
     if (state.multiSelect && state.selectedIds.has(noteId)) {
@@ -2469,16 +2656,64 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   });
 
   // ---------- Length ----------
+  const halveLenBtn = $("halveLenBtn");
+  const doubleLenBtn = $("doubleLenBtn");
+  function lengthMin() { return parseInt(lengthEl.min, 10); }
+  function lengthMax() { return parseInt(lengthEl.max, 10); }
+  function updateLengthActionButtons() {
+    if (halveLenBtn) halveLenBtn.disabled = state.steps / 2 < lengthMin();
+    if (doubleLenBtn) doubleLenBtn.disabled = state.steps * 2 > lengthMax();
+  }
+  function syncLengthUI() {
+    lengthEl.value = state.steps;
+    lengthValEl.textContent = state.steps;
+    updateLengthActionButtons();
+  }
   lengthEl.addEventListener("input", () => {
     beginSliderSession(lengthEl);
     state.steps = parseInt(lengthEl.value, 10);
     lengthValEl.textContent = state.steps;
     state.cursor = Math.min(state.cursor, state.steps);
+    updateLengthActionButtons();
     // do NOT remove out-of-range notes — they stay in state and reappear when length grows again
     renderGrid();
     positionKnobFromCursor();
     updateSelectedBar();
   });
+  if (halveLenBtn) halveLenBtn.addEventListener("click", () => {
+    if (state.steps / 2 < lengthMin()) return;
+    pushUndo();
+    state.steps = Math.floor(state.steps / 2);
+    state.cursor = Math.min(state.cursor, state.steps);
+    // Out-of-range notes stay in state.notes (mirrors slider-shrink behavior)
+    // so doubling back restores them.
+    syncLengthUI();
+    renderGrid();
+    positionKnobFromCursor();
+    updateSelectedBar();
+  });
+  if (doubleLenBtn) doubleLenBtn.addEventListener("click", () => {
+    if (state.steps * 2 > lengthMax()) return;
+    pushUndo();
+    const origLen = state.steps;
+    // Duplicate every note whose start is inside the original range so the
+    // pattern repeats in the new second half. Deep-clone to keep per-note
+    // overrides (volume/adsr/tone/eq/fx) intact, then assign a fresh id and
+    // shift the step.
+    const toClone = state.notes.filter(n => n.step < origLen);
+    toClone.forEach(n => {
+      const clone = JSON.parse(JSON.stringify(n));
+      clone.id = state.nextId++;
+      clone.step = n.step + origLen;
+      state.notes.push(clone);
+    });
+    state.steps = origLen * 2;
+    syncLengthUI();
+    renderGrid();
+    positionKnobFromCursor();
+    updateSelectedBar();
+  });
+  updateLengthActionButtons();
 
   // ---------- Scroller knob ----------
   function positionKnobFromCursor() {
@@ -2495,6 +2730,127 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     return Math.round(clamped * 100) / 100; // "off" — keep some quantization for sanity
   }
 
+  // Fast cursor-update path. The knob drag (touch / mouse) and scroller tap
+  // both fire this at touch-event rate (60–120 Hz). The naive approach is
+  // to call renderGrid every tick, which rebuilds every note element from
+  // scratch — at 32–64 steps × dozens of notes that's the dominant render
+  // cost the user reported as lag. Cursor moves don't actually need to
+  // touch the notes at all, so we reposition only the overlay elements
+  // (cursor line / button / ghost / range box) plus the .cursor class on
+  // the active row and refresh the piano-key highlights. Notes stay
+  // exactly where they are.
+  //
+  // When something happens that *does* need a full rebuild (range select
+  // changing selection, or the ghost / range-box not existing yet so we
+  // can't reposition it), we fall through to renderGrid().
+  function updateCursorVisuals() {
+    // A full render is already scheduled — let it handle the cursor too.
+    if (_renderRaf) return;
+    // First frame after mount: nothing to update yet, do the full render.
+    if (!_cachedCursorLine || !_cachedCursorLine.isConnected) {
+      renderGrid();
+      return;
+    }
+    const h = gridEl.clientHeight || 580;
+    const rowH = h / state.steps;
+    const cursorInt = Math.round(state.cursor);
+
+    // Cursor line position + fractional marker.
+    _cachedCursorLine.style.top = (state.cursor * rowH) + "px";
+    const isFrac = state.cursor !== Math.round(state.cursor);
+    if (isFrac !== _cachedCursorLine.classList.contains("fractional")) {
+      _cachedCursorLine.classList.toggle("fractional", isFrac);
+    }
+
+    // Cursor button position + chord-mode style/text.
+    if (_cachedCursorBtn) {
+      _cachedCursorBtn.style.top = Math.max(0, Math.min(state.cursor * rowH - 11, h - 22)) + "px";
+      const inChord = state.chordMode;
+      if (inChord !== _cachedCursorBtn.classList.contains("chord-mode")) {
+        _cachedCursorBtn.classList.toggle("chord-mode", inChord);
+        _cachedCursorBtn.textContent = inChord ? "♪" : "⋯";
+        _cachedCursorBtn.title = inChord ? "Chord mode (tap keys to toggle pitches)" : "Cursor actions";
+      }
+    }
+
+    // Move the .cursor class to whichever row the cursor is on.
+    let idx = 0;
+    for (const child of gridEl.children) {
+      if (!child.classList.contains("row")) continue;
+      const want = idx === cursorInt;
+      if (want !== child.classList.contains("cursor")) {
+        child.classList.toggle("cursor", want);
+      }
+      idx++;
+    }
+
+    // Ghost preview: reposition / show / hide.
+    const visibleChannels = state.channels.filter(c => !c.muted);
+    const inputIdx = visibleChannels.findIndex(c => c.id === state.activeChannelId);
+    const showGhost = inputIdx >= 0 && state.rangeSelectAnchor === null && !state.chordMode;
+    if (showGhost) {
+      const ghostStep = effectivePlacementStep();
+      const ghostSize = Math.min(state.defaultSize, state.steps - ghostStep);
+      if (ghostSize > 0) {
+        if (!_cachedGhost || !_cachedGhost.isConnected) {
+          // The ghost doesn't exist yet — full render is needed to create it.
+          renderGrid();
+          return;
+        }
+        _cachedGhost.style.top = (ghostStep * rowH + 3) + "px";
+        _cachedGhost.style.height = Math.max(6, ghostSize * rowH - 6) + "px";
+        if (_cachedGhost.style.display === "none") _cachedGhost.style.display = "";
+      } else if (_cachedGhost && _cachedGhost.isConnected) {
+        _cachedGhost.style.display = "none";
+      }
+    } else if (_cachedGhost && _cachedGhost.isConnected && _cachedGhost.style.display !== "none") {
+      _cachedGhost.style.display = "none";
+    }
+
+    // Range selection box. If active, also force a full render so the
+    // .selected class on the affected notes updates (selectedIds may have
+    // shifted as the cursor moved).
+    if (state.rangeSelectAnchor !== null) {
+      renderGrid();
+      return;
+    } else if (_cachedRangeBox && _cachedRangeBox.isConnected) {
+      _cachedRangeBox.remove();
+      _cachedRangeBox = null;
+    }
+
+    // Will-overwrite hint: the single (non-chord) note at the cursor step
+    // in the active channel gets a highlighted label so the user can see
+    // what their next key-press will overwrite. We toggle the class on
+    // existing .note elements rather than rebuilding them.
+    {
+      const cursorStep = effectivePlacementStep();
+      const activeCh = state.activeChannelId;
+      const noteEls = gridEl.getElementsByClassName("note");
+      const inChord = state.chordMode;
+      for (let i = 0; i < noteEls.length; i++) {
+        const el = noteEls[i];
+        const isChordBlock = el.classList.contains("chord");
+        let want = false;
+        if (!inChord && !isChordBlock) {
+          const stepMatches = Math.abs(parseFloat(el.dataset.step) - cursorStep) < 1e-6;
+          const chMatches = parseInt(el.dataset.channel, 10) === activeCh;
+          want = stepMatches && chMatches;
+        }
+        const label = el.firstChild; // .note-label is appended first
+        if (label && label.classList) {
+          const has = label.classList.contains("will-overwrite");
+          if (want !== has) label.classList.toggle("will-overwrite", want);
+        }
+      }
+    }
+
+    // Piano key highlights — cursor-pitch / chord-active follow the cursor.
+    refreshKeyHighlights();
+
+    // Floating delete button depends on whether any notes sit at the cursor.
+    updateFloatingDelete();
+  }
+
   function setCursorFromClientY(clientY) {
     const r = scrollerEl.getBoundingClientRect();
     const pad = 18;
@@ -2504,10 +2860,10 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     const next = snapCursor(frac * state.steps);
     if (Math.abs(next - state.cursor) > 1e-6) {
       state.cursor = next;
-      if (state.chordMode) exitChordMode();
+      if (state.chordMode) exitChordMode();   // exitChordMode queues renderGrid; rAF coalesces
       autoEnterChordIfOnChord();
       updateRangeSelection();
-      renderGrid();
+      updateCursorVisuals();                   // fast path; falls back to renderGrid if needed
       updateSelectedBar();
     }
     positionKnobFromCursor();

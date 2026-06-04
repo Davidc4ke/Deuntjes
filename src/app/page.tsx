@@ -63,10 +63,7 @@ export default async function HomePage() {
       <main className="page">
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
           <form action={createSongAction}>
-            <button
-              type="submit"
-              style={{ background: 'var(--accent)', color: '#1a1024', borderColor: 'transparent' }}
-            >
+            <button type="submit" className="primary">
               + New song
             </button>
           </form>
