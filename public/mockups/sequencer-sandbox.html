@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
 <title>Sequencer Sandbox — Mockup</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -5173,27 +5173,43 @@
   // iOS Safari fires BOTH gesture* and touch* events for a pinch, so we skip
   // this path there to avoid applying the zoom twice.
   const SUPPORTS_GESTURE = "ongesturestart" in window;
-  let _pinchStartDist = 0, _pinchStartZoom = 1;
+  let _pinchStartDist = 0, _pinchStartZoom = 1, _pinching = false;
   function touchDist(t0, t1) {
     return Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
   }
+  // Non-passive so we can claim the two-finger gesture the instant the second
+  // finger lands — otherwise Android may start its own pan/zoom and our later
+  // preventDefault() gets ignored (the touchmoves arrive non-cancelable).
   gridEl.addEventListener("touchstart", (e) => {
-    if (!SUPPORTS_GESTURE && e.touches.length === 2) {
+    if (SUPPORTS_GESTURE) return;
+    if (e.touches.length === 2) {
+      _pinching = true;
       _pinchStartDist = touchDist(e.touches[0], e.touches[1]);
       _pinchStartZoom = state.gridZoom;
-    }
-  }, { passive: true });
-  gridEl.addEventListener("touchmove", (e) => {
-    if (!SUPPORTS_GESTURE && e.touches.length === 2 && _pinchStartDist > 0) {
-      e.preventDefault();   // block page zoom + native scroll during pinch
-      const dist = touchDist(e.touches[0], e.touches[1]);
-      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-      setGridZoom(_pinchStartZoom * (dist / _pinchStartDist), midY);
+      e.preventDefault();
     }
   }, { passive: false });
-  gridEl.addEventListener("touchend", (e) => {
-    if (e.touches.length < 2) _pinchStartDist = 0;
-  });
+  gridEl.addEventListener("touchmove", (e) => {
+    if (SUPPORTS_GESTURE) return;
+    if (e.touches.length !== 2) return;
+    e.preventDefault();   // block page zoom + native scroll during pinch
+    const dist = touchDist(e.touches[0], e.touches[1]);
+    // Lazily initialise if the two fingers landed in separate touchstart
+    // events (common) and we never captured a start distance.
+    if (!_pinching || _pinchStartDist === 0) {
+      _pinching = true;
+      _pinchStartDist = dist;
+      _pinchStartZoom = state.gridZoom;
+      return;
+    }
+    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    setGridZoom(_pinchStartZoom * (dist / _pinchStartDist), midY);
+  }, { passive: false });
+  function endPinch(e) {
+    if (e.touches.length < 2) { _pinching = false; _pinchStartDist = 0; }
+  }
+  gridEl.addEventListener("touchend", endPinch);
+  gridEl.addEventListener("touchcancel", endPinch);
 
   // --- Trackpad pinch / Ctrl+wheel (desktop testing) ---
   gridEl.addEventListener("wheel", (e) => {
