@@ -5157,17 +5157,32 @@
     }
   }
 
-  // Pinch handling is driven entirely by TOUCH events below, because they're
-  // the one path that fires consistently across iOS Safari, iOS Chrome
-  // (WKWebView), and Android Chrome. WebKit also fires its proprietary
-  // GestureEvents, but iOS Chrome doesn't deliver them reliably — so we use
-  // them ONLY to suppress WebKit's built-in pinch page-zoom, never to compute
-  // the zoom (that would double-apply on iOS Safari).
-  ["gesturestart", "gesturechange", "gestureend"].forEach((type) => {
-    gridEl.addEventListener(type, (e) => { e.preventDefault(); }, { passive: false });
-  });
+  // Pinch zoom is handled by TWO paths because no single API works on every
+  // mobile browser (verified against Apple's Safari Web Content Guide + MDN):
+  //
+  //   • iOS Safari: ignores `touch-action`, and the only reliable way to both
+  //     block its page-zoom AND read the pinch is the WebKit-proprietary
+  //     GestureEvent (preventDefault + e.scale). touchmove pinch data is not
+  //     dependable once the gesture default is prevented.
+  //   • iOS Chrome / Android Chrome: do NOT fire GestureEvents, so they use
+  //     standard touch events (two-finger distance) instead.
+  //
+  // A flag stops the two paths from double-applying on Safari (where both
+  // gesture* and touch* fire).
+  let _gestureActive = false, _gestureStartZoom = 1;
+  gridEl.addEventListener("gesturestart", (e) => {
+    e.preventDefault();
+    _gestureActive = true;
+    _gestureStartZoom = state.gridZoom;
+  }, { passive: false });
+  gridEl.addEventListener("gesturechange", (e) => {
+    e.preventDefault();
+    setGridZoom(_gestureStartZoom * e.scale, e.clientY);
+  }, { passive: false });
+  const endGesture = (e) => { e.preventDefault(); _gestureActive = false; };
+  gridEl.addEventListener("gestureend", endGesture, { passive: false });
 
-  // --- Two-finger pinch via touch events (all mobile browsers) ---
+  // --- Two-finger pinch via touch events (iOS Chrome + Android) ---
   let _pinchStartDist = 0, _pinchStartZoom = 1, _pinching = false;
   function touchDist(t0, t1) {
     return Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
@@ -5185,7 +5200,8 @@
   }, { passive: false });
   gridEl.addEventListener("touchmove", (e) => {
     if (e.touches.length !== 2) return;
-    e.preventDefault();   // block page zoom + native scroll during pinch
+    e.preventDefault();          // block page zoom + native scroll during pinch
+    if (_gestureActive) return;  // Safari is driving the zoom via gesture events
     const dist = touchDist(e.touches[0], e.touches[1]);
     // Lazily initialise if the two fingers landed in separate touchstart
     // events (common) and we never captured a start distance.
