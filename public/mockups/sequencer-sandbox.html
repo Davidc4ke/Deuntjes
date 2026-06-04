@@ -746,6 +746,19 @@
     transition: opacity 220ms var(--ease-smooth), transform 220ms var(--ease-smooth);
   }
   .grid-zoom-badge.show { opacity: 1; transform: translateY(0); }
+  /* Temporary live debug readout for the pinch gesture. */
+  .pinch-dbg {
+    position: absolute; left: 122px; top: 8px;
+    z-index: 7;
+    padding: 4px 7px;
+    border-radius: 5px;
+    background: rgba(0,0,0,0.82);
+    color: #6cff8a;
+    font: 700 10px var(--mono);
+    letter-spacing: 0.02em;
+    white-space: pre;
+    pointer-events: none;
+  }
   .row {
     position: absolute; left: 0; right: 0;
     display: flex; align-items: center;
@@ -2146,6 +2159,7 @@
         </button>
         <div class="grid" id="grid"></div>
         <div class="grid-zoom-badge" id="gridZoomBadge">100%</div>
+        <div class="pinch-dbg" id="pinchDbg">dbg: waiting…</div>
         <div class="scroller" id="scroller">
           <div class="track"></div>
           <div class="knob" id="knob" role="slider" aria-label="Step cursor"></div>
@@ -2720,6 +2734,18 @@
   const $ = (id) => document.getElementById(id);
   const keysEl = $("keys"), gridEl = $("grid"), knobEl = $("knob"), scrollerEl = $("scroller");
   const gridZoomBadge = $("gridZoomBadge");
+  const pinchDbg = $("pinchDbg");
+  // Temporary live diagnostics for the pinch gesture.
+  const _dbg = { g: 0, gc: 0, t: 0, tm: 0, maxTouch: 0, last: "-" };
+  function renderDbg() {
+    if (!pinchDbg) return;
+    pinchDbg.textContent =
+      "gStart:" + _dbg.g + " gChg:" + _dbg.gc +
+      " tStart:" + _dbg.t + " tMove:" + _dbg.tm +
+      " maxFing:" + _dbg.maxTouch +
+      " z:" + state.gridZoom.toFixed(2) +
+      " " + _dbg.last;
+  }
   const lengthEl = $("length"), lengthValEl = $("lengthVal");
   const defaultSizeEl = $("defaultSize"), defaultSizeValEl = $("defaultSizeVal");
   const zoomEl = $("zoom"), zoomValEl = $("zoomVal");
@@ -5137,6 +5163,7 @@
     const nextScroll = contentY * ratio - (focal - r.top);
     gridEl.scrollTop = Math.max(0, Math.min(maxScroll, nextScroll));
     flashZoomBadge();
+    if (typeof renderDbg === "function") renderDbg();
     if (gridZoomEl) {                        // keep the popup slider in sync
       gridZoomEl.value = Math.round(nextZoom * 100);
       if (gridZoomValEl) gridZoomValEl.textContent = gridZoomEl.value;
@@ -5183,16 +5210,21 @@
     _gestureActive = true;
     _gestureInGrid = eventInGrid(e);
     _gestureStartZoom = state.gridZoom;
+    _dbg.g++; _dbg.last = _gestureInGrid ? "gInGrid" : "gOutGrid"; renderDbg();
   }, { passive: false });
   document.addEventListener("gesturechange", (e) => {
     e.preventDefault();
+    _dbg.gc++; renderDbg();
     if (_gestureInGrid) setGridZoom(_gestureStartZoom * e.scale, e.clientY);
   }, { passive: false });
   const endGesture = (e) => { e.preventDefault(); _gestureActive = false; _gestureInGrid = false; };
   document.addEventListener("gestureend", endGesture, { passive: false });
   // Belt-and-braces: block iOS double-tap-ish multi-touch page zoom globally.
   document.addEventListener("touchmove", (e) => {
-    if (e.touches.length > 1) e.preventDefault();
+    if (e.touches.length > 1) {
+      _dbg.maxTouch = Math.max(_dbg.maxTouch, e.touches.length); renderDbg();
+      e.preventDefault();
+    }
   }, { passive: false });
 
   // --- Two-finger pinch via touch events (iOS Chrome + Android) ---
@@ -5204,16 +5236,19 @@
   // finger lands — otherwise the browser may start its own pan/zoom and our
   // later preventDefault() gets ignored (touchmoves arrive non-cancelable).
   gridEl.addEventListener("touchstart", (e) => {
+    _dbg.maxTouch = Math.max(_dbg.maxTouch, e.touches.length);
     if (e.touches.length === 2) {
       _pinching = true;
       _pinchStartDist = touchDist(e.touches[0], e.touches[1]);
       _pinchStartZoom = state.gridZoom;
+      _dbg.t++; _dbg.last = "tStartInGrid"; renderDbg();
       e.preventDefault();
     }
   }, { passive: false });
   gridEl.addEventListener("touchmove", (e) => {
     if (e.touches.length !== 2) return;
     e.preventDefault();          // block page zoom + native scroll during pinch
+    _dbg.tm++; renderDbg();
     if (_gestureActive) return;  // Safari is driving the zoom via gesture events
     const dist = touchDist(e.touches[0], e.touches[1]);
     // Lazily initialise if the two fingers landed in separate touchstart
@@ -5772,6 +5807,7 @@
     updateSelectedBar();
     updateStackNav();
     scrollPianoTo("C4");
+    renderDbg();
     // One-time "build check": flashes the zoom badge ~1s after load so it's
     // obvious whether THIS (pinch-zoom) build is the one being served. If you
     // don't see a brief "PINCH ⤢" pill top-right of the grid, you're on a
