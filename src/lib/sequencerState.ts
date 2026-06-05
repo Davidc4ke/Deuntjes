@@ -6,6 +6,7 @@
 
 export type SequencerState = {
   steps: number;
+  bpm: number;
   notes: Array<{
     id: number;
     step: number;
@@ -57,6 +58,7 @@ export function defaultSequencerState(): SequencerState {
   const defaultTone = () => ({ cutoff: 12000, resonance: 1, filterEnv: 3, pan: 0, glide: 0 });
   return {
     steps: 16,
+    bpm: 120,
     notes: [],
     channels: [
       { id: 1, name: 'Bass',  color: '#e89e58', edge: '#b87a3a', presetName: 'bass',  muted: false, volume: 0.8, adsr: { attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  }, eq: defaultEQ(), fx: defaultFX(), tone: defaultTone() },
