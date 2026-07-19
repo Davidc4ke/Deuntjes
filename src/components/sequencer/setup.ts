@@ -173,6 +173,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     nextId: 1,
     defaultSize: 1,
     snap: "step",
+    bpm: 120,                 // playback tempo (song-level; persisted in the blob)
     keyboardZoom: 1.0,
     scaleOn: false,
     scaleRoot: "C",
@@ -203,6 +204,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       channels: state.channels,
       activeChannelId: state.activeChannelId,
       steps: state.steps,
+      bpm: state.bpm,
       nextId: state.nextId,
       nextChannelId: state.nextChannelId,
     });
@@ -213,6 +215,8 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     state.channels = s.channels.map(ensureChannelDefaults);
     state.activeChannelId = s.activeChannelId;
     state.steps = s.steps;
+    // Older songs predate the tempo control — fall back to 120 BPM.
+    state.bpm = (typeof s.bpm === "number" && isFinite(s.bpm)) ? s.bpm : 120;
     state.nextId = s.nextId;
     state.nextChannelId = s.nextChannelId;
     // Selection / chord / range state is volatile UI state — clear so the
@@ -233,6 +237,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     state.channels.forEach(ch => disposeChannelSynth(ch.id));
     if (lengthEl) { lengthEl.value = state.steps; lengthValEl.textContent = state.steps; }
     if (typeof updateLengthActionButtons === "function") updateLengthActionButtons();
+    if (typeof syncBpmUI === "function") syncBpmUI();
     applyActiveChannelStyle();
     renderChannelStrip();
     renderPresetButtons();
@@ -290,6 +295,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   const $ = (id) => root.querySelector("#"+id);
   const keysEl = $("keys"), gridEl = $("grid"), knobEl = $("knob"), scrollerEl = $("scroller");
   const lengthEl = $("length"), lengthValEl = $("lengthVal");
+  const bpmEl = $("bpm"), bpmValEl = $("bpmVal");
   const defaultSizeEl = $("defaultSize"), defaultSizeValEl = $("defaultSizeVal");
   const zoomEl = $("zoom"), zoomValEl = $("zoomVal");
   const deleteBtn = $("deleteBtn"), moveBtn = $("moveBtn");
@@ -2680,6 +2686,29 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     positionKnobFromCursor();
     updateSelectedBar();
   });
+
+  // ---------- Tempo (BPM) ----------
+  // Song-level tempo. Drives Tone.Transport so each step ("8n") re-times.
+  function applyTransportTempo() {
+    try { Tone.Transport.bpm.value = state.bpm; } catch (_) {}
+  }
+  function syncBpmUI() {
+    if (bpmEl) bpmEl.value = state.bpm;
+    if (bpmValEl) bpmValEl.textContent = state.bpm;
+    applyTransportTempo();
+  }
+  if (bpmEl) {
+    bpmEl.addEventListener("input", () => {
+      beginSliderSession(bpmEl);          // one undo step per drag + autosave
+      state.bpm = parseInt(bpmEl.value, 10);
+      if (bpmValEl) bpmValEl.textContent = state.bpm;
+      applyTransportTempo();              // live: takes effect on the next play
+    });
+    // Persist the final resting value on release (onChange autosaves the blob).
+    bpmEl.addEventListener("change", () => {
+      if (options.onChange) options.onChange(JSON.parse(snapshotState()));
+    });
+  }
   if (halveLenBtn) halveLenBtn.addEventListener("click", () => {
     if (state.steps / 2 < lengthMin()) return;
     pushUndo();
@@ -2990,6 +3019,8 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     playBtn.textContent = "PAUSE";
     playBtn.dataset.state = "playing";
 
+    // Apply the song tempo before measuring step length so "8n" reflects it.
+    applyTransportTempo();
     const stepSec = Tone.Time(stepTime).toSeconds();
     const totalSec = state.steps * stepSec;
 
@@ -3186,6 +3217,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     positionKnobFromCursor();
     updateSelectedBar();
     updateStackNav();
+    syncBpmUI();
     scrollPianoTo("C4");
     __resizeHandler = () => {
       renderKeys(); renderGrid(); positionKnobFromCursor();

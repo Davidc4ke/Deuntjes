@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
 <title>Sequencer Sandbox — Mockup</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -710,6 +710,54 @@
     background:
       linear-gradient(to bottom, rgba(0,0,0,0.02), transparent 40%),
       linear-gradient(180deg, var(--stage) 0%, var(--stage-2) 100%);
+    /* When zoomed past 1× the rows are taller than the column, so the grid
+       scrolls vertically on its own. touch-action: pan-y lets a one-finger
+       drag scroll the grid while we handle two-finger pinch ourselves — and,
+       crucially, tells the browser NOT to page-zoom from a pinch that starts
+       here, so only this panel zooms, never the whole page. */
+    overflow-y: auto;
+    overflow-x: hidden;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--stage-line-strong) transparent;
+  }
+  .grid::-webkit-scrollbar { width: 4px; }
+  .grid::-webkit-scrollbar-track { background: transparent; }
+  .grid::-webkit-scrollbar-thumb { background: var(--stage-line-strong); border-radius: 2px; }
+  /* Invisible block that gives the scroll container its full (zoomed) height,
+     since every row/note is absolutely positioned and wouldn't otherwise
+     stretch the scrollable area. */
+  .grid-spacer { position: relative; width: 1px; pointer-events: none; opacity: 0; }
+  /* Floating zoom readout — fades in briefly while pinching/zooming.
+     Lives in .stage (not .grid) so it stays put while the grid scrolls. */
+  .grid-zoom-badge {
+    position: absolute; top: 8px; right: 42px;
+    z-index: 6;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(20, 24, 32, 0.82);
+    color: #f3efe3;
+    font: 700 11px var(--mono);
+    letter-spacing: 0.04em;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 220ms var(--ease-smooth), transform 220ms var(--ease-smooth);
+  }
+  .grid-zoom-badge.show { opacity: 1; transform: translateY(0); }
+  /* Temporary live debug readout for the pinch gesture. */
+  .pinch-dbg {
+    position: absolute; left: 122px; top: 8px;
+    z-index: 7;
+    padding: 4px 7px;
+    border-radius: 5px;
+    background: rgba(0,0,0,0.82);
+    color: #6cff8a;
+    font: 700 10px var(--mono);
+    letter-spacing: 0.02em;
+    white-space: pre;
+    pointer-events: none;
   }
   .row {
     position: absolute; left: 0; right: 0;
@@ -851,7 +899,7 @@
   }
 
   .col-divider {
-    position: absolute; top: 0; bottom: 0;
+    position: absolute; top: 0;   /* height set inline to the full zoomed grid */
     width: 1px;
     background: var(--stage-line);
     pointer-events: none;
@@ -1898,6 +1946,13 @@
     font: 700 11px var(--mono);
     text-shadow: 0 0 6px rgba(255, 117, 71, 0.35);
   }
+  .popup-hint {
+    margin-top: 6px;
+    font: 500 10px var(--ui);
+    line-height: 1.4;
+    color: var(--bar-text-mute);
+    letter-spacing: 0.02em;
+  }
   .popup .seg {
     display: flex; gap: 4px; flex-wrap: wrap;
   }
@@ -2103,6 +2158,8 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
         </button>
         <div class="grid" id="grid"></div>
+        <div class="grid-zoom-badge" id="gridZoomBadge">100%</div>
+        <div class="pinch-dbg" id="pinchDbg">dbg: waiting…</div>
         <div class="scroller" id="scroller">
           <div class="track"></div>
           <div class="knob" id="knob" role="slider" aria-label="Step cursor"></div>
@@ -2210,6 +2267,11 @@
               <button data-value="half" type="button">½ step</button>
               <button data-value="off" type="button">Off</button>
             </div>
+          </div>
+          <div class="field">
+            <label>Grid zoom <span class="val"><span id="gridZoomVal">100</span>%</span></label>
+            <input type="range" id="gridZoom" min="100" max="500" step="10" value="100">
+            <div class="popup-hint">Or pinch the grid directly — only the grid zooms, not the page.</div>
           </div>
         </div>
 
@@ -2415,6 +2477,8 @@
   PITCHES.slice().reverse().forEach((p, i) => { PITCH_INDEX[p.name] = i; });
 
   const WHITE_KEY_H = 44; // px per white key — drives total scrollable height
+  const GRID_ZOOM_MIN = 1;   // 1× = all steps visible at once (no scroll)
+  const GRID_ZOOM_MAX = 5;   // 5× = generous spacing for fine editing
 
   const CHANNEL_PALETTE = [
     { color: "#ff7547", edge: "#a8421e" }, // glowing orange / bass
@@ -2553,6 +2617,8 @@
     defaultSize: 1,
     snap: "step",
     keyboardZoom: 1.0,
+    gridZoom: 1.0,            // vertical zoom of the step grid; 1× fits all steps
+
     scaleOn: false,
     scaleRoot: "C",
     scaleType: "major",
@@ -2667,9 +2733,23 @@
   // ---------- DOM refs ----------
   const $ = (id) => document.getElementById(id);
   const keysEl = $("keys"), gridEl = $("grid"), knobEl = $("knob"), scrollerEl = $("scroller");
+  const gridZoomBadge = $("gridZoomBadge");
+  const pinchDbg = $("pinchDbg");
+  // Temporary live diagnostics for the pinch gesture.
+  const _dbg = { g: 0, gc: 0, t: 0, tm: 0, maxTouch: 0, last: "-" };
+  function renderDbg() {
+    if (!pinchDbg) return;
+    pinchDbg.textContent =
+      "gStart:" + _dbg.g + " gChg:" + _dbg.gc +
+      " tStart:" + _dbg.t + " tMove:" + _dbg.tm +
+      " maxFing:" + _dbg.maxTouch +
+      " z:" + state.gridZoom.toFixed(2) +
+      " " + _dbg.last;
+  }
   const lengthEl = $("length"), lengthValEl = $("lengthVal");
   const defaultSizeEl = $("defaultSize"), defaultSizeValEl = $("defaultSizeVal");
   const zoomEl = $("zoom"), zoomValEl = $("zoomVal");
+  const gridZoomEl = $("gridZoom"), gridZoomValEl = $("gridZoomVal");
   const deleteBtn = $("deleteBtn"), moveBtn = $("moveBtn");
   const paramsRow = $("paramsRow");
   const volVal = $("volVal"), lenVal = $("lenVal");
@@ -3469,8 +3549,12 @@
   }
 
   function _renderGridNow() {
+    // h = visible column height; contentH = the (possibly taller) zoomed grid
+    // that scrolls inside it. rowH is derived from contentH so zooming simply
+    // makes every row taller.
     const h = gridEl.clientHeight || 580;
-    const rowH = h / state.steps;
+    const contentH = h * state.gridZoom;
+    const rowH = contentH / state.steps;
     const cursorInt = Math.round(state.cursor);
 
     const rowsNeedRebuild = (
@@ -3519,6 +3603,14 @@
     // appendChild() calls into a single style/layout invalidation.
     const frag = document.createDocumentFragment();
 
+    // Spacer stretches the scroll area to the full zoomed height. Without it
+    // the absolutely-positioned rows wouldn't give the container anything to
+    // scroll to.
+    const spacer = document.createElement("div");
+    spacer.className = "grid-spacer";
+    spacer.style.height = contentH + "px";
+    frag.appendChild(spacer);
+
     // Cursor line — sits at the TOP of the cursor's row so a new note placed at
     // step=cursor renders right below the line (the note starts where the cursor is).
     const cursorLine = document.createElement("div");
@@ -3550,6 +3642,7 @@
       const div = document.createElement("div");
       div.className = "col-divider";
       div.style.left = (colLeft + i * colW) + "px";
+      div.style.height = contentH + "px";   // span the full zoomed height, not just the visible part
       frag.appendChild(div);
     }
 
@@ -3564,7 +3657,7 @@
       cursorBtn.title = state.chordMode ? "Chord mode (tap keys to toggle pitches)" : "Cursor actions";
       // Centre the button on the cursor line, but clamp inside the grid so it stays visible
       // when the cursor is at the very top or very bottom.
-      cursorBtn.style.top = Math.max(0, Math.min(state.cursor * rowH - 11, h - 22)) + "px";
+      cursorBtn.style.top = Math.max(0, Math.min(state.cursor * rowH - 11, contentH - 22)) + "px";
       cursorBtn.addEventListener("click", openCursorMenu);
       frag.appendChild(cursorBtn);
     }
@@ -4927,6 +5020,10 @@
     zoomValEl.textContent = zoomEl.value;
     renderKeys();
   });
+  if (gridZoomEl) gridZoomEl.addEventListener("input", () => {
+    gridZoomValEl.textContent = gridZoomEl.value;
+    setGridZoom(parseInt(gridZoomEl.value, 10) / 100, null); // null focal = zoom around centre
+  });
 
   copyBtn.addEventListener("click", copySelection);
   multiDeleteBtn.addEventListener("click", deleteSelection);
@@ -4993,13 +5090,15 @@
   // (Note clicks call stopPropagation, so this only fires when no note was tapped.)
   gridEl.addEventListener("click", (e) => {
     const r = gridEl.getBoundingClientRect();
-    const rowH = r.height / state.steps;
+    // rowH comes from the zoomed content height, and we add the scroll offset
+    // so a tap maps to the right step even when the grid is zoomed/scrolled.
+    const rowH = (r.height * state.gridZoom) / state.steps;
     // Map the click's vertical position to a fractional step, then snap.
     // For step-snap, a tap inside row N should land the cursor on row N
     // (floor) — round-to-nearest would jump the cursor a row down whenever
     // the user taps the lower half of a row. The knob uses snapCursor's
     // round-to-nearest still, which is correct for continuous dragging.
-    const raw = (e.clientY - r.top) / rowH;
+    const raw = (e.clientY - r.top + gridEl.scrollTop) / rowH;
     if (state.snap === "step") {
       state.cursor = Math.max(0, Math.min(state.steps, Math.floor(raw)));
     } else {
@@ -5032,6 +5131,149 @@
     positionKnobFromCursor();
     updateSelectedBar();
   });
+
+  // ---------- Grid zoom (pinch / wheel / slider) ----------
+  // Zooms ONLY the step grid vertically — the rest of the page never scales.
+  // Pinch gestures that start on the grid are intercepted (preventDefault +
+  // touch-action: pan-y) so iOS/Android won't page-zoom; we translate them
+  // into a taller grid that scrolls inside its own column instead.
+  let _badgeTimer = null;
+  function flashZoomBadge() {
+    if (!gridZoomBadge) return;
+    gridZoomBadge.textContent = Math.round(state.gridZoom * 100) + "%";
+    gridZoomBadge.classList.add("show");
+    clearTimeout(_badgeTimer);
+    _badgeTimer = setTimeout(() => gridZoomBadge.classList.remove("show"), 900);
+  }
+
+  // Set zoom, keeping the step under `focalClientY` pinned in place so the
+  // grid grows/shrinks around the user's fingers rather than the top edge.
+  function setGridZoom(nextZoom, focalClientY) {
+    nextZoom = Math.max(GRID_ZOOM_MIN, Math.min(GRID_ZOOM_MAX, nextZoom));
+    if (Math.abs(nextZoom - state.gridZoom) < 1e-4) return;
+    const r = gridEl.getBoundingClientRect();
+    const baseH = gridEl.clientHeight || 580;
+    const focal = (focalClientY == null) ? (r.top + baseH / 2) : focalClientY;
+    // Which content-pixel sits under the focal point right now?
+    const contentY = (focal - r.top) + gridEl.scrollTop;
+    const ratio = nextZoom / state.gridZoom;
+    state.gridZoom = nextZoom;
+    _renderGridNow();                       // resize rows/spacer synchronously
+    const maxScroll = Math.max(0, baseH * nextZoom - baseH);
+    const nextScroll = contentY * ratio - (focal - r.top);
+    gridEl.scrollTop = Math.max(0, Math.min(maxScroll, nextScroll));
+    flashZoomBadge();
+    if (typeof renderDbg === "function") renderDbg();
+    if (gridZoomEl) {                        // keep the popup slider in sync
+      gridZoomEl.value = Math.round(nextZoom * 100);
+      if (gridZoomValEl) gridZoomValEl.textContent = gridZoomEl.value;
+    }
+  }
+
+  // Keep the cursor row comfortably in view when it moves while zoomed.
+  function scrollCursorIntoView() {
+    if (state.gridZoom <= 1) return;
+    const baseH = gridEl.clientHeight || 580;
+    const rowH = (baseH * state.gridZoom) / state.steps;
+    const y = state.cursor * rowH;
+    const margin = Math.min(rowH * 2, baseH * 0.3);
+    if (y < gridEl.scrollTop + margin) {
+      gridEl.scrollTop = Math.max(0, y - margin);
+    } else if (y > gridEl.scrollTop + baseH - margin) {
+      gridEl.scrollTop = y - baseH + margin;
+    }
+  }
+
+  // Pinch zoom is handled by TWO paths because no single API works on every
+  // mobile browser (verified against Apple's Safari Web Content Guide + MDN):
+  //
+  //   • iOS Safari: ignores `touch-action`, and the only reliable way to both
+  //     block its page-zoom AND read the pinch is the WebKit-proprietary
+  //     GestureEvent (preventDefault + e.scale). touchmove pinch data is not
+  //     dependable once the gesture default is prevented.
+  //   • iOS Chrome / Android Chrome: do NOT fire GestureEvents, so they use
+  //     standard touch events (two-finger distance) instead.
+  //
+  // A flag stops the two paths from double-applying on Safari (where both
+  // gesture* and touch* fire).
+  // Gesture listeners go on DOCUMENT (not the grid) with { passive:false } —
+  // the documented-reliable way to intercept WebKit pinch on iOS. We block the
+  // page-zoom for any pinch, and additionally zoom the grid when the pinch
+  // started over it.
+  let _gestureActive = false, _gestureInGrid = false, _gestureStartZoom = 1;
+  function eventInGrid(e) {
+    const t = e.target;
+    return !!(t && t.nodeType === 1 && t.closest && t.closest("#grid"));
+  }
+  document.addEventListener("gesturestart", (e) => {
+    e.preventDefault();                  // never let the whole page zoom
+    _gestureActive = true;
+    _gestureInGrid = eventInGrid(e);
+    _gestureStartZoom = state.gridZoom;
+    _dbg.g++; _dbg.last = _gestureInGrid ? "gInGrid" : "gOutGrid"; renderDbg();
+  }, { passive: false });
+  document.addEventListener("gesturechange", (e) => {
+    e.preventDefault();
+    _dbg.gc++; renderDbg();
+    if (_gestureInGrid) setGridZoom(_gestureStartZoom * e.scale, e.clientY);
+  }, { passive: false });
+  const endGesture = (e) => { e.preventDefault(); _gestureActive = false; _gestureInGrid = false; };
+  document.addEventListener("gestureend", endGesture, { passive: false });
+  // Belt-and-braces: block iOS double-tap-ish multi-touch page zoom globally.
+  document.addEventListener("touchmove", (e) => {
+    if (e.touches.length > 1) {
+      _dbg.maxTouch = Math.max(_dbg.maxTouch, e.touches.length); renderDbg();
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  // --- Two-finger pinch via touch events (iOS Chrome + Android) ---
+  let _pinchStartDist = 0, _pinchStartZoom = 1, _pinching = false;
+  function touchDist(t0, t1) {
+    return Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+  }
+  // Non-passive so we can claim the two-finger gesture the instant the second
+  // finger lands — otherwise the browser may start its own pan/zoom and our
+  // later preventDefault() gets ignored (touchmoves arrive non-cancelable).
+  gridEl.addEventListener("touchstart", (e) => {
+    _dbg.maxTouch = Math.max(_dbg.maxTouch, e.touches.length);
+    if (e.touches.length === 2) {
+      _pinching = true;
+      _pinchStartDist = touchDist(e.touches[0], e.touches[1]);
+      _pinchStartZoom = state.gridZoom;
+      _dbg.t++; _dbg.last = "tStartInGrid"; renderDbg();
+      e.preventDefault();
+    }
+  }, { passive: false });
+  gridEl.addEventListener("touchmove", (e) => {
+    if (e.touches.length !== 2) return;
+    e.preventDefault();          // block page zoom + native scroll during pinch
+    _dbg.tm++; renderDbg();
+    if (_gestureActive) return;  // Safari is driving the zoom via gesture events
+    const dist = touchDist(e.touches[0], e.touches[1]);
+    // Lazily initialise if the two fingers landed in separate touchstart
+    // events (common) and we never captured a start distance.
+    if (!_pinching || _pinchStartDist === 0) {
+      _pinching = true;
+      _pinchStartDist = dist;
+      _pinchStartZoom = state.gridZoom;
+      return;
+    }
+    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    setGridZoom(_pinchStartZoom * (dist / _pinchStartDist), midY);
+  }, { passive: false });
+  function endPinch(e) {
+    if (e.touches.length < 2) { _pinching = false; _pinchStartDist = 0; }
+  }
+  gridEl.addEventListener("touchend", endPinch);
+  gridEl.addEventListener("touchcancel", endPinch);
+
+  // --- Trackpad pinch / Ctrl+wheel (desktop testing) ---
+  gridEl.addEventListener("wheel", (e) => {
+    if (!e.ctrlKey) return;   // plain wheel = normal vertical scroll
+    e.preventDefault();
+    setGridZoom(state.gridZoom * (1 - e.deltaY * 0.01), e.clientY);
+  }, { passive: false });
 
   // ---------- Length ----------
   const halveLenBtn = $("halveLenBtn");
@@ -5129,8 +5371,8 @@
       renderGrid();
       return;
     }
-    const h = gridEl.clientHeight || 580;
-    const rowH = h / state.steps;
+    const contentH = (gridEl.clientHeight || 580) * state.gridZoom;
+    const rowH = contentH / state.steps;
     const cursorInt = Math.round(state.cursor);
 
     // Cursor line position + fractional marker.
@@ -5142,7 +5384,7 @@
 
     // Cursor button position + chord-mode style/text.
     if (_cachedCursorBtn) {
-      _cachedCursorBtn.style.top = Math.max(0, Math.min(state.cursor * rowH - 11, h - 22)) + "px";
+      _cachedCursorBtn.style.top = Math.max(0, Math.min(state.cursor * rowH - 11, contentH - 22)) + "px";
       const inChord = state.chordMode;
       if (inChord !== _cachedCursorBtn.classList.contains("chord-mode")) {
         _cachedCursorBtn.classList.toggle("chord-mode", inChord);
@@ -5243,6 +5485,7 @@
       updateRangeSelection();
       updateCursorVisuals();                   // fast path; falls back to renderGrid if needed
       updateSelectedBar();
+      scrollCursorIntoView();                   // keep the cursor visible when zoomed
     }
     positionKnobFromCursor();
   }
@@ -5564,6 +5807,17 @@
     updateSelectedBar();
     updateStackNav();
     scrollPianoTo("C4");
+    renderDbg();
+    // One-time "build check": flashes the zoom badge ~1s after load so it's
+    // obvious whether THIS (pinch-zoom) build is the one being served. If you
+    // don't see a brief "PINCH ⤢" pill top-right of the grid, you're on a
+    // stale cache or the wrong preview URL.
+    setTimeout(() => {
+      if (!gridZoomBadge) return;
+      gridZoomBadge.textContent = "PINCH ⤢";
+      gridZoomBadge.classList.add("show");
+      setTimeout(() => gridZoomBadge.classList.remove("show"), 1600);
+    }, 600);
     window.addEventListener("resize", () => {
       renderKeys(); renderGrid(); positionKnobFromCursor();
     });

@@ -14,6 +14,7 @@ function normalize(raw: unknown): SequencerState {
   const r = raw as Partial<SequencerState>;
   return {
     steps: r.steps ?? base.steps,
+    bpm: typeof r.bpm === 'number' && isFinite(r.bpm) ? r.bpm : base.bpm,
     notes: Array.isArray(r.notes) ? r.notes : base.notes,
     channels: Array.isArray(r.channels) && r.channels.length > 0 ? r.channels : base.channels,
     activeChannelId: r.activeChannelId ?? base.activeChannelId,
