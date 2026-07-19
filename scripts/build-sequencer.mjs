@@ -8,6 +8,18 @@
 //                                          + readOnly hooks)
 //
 // Re-run after changes to the mockup. Idempotent.
+//
+// !! WARNING: the checked-in generated files carry hand-patches that are NOT
+// reproduced by this script (verified: regenerating today produces a ~200-line
+// diff). Known hand-patched features in setup.ts:
+//   - options.lockedChannelId (dungeon turn mode): guards in setActiveChannel,
+//     selectNote, enterChordModeAtNote, enterMultiSelectWith,
+//     renderChannelStrip (single header, no gear), openChannelsPopup, plus the
+//     forced active channel + .seq-channel-locked class after initialState load,
+//     and the lockedChannelId?: number field on MountOptions.
+// Before re-running this script, diff the regenerated output against the
+// checked-in files and re-apply every hand-patch, or you will silently break
+// the game layer.
 
 import fs from 'node:fs';
 import path from 'node:path';

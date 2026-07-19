@@ -23,6 +23,10 @@ export interface SequencerEditorProps {
   isOwner: boolean;
   creatorDisplay?: string;
   onCopy?: () => void;
+  // Dungeon turn mode: confine all editing/selection to this channel and
+  // hide the channel switcher. Enforced inside the editor; the game API
+  // validates server-side as the backstop.
+  lockedChannelId?: number;
 }
 
 // Inject the sequencer CSS into <head> exactly once across the app. The CSS
@@ -46,6 +50,7 @@ export function SequencerEditor({
   isOwner,
   creatorDisplay,
   onCopy,
+  lockedChannelId,
 }: SequencerEditorProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   // Stash callbacks in refs so the imperative mount function — which captures
@@ -74,6 +79,7 @@ export function SequencerEditor({
       isOwner,
       creatorDisplay,
       onCopy: () => onCopyRef.current?.(),
+      lockedChannelId,
     });
     return destroy;
     // Mount once; everything else flows through refs.

@@ -8,6 +8,11 @@ export interface MountOptions {
   initialState?: unknown;
   onChange?: (state: unknown) => void;
   readOnly?: boolean;
+  // Turn mode (dungeon games): confine all editing to this channel. The
+  // channel strip renders only this channel, switching is blocked, and
+  // notes on other channels can't be selected. Server-side validation is
+  // the backstop; this keeps honest edits from 400-ing the autosave.
+  lockedChannelId?: number;
   // Song-level integration hooks (no-ops in the standalone mockup):
   onBack?: () => void;
   onRenameTitle?: (title: string) => void;
@@ -1327,6 +1332,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   // or many) as the seed. Cursor + scroller jump to the step. If the note is on
   // a different channel, switch input to that channel first.
   function enterChordModeAtNote(n) {
+    if (options.lockedChannelId && n.channelId !== options.lockedChannelId) return;
     if (n.channelId !== state.activeChannelId) setActiveChannel(n.channelId);
     state.cursor = n.step;
     positionKnobFromCursor();
@@ -1455,6 +1461,10 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   })();
 
   function enterMultiSelectWith(noteId) {
+    if (options.lockedChannelId) {
+      const __n = state.notes.find(x => x.id === noteId);
+      if (__n && __n.channelId !== options.lockedChannelId) return;
+    }
     if (state.multiSelect && state.selectedIds.has(noteId)) {
       // Long-press on an already-selected note removes it from the set.
       state.selectedIds.delete(noteId);
@@ -1577,6 +1587,10 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   }
 
   function selectNote(id) {
+    if (options.lockedChannelId) {
+      const __n = state.notes.find(x => x.id === id);
+      if (__n && __n.channelId !== options.lockedChannelId) return;
+    }
     if (!state.multiSelect) {
       const n0 = state.notes.find(x => x.id === id);
       if (n0 && n0.channelId !== state.activeChannelId) {
@@ -1801,6 +1815,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     const cont = $("channelHeaders");
     cont.innerHTML = "";
     state.channels.forEach(ch => {
+      if (options.lockedChannelId && ch.id !== options.lockedChannelId) return;
       const btn = document.createElement("button");
       btn.type = "button";
       let cls = "channel-col-header";
@@ -1813,6 +1828,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       attachChannelHeaderGesture(btn, ch.id);
       cont.appendChild(btn);
     });
+    if (options.lockedChannelId) return; // no channel add/settings in turn mode
     const addBtn = document.createElement("button");
     addBtn.type = "button";
     addBtn.className = "channel-col-add";
@@ -1824,6 +1840,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   }
 
   function openChannelsPopup() {
+    if (options.lockedChannelId) return;
     renderChannelList();
     document.querySelectorAll(".popup").forEach(p => p.classList.toggle("hidden", p.dataset.name !== "channels"));
     $("popupLayer").classList.remove("hidden");
@@ -2307,6 +2324,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   }
 
   function setActiveChannel(id) {
+    if (options.lockedChannelId && id !== options.lockedChannelId) return;
     if (id === state.activeChannelId) return;
     state.activeChannelId = id;
     state.selectedId = null;
@@ -3231,6 +3249,14 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   try {
     if (options.initialState) applySnapshot(JSON.stringify(options.initialState));
   } catch (err) { console.warn('sequencer initialState load failed', err); }
+
+  // Turn mode: force the dealt channel active before init() renders.
+  if (options.lockedChannelId) {
+    try {
+      state.activeChannelId = options.lockedChannelId;
+      root.classList.add('seq-channel-locked');
+    } catch (_) {}
+  }
 
   if (options.readOnly) root.classList.add('seq-readonly');
 

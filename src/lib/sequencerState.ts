@@ -45,6 +45,23 @@ export type SequencerState = {
   nextId: number;
 };
 
+// Songs predating the sequencer rewrite have empty / partial blobs. Fill in
+// missing fields from the default so the editor always boots cleanly.
+export function normalizeSequencerState(raw: unknown): SequencerState {
+  const base = defaultSequencerState();
+  if (!raw || typeof raw !== 'object') return base;
+  const r = raw as Partial<SequencerState>;
+  return {
+    steps: r.steps ?? base.steps,
+    bpm: typeof r.bpm === 'number' && isFinite(r.bpm) ? r.bpm : base.bpm,
+    notes: Array.isArray(r.notes) ? r.notes : base.notes,
+    channels: Array.isArray(r.channels) && r.channels.length > 0 ? r.channels : base.channels,
+    activeChannelId: r.activeChannelId ?? base.activeChannelId,
+    nextChannelId: r.nextChannelId ?? base.nextChannelId,
+    nextId: r.nextId ?? base.nextId,
+  };
+}
+
 export function defaultSequencerState(): SequencerState {
   // Mirrors the mockup's initial state object so a freshly-created song
   // opens to the same seed grid the sandbox does.

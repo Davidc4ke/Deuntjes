@@ -22,6 +22,13 @@
       "when": 1779261200000,
       "tag": "0002_sequencer_only",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784499754548,
+      "tag": "0003_elite_luminals",
+      "breakpoints": true
     }
   ]
 }
