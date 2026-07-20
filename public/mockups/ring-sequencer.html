@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Deuntjes — the Ritual Ring, v2</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Deuntjes — the Ritual Ring</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=UnifrakturCook:wght@700&family=Pirata+One&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet" />
@@ -18,70 +18,65 @@
     --body: "IM Fell English", Georgia, serif;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; padding: 0; background: radial-gradient(130% 90% at 50% -20%, #121212, var(--void) 55%); color: var(--ink); font-family: var(--body); }
-  body { padding: 24px 12px 70px; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: radial-gradient(130% 90% at 50% -20%, #141414, var(--void) 55%);
+    color: var(--ink); font-family: var(--body);
+    user-select: none; -webkit-user-select: none;
+  }
   button { font-family: inherit; cursor: pointer; }
 
-  .page-head { text-align: center; max-width: 500px; margin: 0 auto 20px; }
-  .page-head h1 { font-family: var(--display); font-size: 36px; margin: 0; }
-  .page-head h1 b { color: var(--blood-lit); }
-  .page-head p { color: var(--smoke); font-size: 13.5px; font-style: italic; line-height: 1.55; margin: 8px 0 0; }
-
-  .device {
-    user-select: none; -webkit-user-select: none;
-    width: 402px; max-width: 100%; margin: 0 auto; min-height: 770px;
-    background: var(--void);
-    border: 1px solid #2b2b2b; border-radius: 36px;
-    box-shadow: 0 22px 60px rgba(0,0,0,.8), 0 0 70px rgba(160,24,24,.06);
-    position: relative; overflow: hidden;
+  .app {
+    height: 100dvh; max-width: 540px; margin: 0 auto;
     display: flex; flex-direction: column;
-    padding: 14px 12px 14px;
+    padding: calc(8px + env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom));
+    overflow: hidden;
   }
 
   .curse-strip {
     display: flex; align-items: center; gap: 9px;
     background: linear-gradient(180deg, #f4efe2, #ddd5c2); color: var(--parch-ink);
-    padding: 7px 11px; margin-bottom: 10px; transform: rotate(-.6deg);
+    padding: 6px 11px; margin-bottom: 8px; transform: rotate(-.5deg);
     clip-path: polygon(0 8%, 2% 0, 98% 3%, 100% 14%, 99% 90%, 96% 100%, 3% 97%, 0 88%);
     font-size: 12px; font-style: italic; flex-shrink: 0;
   }
   .curse-strip b { font-family: var(--display); font-style: normal; font-size: 14px; margin-right: 2px; }
 
-  .toprow { display: flex; gap: 8px; margin-bottom: 10px; flex-shrink: 0; }
-  .tbtn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-    background: linear-gradient(180deg, var(--iron-2), var(--iron)); color: var(--ink-dim);
-    border: 1px solid rgba(242,237,227,.22); border-radius: 3px;
-    font: 400 13.5px var(--gothic); letter-spacing: .05em; padding: 9px 12px; flex: 1;
-  }
-  .tbtn:active { transform: translateY(1px); }
-
-  .track-chips { display: flex; gap: 6px; margin-bottom: 6px; flex-shrink: 0; }
+  .chips-row { display: flex; gap: 6px; margin-bottom: 6px; flex-shrink: 0; align-items: stretch; }
   .tchip {
-    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
     background: #0d0d0d; border: 1px solid rgba(242,237,227,.16); border-radius: 3px;
-    color: var(--smoke); font: 400 12.5px var(--gothic); letter-spacing: .05em; padding: 8px 3px;
+    color: var(--smoke); font: 400 12px var(--gothic); letter-spacing: .04em; padding: 8px 2px;
   }
-  .tchip .sw { width: 10px; height: 10px; border: 1px solid rgba(242,237,227,.5); flex-shrink: 0; }
+  .tchip .sw { width: 9px; height: 9px; border: 1px solid rgba(242,237,227,.5); flex-shrink: 0; }
   .tchip.active { color: var(--parch-ink); background: linear-gradient(180deg, #f4efe2, #ddd5c2); border-color: #000; }
-  .tchip .eye { background: none; border: none; padding: 2px; color: inherit; display: inline-flex; }
+  .tchip .eye { background: none; border: none; padding: 1px; color: inherit; display: inline-flex; }
   .tchip.hidden-track .sw, .tchip.hidden-track .nm { opacity: .3; }
   .pat-drum  { background-image: repeating-linear-gradient(45deg, rgba(242,237,227,.95) 0 1px, transparent 1px 4px), repeating-linear-gradient(-45deg, rgba(242,237,227,.95) 0 1px, transparent 1px 4px); }
   .pat-bass  { background-image: repeating-linear-gradient(0deg, rgba(242,237,227,.95) 0 2px, transparent 2px 5px); }
   .pat-lead  { background-image: repeating-linear-gradient(45deg, rgba(242,237,227,.95) 0 1.5px, transparent 1.5px 5px); }
   .pat-chord { background-image: radial-gradient(rgba(242,237,227,.95) 1px, transparent 1.4px); background-size: 5px 5px; }
   .tchip.active .sw { filter: invert(1); border-color: rgba(21,18,16,.7); }
+  .icon-chip {
+    flex: 0 0 42px; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, var(--iron-2), var(--iron)); color: var(--ink-dim);
+    border: 1px solid rgba(242,237,227,.22); border-radius: 3px; font-size: 16px;
+  }
+  .icon-chip.lit { color: var(--ink); border-color: var(--blood-lit); box-shadow: 0 0 12px rgba(212,33,33,.3); }
 
-  /* ===== the ring stage ===== */
-  .stage { flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; }
-  .stage svg { width: 100%; max-width: 372px; height: auto; touch-action: none; display: block; }
-  .hint { text-align: center; font-size: 11px; font-style: italic; color: rgba(242,237,227,.35); margin: 0 0 4px; flex-shrink: 0; }
-  .bars-ctl { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; }
-  .bars-ctl button { background: none; border: 1px solid rgba(242,237,227,.25); border-radius: 3px; color: var(--ink-dim); font-size: 12px; padding: 1px 8px; }
-  .bars-ctl .bars-lab { font-style: normal; font-family: var(--gothic); font-weight: 400; color: var(--ink-dim); letter-spacing: .06em; }
+  .stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+  .stage svg { max-width: 100%; max-height: 100%; touch-action: none; display: block; }
 
-  .spin-slow { animation: spin 60s linear infinite; transform-origin: 186px 186px; }
-  .spin-rev { animation: spin 42s linear infinite reverse; transform-origin: 186px 186px; }
+  .status-row {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    font-size: 11.5px; font-style: italic; color: var(--smoke); flex-shrink: 0; padding: 2px 0 4px;
+  }
+  .status-row .bars-ctl { display: inline-flex; align-items: center; gap: 6px; }
+  .status-row button { background: none; border: 1px solid rgba(242,237,227,.25); border-radius: 3px; color: var(--ink-dim); font-size: 12px; padding: 1px 8px; }
+  .status-row b { font-family: var(--gothic); font-weight: 400; color: var(--ink-dim); font-style: normal; letter-spacing: .05em; }
+
+  .spin-slow { animation: spin 60s linear infinite; }
+  .spin-rev { animation: spin 42s linear infinite reverse; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .b-step { fill: #0d0d0d; stroke: rgba(242,237,227,.32); stroke-width: 1.6; }
@@ -89,84 +84,96 @@
   .b-step.on { fill: var(--parch); stroke: #000; }
   .b-step.sel { stroke: var(--blood-lit); stroke-width: 3; }
   .b-step.playhead { stroke: var(--ink); stroke-width: 3; filter: drop-shadow(0 0 6px rgba(242,237,227,.7)); }
-  .b-lab { font: 400 10.5px var(--gothic); fill: var(--smoke); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .b-lab { font-family: var(--gothic); fill: var(--smoke); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
   .b-lab.on { fill: var(--parch-ink); }
-  .b-lab2 { font: italic 7.5px var(--body); fill: rgba(21,18,16,.75); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
   .b-ghost { fill: rgba(242,237,227,.5); }
-  .b-guide { fill: none; stroke: rgba(242,237,227,.09); }
   .b-rune-ring { fill: none; stroke: rgba(242,237,227,.2); stroke-dasharray: 1 7; }
   .b-rune-ring.r2 { stroke: rgba(212,33,33,.25); stroke-dasharray: 1 11; }
   .b-sigil { fill: rgba(212,33,33,.05); stroke: rgba(212,33,33,.35); stroke-width: 1; stroke-linejoin: round; }
   .b-hand { stroke: rgba(212,33,33,.85); stroke-width: 2.5; stroke-linecap: round; filter: drop-shadow(0 0 5px rgba(212,33,33,.8)); }
   .b-hand.idle { stroke: rgba(242,237,227,.3); filter: none; stroke-dasharray: 3 5; }
   .b-cursor-notch { fill: none; stroke: var(--blood-lit); stroke-width: 2; stroke-dasharray: 4 4; }
-  .quarter-lab { font: 400 12px var(--gothic); fill: rgba(242,237,227,.35); text-anchor: middle; dominant-baseline: central; }
+  .b-lenarc { fill: none; stroke: rgba(239,233,219,.4); stroke-linecap: round; }
+  .b-focusring { fill: none; stroke: transparent; cursor: pointer; }
 
   .play-core { fill: url(#playGrad); stroke: var(--blood-dark); stroke-width: 1.5; }
   .play-halo { fill: none; stroke: rgba(212,33,33,.5); }
-  .play-halo.pulse { animation: halo 2.4s ease-in-out infinite; transform-origin: 186px 186px; }
-  @keyframes halo { 0%,100% { opacity: .25; transform: scale(1); } 50% { opacity: .7; transform: scale(1.08); } }
+  .play-halo.pulse { animation: halo 2.4s ease-in-out infinite; }
+  @keyframes halo { 0%,100% { opacity: .25; } 50% { opacity: .75; } }
   .play-glyph { fill: var(--ink); pointer-events: none; }
-  .pos-lab { font: italic 11px var(--body); fill: var(--smoke); text-anchor: middle; }
-  .bar-dot { fill: none; stroke: rgba(242,237,227,.5); }
-  .bar-dot.cur { fill: var(--ink); }
 
-  /* ===== selection area below the circle ===== */
-  .pickers { flex: 1; min-height: 150px; display: flex; flex-direction: column; justify-content: center; border-top: 1px solid rgba(242,237,227,.1); padding-top: 8px; margin-top: 4px; }
-  .pick-status { font-size: 12px; font-style: italic; color: var(--smoke); text-align: center; margin: 0 0 8px; min-height: 15px; }
+  /* instrument wheel */
+  .p-stone { fill: #12100d; stroke: rgba(242,237,227,.35); stroke-width: 1.5; }
+  .p-stone.cur { fill: var(--parch); stroke: var(--blood-lit); stroke-width: 2.5; }
+  .p-lab { font-family: var(--gothic); fill: var(--ink-dim); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .p-lab.cur { fill: var(--parch-ink); }
+  .fx-arc-bg { fill: none; stroke: rgba(242,237,227,.15); stroke-width: 10; stroke-linecap: round; }
+  .fx-arc-fill { fill: none; stroke: var(--blood-lit); stroke-width: 10; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(212,33,33,.5)); }
+  .fx-arc-hit { fill: none; stroke: transparent; stroke-width: 34; cursor: pointer; }
+  .fx-lab { font: italic 10px var(--body); fill: var(--smoke); text-anchor: middle; }
+  .inst-title { font-family: var(--display); fill: var(--ink); text-anchor: middle; }
+  .inst-sub { font: italic 10.5px var(--body); fill: var(--smoke); text-anchor: middle; }
+
+  /* ===== pickers ===== */
+  .pickers { flex-shrink: 0; border-top: 1px solid rgba(242,237,227,.1); padding-top: 6px; }
+  .pick-status { font-size: 11.5px; font-style: italic; color: var(--smoke); text-align: center; margin: 0 0 6px; min-height: 14px; }
   .pick-status b { color: var(--ink-dim); font-style: normal; font-family: var(--gothic); font-weight: 400; letter-spacing: .05em; }
-  .strip { display: flex; gap: 6px; overflow-x: auto; padding: 3px 4px 8px; scrollbar-width: none; }
+
+  /* compact horizontal piano roll */
+  .piano-wrap { overflow-x: auto; scrollbar-width: none; padding-bottom: 6px; }
+  .piano-wrap::-webkit-scrollbar { display: none; }
+  .piano { position: relative; height: 74px; }
+  .pk-w {
+    position: absolute; top: 0; height: 74px; width: 34px;
+    background: linear-gradient(180deg, #f6f1e4, #ddd5c2);
+    border: 1px solid #0a0a0a; border-radius: 0 0 5px 5px;
+  }
+  .pk-w .pk-lab { position: absolute; bottom: 4px; left: 0; right: 0; text-align: center; font: 400 9.5px var(--gothic); color: rgba(21,18,16,.55); pointer-events: none; }
+  .pk-b {
+    position: absolute; top: 0; height: 44px; width: 22px; z-index: 2;
+    background: linear-gradient(180deg, #262626, #0a0a0a);
+    border: 1px solid #000; border-radius: 0 0 4px 4px;
+  }
+  .pk-w.sticky { background: linear-gradient(180deg, #e8b9b0, #d99a8e); }
+  .pk-b.sticky { background: linear-gradient(180deg, var(--blood-lit), var(--blood-dark)); }
+
+  /* chord forge */
+  .strip { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 7px; scrollbar-width: none; }
   .strip::-webkit-scrollbar { display: none; }
   .nbtn {
-    flex-shrink: 0; height: 44px; min-width: 44px; padding: 0 8px; border-radius: 999px;
+    flex-shrink: 0; height: 38px; min-width: 40px; padding: 0 9px; border-radius: 999px;
     background: #0d0d0d; border: 1.5px solid rgba(242,237,227,.25); color: var(--ink-dim);
-    font: 400 13px var(--gothic); letter-spacing: .03em;
+    font: 400 12.5px var(--gothic); letter-spacing: .03em;
   }
   .nbtn.black { background: #000; color: var(--smoke); }
   .nbtn.sticky { background: linear-gradient(180deg, #f4efe2, #ddd5c2); color: var(--parch-ink); border-color: #000; }
-  .nbtn.util { border-style: dashed; font-size: 11.5px; }
-  .strip-label { font: 400 10px var(--gothic); letter-spacing: .14em; text-transform: uppercase; color: rgba(242,237,227,.35); padding: 0 6px 3px; }
-  .drum-note { text-align: center; color: var(--smoke); font-style: italic; font-size: 12.5px; padding: 22px 10px; }
+  .nbtn.util { border-style: dashed; font-size: 11px; }
+  .strip-label { font: 400 9.5px var(--gothic); letter-spacing: .14em; text-transform: uppercase; color: rgba(242,237,227,.35); padding: 0 4px 2px; }
+  .drum-note { text-align: center; color: var(--smoke); font-style: italic; font-size: 12px; padding: 16px 10px; }
 
-  /* instrument sheet */
-  .sheet-veil { position: absolute; inset: 0; background: rgba(5,5,5,.72); z-index: 20; display: none; align-items: flex-end; border-radius: 36px; }
-  .sheet-veil.open { display: flex; }
-  .sheet { width: 100%; background: linear-gradient(180deg, #161616, #0b0b0b); border-top: 2px solid rgba(242,237,227,.25); border-radius: 22px 22px 34px 34px; padding: 16px 16px 20px; }
-  .sheet h4 { font-family: var(--display); font-size: 20px; margin: 0 0 10px; }
-  .sheet h4 small { font-family: var(--body); font-style: italic; font-size: 12px; color: var(--smoke); margin-left: 6px; }
-  .preset-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
-  .preset-row button { background: #0d0d0d; border: 1px solid rgba(242,237,227,.22); border-radius: 999px; color: var(--ink-dim); font: 400 13px var(--gothic); padding: 8px 14px; }
-  .preset-row button.cur { background: linear-gradient(180deg, var(--blood-lit), var(--blood)); color: var(--ink); border-color: var(--blood-dark); }
-  .fx-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-  .fx-row label { width: 62px; font: 400 13px var(--gothic); letter-spacing: .06em; color: var(--ink-dim); }
-  .fx-row input[type=range] { flex: 1; accent-color: var(--blood-lit); }
-  .fx-row output { width: 34px; text-align: right; font-size: 12px; color: var(--smoke); }
-  .sheet .close-row button { width: 100%; padding: 12px; font: 400 15px var(--gothic); background: linear-gradient(180deg, #f4efe2, #ddd5c2); color: var(--parch-ink); border: 1px solid #000; border-radius: 3px; }
+  /* length chips */
+  .len-row { display: flex; gap: 6px; align-items: center; padding: 0 2px 2px; }
+  .len-row .strip-label { padding: 0 4px 0 2px; }
+  .len-row .nbtn { height: 30px; min-width: 34px; font-size: 11.5px; }
 </style>
 </head>
 <body>
-
-<div class="page-head">
-  <h1>The Ritual Ring, <b>v2</b></h1>
-  <p>Play burns at the heart of the circle, and every bar is its own ring — bar I outermost, time spiraling inward. Drag up or down on the ring (or mouse-wheel over it) to wind the playback position through all of them; the page itself never gets hijacked. Notes are picked below the circle; the Chord track opens the full chord forge.</p>
-</div>
-
-<div class="device" id="dev">
+<div class="app" id="app">
   <div class="curse-strip"><b>Minor Key</b> — only notes from a minor scale.</div>
-  <div class="toprow">
-    <button class="tbtn" data-act="inst">⚙&#xFE0E; Instrument</button>
-    <button class="tbtn" data-act="clear">✕ Clear track</button>
+  <div class="chips-row">
+    <div class="track-chips" style="display:flex;gap:6px;flex:1"></div>
+    <button class="icon-chip" data-act="inst" title="Instrument">⚙&#xFE0E;</button>
+    <button class="icon-chip" data-act="clear" title="Clear track">✕</button>
   </div>
-  <div class="track-chips"></div>
-  <p class="hint">tap a stone to carve · drag ↑↓ on the ring to wind through every bar
-    <span class="bars-ctl"><button data-bars="-1">‹</button><b class="bars-lab">II bars</b><button data-bars="1">›</button></span>
-  </p>
   <div class="stage"><svg viewBox="0 0 372 372"></svg></div>
+  <div class="status-row">
+    <span class="pos-lab-html">bar I · step 1</span>
+    <span class="bars-ctl"><button data-bars="-1">‹</button><b class="bars-lab">II bars</b><button data-bars="1">›</button></span>
+  </div>
   <div class="pickers">
     <p class="pick-status"></p>
     <div class="pick-body"></div>
   </div>
-  <div class="sheet-veil"><div class="sheet"></div></div>
 </div>
 
 <script>
@@ -176,89 +183,136 @@ const parseN = (n) => { const m = /^([A-G]#?)(\d)$/.exec(n); return { semi: NOTE
 const midi = (n) => { const p = parseN(n); return (p.oct + 1) * 12 + p.semi; };
 const fromMidi = (v) => NOTE_ORDER[v % 12] + (Math.floor(v / 12) - 1);
 const noteFreq = (n) => 440 * Math.pow(2, (midi(n) - 69) / 12);
+const clone = (o) => JSON.parse(JSON.stringify(o));
 
 const CHORD_QUALITIES = [
-  { id: 'maj',  label: 'maj',   suffix: '',     iv: [0,4,7] },
-  { id: 'min',  label: 'min',   suffix: 'm',    iv: [0,3,7] },
-  { id: '7',    label: '7',     suffix: '7',    iv: [0,4,7,10] },
-  { id: 'maj7', label: 'maj7',  suffix: 'M7',   iv: [0,4,7,11] },
-  { id: 'm7',   label: 'm7',    suffix: 'm7',   iv: [0,3,7,10] },
-  { id: '6',    label: '6',     suffix: '6',    iv: [0,4,7,9] },
-  { id: 'm6',   label: 'm6',    suffix: 'm6',   iv: [0,3,7,9] },
-  { id: 'sus2', label: 'sus2',  suffix: 'sus2', iv: [0,2,7] },
-  { id: 'sus4', label: 'sus4',  suffix: 'sus4', iv: [0,5,7] },
-  { id: 'dim',  label: 'dim',   suffix: 'dim',  iv: [0,3,6] },
-  { id: 'dim7', label: 'dim7',  suffix: '°7',   iv: [0,3,6,9] },
-  { id: 'm7b5', label: 'm7♭5',  suffix: 'ø7',   iv: [0,3,6,10] },
-  { id: 'aug',  label: 'aug',   suffix: '+',    iv: [0,4,8] },
-  { id: '5',    label: '5',     suffix: '5',    iv: [0,7] },
-  { id: 'add9', label: 'add9',  suffix: 'add9', iv: [0,4,7,14] },
-  { id: '9',    label: '9',     suffix: '9',    iv: [0,4,7,10,14] },
-  { id: 'maj9', label: 'maj9',  suffix: 'M9',   iv: [0,4,7,11,14] },
-  { id: 'm9',   label: 'm9',    suffix: 'm9',   iv: [0,3,7,10,14] },
-  { id: '11',   label: '11',    suffix: '11',   iv: [0,4,7,10,14,17] },
-  { id: '13',   label: '13',    suffix: '13',   iv: [0,4,7,10,14,21] },
+  { id: 'maj', label: 'maj', suffix: '', iv: [0,4,7] },
+  { id: 'min', label: 'min', suffix: 'm', iv: [0,3,7] },
+  { id: '7', label: '7', suffix: '7', iv: [0,4,7,10] },
+  { id: 'maj7', label: 'maj7', suffix: 'M7', iv: [0,4,7,11] },
+  { id: 'm7', label: 'm7', suffix: 'm7', iv: [0,3,7,10] },
+  { id: '6', label: '6', suffix: '6', iv: [0,4,7,9] },
+  { id: 'm6', label: 'm6', suffix: 'm6', iv: [0,3,7,9] },
+  { id: 'sus2', label: 'sus2', suffix: 'sus2', iv: [0,2,7] },
+  { id: 'sus4', label: 'sus4', suffix: 'sus4', iv: [0,5,7] },
+  { id: 'dim', label: 'dim', suffix: 'dim', iv: [0,3,6] },
+  { id: 'dim7', label: 'dim7', suffix: '°7', iv: [0,3,6,9] },
+  { id: 'm7b5', label: 'm7♭5', suffix: 'ø7', iv: [0,3,6,10] },
+  { id: 'aug', label: 'aug', suffix: '+', iv: [0,4,8] },
+  { id: '5', label: '5', suffix: '5', iv: [0,7] },
+  { id: 'add9', label: 'add9', suffix: 'add9', iv: [0,4,7,14] },
+  { id: '9', label: '9', suffix: '9', iv: [0,4,7,10,14] },
+  { id: 'maj9', label: 'maj9', suffix: 'M9', iv: [0,4,7,11,14] },
+  { id: 'm9', label: 'm9', suffix: 'm9', iv: [0,3,7,10,14] },
+  { id: '11', label: '11', suffix: '11', iv: [0,4,7,10,14,17] },
+  { id: '13', label: '13', suffix: '13', iv: [0,4,7,10,14,21] },
 ];
 const INVERSIONS = ['root', '1st', '2nd'];
-function buildChord(cfg) {
+function buildChord(cfg, len = 4) {
   const q = CHORD_QUALITIES.find(x => x.id === cfg.qual);
   const root = (cfg.oct + 1) * 12 + NOTE_ORDER.indexOf(cfg.root);
   let vals = q.iv.map(i => root + i);
   for (let i = 0; i < Math.min(cfg.inv, vals.length - 1); i++) vals[i] += 12;
   vals.sort((a, b) => a - b);
-  return { label: cfg.root + q.suffix, notes: vals.map(fromMidi) };
+  return { label: cfg.root + q.suffix, notes: vals.map(fromMidi), len, cfg: clone(cfg) };
 }
+const N = (label, len = 1) => ({ label, notes: [label], len });
 
+// presets mirror the game's per-track whitelists, with playful timbres
+const ALLOWED = {
+  drum: ['Kick', '808', 'Snare', 'Clap', 'Hat', 'Open Hat', 'Tom', 'Perc', 'Rim', 'Crash', 'Ride'],
+  bass: ['Bass', 'Sub', 'Acid', 'Reese'],
+  lead: ['Lead', 'Pluck', 'Acid', 'Bell', 'Marimba', 'Keys'],
+  chord: ['Pad', 'Keys', 'Organ', 'Strings', 'Choir', 'Bell'],
+};
+const TIMBRE = {
+  Kick: ['sine', .1], '808': ['sine', .3], Snare: ['square', .05], Clap: ['square', .06],
+  Hat: ['square', .03], 'Open Hat': ['square', .12], Tom: ['sine', .12], Perc: ['sine', .06],
+  Rim: ['square', .03], Crash: ['sawtooth', .4], Ride: ['sawtooth', .2],
+  Bass: ['square', .16], Sub: ['sine', .2], Acid: ['sawtooth', .12], Reese: ['sawtooth', .2],
+  Lead: ['triangle', .15], Pluck: ['triangle', .08], Bell: ['sine', .35], Marimba: ['sine', .12], Keys: ['triangle', .18],
+  Pad: ['sine', .4], Organ: ['square', .3], Strings: ['sawtooth', .38], Choir: ['sine', .45],
+};
 let AC = null;
-function tone(track, note, fx, when = 0) {
+function tone(track, note, len = 1, when = 0) {
   try {
     AC = AC || new (window.AudioContext || window.webkitAudioContext)();
     if (AC.state === 'suspended') AC.resume();
     const t = AC.currentTime + when;
     const o = AC.createOscillator(), g = AC.createGain();
-    const timbre = { drum: ['sine', .09], bass: ['square', .16], lead: ['triangle', .15], chord: ['sine', .34] }[track.key];
-    o.type = fx.drive > .5 ? 'sawtooth' : timbre[0];
+    const [type, base] = TIMBRE[state.preset[track.key]] || ['triangle', .15];
+    o.type = state.fx.drive > .5 ? 'sawtooth' : type;
     o.frequency.value = track.key === 'drum' ? 82 : noteFreq(note);
     if (track.key === 'drum') o.frequency.exponentialRampToValueAtTime(38, t + .09);
-    const dur = timbre[1] * (1 + fx.reverb * 2.2);
-    g.gain.setValueAtTime(track.key === 'chord' ? .13 : .22, t);
+    const dur = base * (1 + state.fx.reverb * 2.2) * (track.key === 'drum' ? 1 : Math.max(1, len * .8));
+    g.gain.setValueAtTime(track.key === 'chord' ? .12 : .2, t);
     g.gain.exponentialRampToValueAtTime(.001, t + dur);
     o.connect(g).connect(AC.destination);
     o.start(t); o.stop(t + dur + .02);
   } catch (_) {}
 }
-function playEvent(track, ev, fx) { ev.notes.forEach((n, i) => tone(track, n, fx, i * .012)); }
+function playEvent(track, ev) { ev.notes.forEach((n, i) => tone(track, n, ev.len, i * .012)); }
 
 // ================= state =================
-// Each bar is a concentric ring: bar I outermost, later bars spiral inward.
-const BAR_RADII = { 1: [150], 2: [150, 104], 3: [150, 112, 74] };
-const stoneR = (ringR, accent) =>
-  ringR >= 140 ? (accent ? 19 : 16) : ringR >= 100 ? (accent ? 15 : 12.5) : (accent ? 12 : 10);
-const N = (label) => ({ label, notes: [label] });
 const state = {
   tracks: [
     { key: 'drum',  name: 'Drum',  pat: 'pat-drum',  steps: { 0: N('C2'), 4: N('C2'), 8: N('C2'), 12: N('C2'), 16: N('C2'), 20: N('C2'), 24: N('C2'), 26: N('C2'), 28: N('C2') } },
-    { key: 'bass',  name: 'Bass',  pat: 'pat-bass',  steps: { 0: N('C2'), 6: N('G1'), 8: N('C2'), 14: N('A#1'), 16: N('C2'), 22: N('D#2'), 24: N('C2'), 30: N('G1') } },
+    { key: 'bass',  name: 'Bass',  pat: 'pat-bass',  steps: { 0: N('C2', 2), 6: N('G1'), 8: N('C2', 2), 14: N('A#1'), 16: N('C2', 2), 22: N('D#2'), 24: N('C2'), 30: N('G1') } },
     { key: 'lead',  name: 'Lead',  pat: 'pat-lead',  steps: {} },
     { key: 'chord', name: 'Chord', pat: 'pat-chord', steps: { 0: buildChord({ root: 'C', qual: 'min', oct: 3, inv: 0 }), 8: buildChord({ root: 'G', qual: '7', oct: 2, inv: 0 }), 16: buildChord({ root: 'D#', qual: 'maj7', oct: 3, inv: 0 }), 24: buildChord({ root: 'A#', qual: 'maj', oct: 2, inv: 0 }) } },
   ],
   activeKey: 'chord',
   hidden: new Set(),
-  stickyNote: { drum: 'C2', bass: 'C2', lead: 'C4' },
+  stickyEv: { drum: N('C2'), bass: N('C2'), lead: N('C4'), chord: buildChord({ root: 'C', qual: 'min', oct: 3, inv: 0 }) },
   chordCfg: { root: 'C', qual: 'min', oct: 3, inv: 0 },
   sel: null,
-  cursor: 0,       // playback position, wound by scrolling the ring
-  bars: 2,         // 1-3 bars = 1-3 concentric rings
+  cursor: 0,
+  bars: 2,
+  focusedBar: 0,
+  view: 'steps', // 'steps' | 'inst'
   preset: { drum: 'Kick', bass: 'Bass', lead: 'Lead', chord: 'Pad' },
   fx: { reverb: .15, drive: 0 },
 };
 const STEPS = () => state.bars * 16;
-const PRESETS = { drum: ['Kick', '808', 'Snare', 'Hat'], bass: ['Bass', 'Sub', 'Acid', 'Reese'], lead: ['Lead', 'Pluck', 'Bell', 'Keys'], chord: ['Pad', 'Organ', 'Strings', 'Choir'] };
 const active = () => state.tracks.find(t => t.key === state.activeKey);
 const others = () => state.tracks.filter(t => t.key !== state.activeKey && !state.hidden.has(t.key));
-function stickyEvent() {
-  const t = active();
-  return t.key === 'chord' ? buildChord(state.chordCfg) : N(state.stickyNote[t.key]);
+
+// ================= animated layout =================
+// Each bar-ring has an animated {r, s}; the focused ring is large, earlier
+// bars park as thin outer bands, later bars nest inside. The instrument
+// wheel cross-fades via `inst` 0..1.
+let L = { rings: [], inst: 0 };
+function targetLayout() {
+  const f = state.focusedBar;
+  const rings = [];
+  for (let b = 0; b < state.bars; b++) {
+    if (b === f) rings.push({ r: 146, s: 1 });
+    else if (b < f) rings.push({ r: 174 - (f - 1 - b) * 13, s: .42 });
+    else rings.push({ r: 146 - 44 * (b - f), s: b - f === 1 ? .6 : .42 });
+  }
+  return { rings, inst: state.view === 'inst' ? 1 : 0 };
+}
+let animId = 0;
+function settle(instant = false) {
+  const from = clone(L), to = targetLayout();
+  while (from.rings.length < to.rings.length) from.rings.push({ r: 40, s: 0 });
+  from.rings.length = to.rings.length;
+  if (instant) { L = to; renderRing(); return; }
+  const id = ++animId, t0 = performance.now(), MS = 260;
+  const ease = (x) => 1 - Math.pow(1 - x, 3);
+  (function frame(now) {
+    if (id !== animId) return;
+    const k = ease(Math.min(1, (now - t0) / MS));
+    L = {
+      inst: from.inst + (to.inst - from.inst) * k,
+      rings: to.rings.map((tr, i) => ({
+        r: from.rings[i].r + (tr.r - from.rings[i].r) * k,
+        s: from.rings[i].s + (tr.s - from.rings[i].s) * k,
+      })),
+    };
+    renderRing();
+    if (k < 1) requestAnimationFrame(frame);
+  })(t0);
 }
 
 // ================= transport =================
@@ -269,8 +323,10 @@ function togglePlay() {
   let pos = state.cursor % STEPS();
   ph = pos;
   timer = setInterval(() => {
-    state.tracks.forEach(t => { const ev = t.steps[pos]; if (ev) playEvent(t, ev, state.fx); });
+    state.tracks.forEach(t => { const ev = t.steps[pos]; if (ev) playEvent(t, ev); });
     ph = pos;
+    const bar = Math.floor(pos / 16);
+    if (bar !== state.focusedBar) { state.focusedBar = bar; settle(); }
     renderRing();
     pos = (pos + 1) % STEPS();
   }, 125);
@@ -278,150 +334,237 @@ function togglePlay() {
 }
 
 // ================= ring rendering =================
-const dev = document.getElementById('dev');
-const svg = dev.querySelector('.stage svg');
+const app = document.getElementById('app');
+const svg = app.querySelector('.stage svg');
+const posLab = app.querySelector('.pos-lab-html');
 const CX = 186, CY = 186, R = 150;
 const pos16 = (i, r) => {
   const a = (-90 + i * 22.5) * Math.PI / 180;
   return [CX + r * Math.cos(a), CY + r * Math.sin(a)];
 };
+const polar = (deg, r) => [CX + r * Math.cos(deg * Math.PI / 180), CY + r * Math.sin(deg * Math.PI / 180)];
+function arcPath(r, a0, a1) {
+  const [x0, y0] = polar(a0, r), [x1, y1] = polar(a1, r);
+  return `M${x0} ${y0} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}`;
+}
+
 function renderRing() {
   const t = active();
-  const radii = BAR_RADII[state.bars];
   const shownStep = (timer ? ph : state.cursor) % STEPS();
-  const shownBar = Math.floor(shownStep / 16);
-  // orb shrinks a little when three rings crowd the center
-  const orbR = state.bars === 3 ? 30 : 38;
+  const stepsAlpha = 1 - L.inst;
   let out = `<defs>
     <radialGradient id="playGrad" cx="38%" cy="30%">
       <stop offset="0%" stop-color="#e5473a"/><stop offset="55%" stop-color="#a01818"/><stop offset="100%" stop-color="#4a0b0b"/>
     </radialGradient>
   </defs>`;
-  // decorative counter-rotating rune rings
-  out += `<g class="spin-slow"><circle cx="${CX}" cy="${CY}" r="${R + 24}" class="b-rune-ring"/>
+  out += `<g class="spin-slow" style="transform-origin:${CX}px ${CY}px"><circle cx="${CX}" cy="${CY}" r="${R + 24}" class="b-rune-ring"/>
     <path d="M${CX} ${CY - R - 32} l4 6 -4 6 -4 -6 Z" fill="rgba(242,237,227,.3)"/>
     <path d="M${CX} ${CY + R + 32} l4 -6 -4 -6 -4 6 Z" fill="rgba(242,237,227,.3)"/></g>`;
-  out += `<g class="spin-rev"><circle cx="${CX}" cy="${CY}" r="${R + 12}" class="b-rune-ring r2"/></g>`;
-  // sigil: connect ALL carved steps of the active track, in time order —
-  // the polygon spirals across the bar rings
-  const carved = Object.keys(t.steps).map(Number).filter(s => s < STEPS()).sort((a, b) => a - b);
-  if (carved.length > 1) {
-    const pts = carved.map(s => pos16(s % 16, radii[Math.floor(s / 16)]).join(',')).join(' ');
-    out += `<polygon points="${pts}" class="b-sigil"/>`;
-  }
-  // per-bar ghost bands: dots where other visible tracks strike (identity
-  // via the eye toggles; dot grows when several tracks share the step)
-  radii.forEach((ringR, bar) => {
-    const gr = ringR - stoneR(ringR, true) - 9;
-    if (gr < orbR + 14) return; // no room inside the smallest ring
-    for (let i = 0; i < 16; i++) {
-      const n = others().filter(o => o.steps[bar * 16 + i]).length;
-      if (n > 0) {
-        const [x, y] = pos16(i, gr);
-        out += `<circle cx="${x}" cy="${y}" r="${n > 1 ? 4.6 : 3.2}" class="b-ghost"/>`;
-      }
+  out += `<g class="spin-rev" style="transform-origin:${CX}px ${CY}px"><circle cx="${CX}" cy="${CY}" r="${R + 12}" class="b-rune-ring r2"/></g>`;
+
+  if (stepsAlpha > 0.02) {
+    out += `<g opacity="${stepsAlpha}">`;
+    // sigil across all rings
+    const carved = Object.keys(t.steps).map(Number).filter(s => s < STEPS()).sort((a, b) => a - b);
+    if (carved.length > 1) {
+      const pts = carved.map(s => pos16(s % 16, L.rings[Math.floor(s / 16)].r).join(',')).join(' ');
+      out += `<polygon points="${pts}" class="b-sigil"/>`;
     }
-  });
-  // hand reaches the ring of the shown bar
-  {
-    const [hx, hy] = pos16(shownStep % 16, radii[shownBar] - stoneR(radii[shownBar], true) - 4);
-    out += `<line x1="${CX}" y1="${CY}" x2="${hx}" y2="${hy}" class="b-hand ${timer ? '' : 'idle'}"/>`;
-  }
-  // cursor notch on its ring
-  {
-    const c = state.cursor % STEPS();
-    const cr = radii[Math.floor(c / 16)];
-    const [nx, ny] = pos16(c % 16, cr);
-    out += `<circle cx="${nx}" cy="${ny}" r="${stoneR(cr, true) + 5}" class="b-cursor-notch"/>`;
-  }
-  // stones, one ring per bar (bar I outermost)
-  radii.forEach((ringR, bar) => {
-    for (let i = 0; i < 16; i++) {
-      const s = bar * 16 + i;
+    // length arcs (before stones so stones sit on top)
+    carved.forEach(s => {
       const ev = t.steps[s];
-      const [x, y] = pos16(i, ringR);
-      const accent = i % 4 === 0;
-      const rr = stoneR(ringR, accent);
-      out += `<circle cx="${x}" cy="${y}" r="${rr}" data-s="${s}" class="b-step ${accent ? 'accent' : ''} ${ev ? 'on' : ''} ${state.sel === s ? 'sel' : ''} ${timer && ph === s ? 'playhead' : ''}"/>`;
-      const fs = ringR >= 140 ? 10.5 : ringR >= 100 ? 9 : 7.5;
-      if (ev) {
-        if (t.key === 'chord' && ringR >= 140) {
-          out += `<text x="${x}" y="${y - 3.5}" class="b-lab on" style="font-size:${fs}px">${ev.label.slice(0, 6)}</text>`;
-          out += `<text x="${x}" y="${y + 6.5}" class="b-lab2">${ev.notes.length} voices</text>`;
-        } else {
-          out += `<text x="${x}" y="${y}" class="b-lab on" style="font-size:${fs}px">${t.key === 'drum' ? '●' : ev.label.slice(0, 6)}</text>`;
+      if (ev.len > 1) {
+        const ring = L.rings[Math.floor(s / 16)];
+        const a0 = -90 + (s % 16) * 22.5 + 6, a1 = -90 + ((s % 16) + ev.len) * 22.5 - 8;
+        out += `<path d="${arcPath(ring.r, a0, a1)}" class="b-lenarc" style="stroke-width:${5 * ring.s}"/>`;
+      }
+    });
+    // ghosts, focused ring only (declutter)
+    {
+      const fr = L.rings[state.focusedBar];
+      if (fr) {
+        const gr = fr.r - 19 * fr.s - 10;
+        for (let i = 0; i < 16; i++) {
+          const n = others().filter(o => o.steps[state.focusedBar * 16 + i]).length;
+          if (n > 0) {
+            const [x, y] = pos16(i, gr);
+            out += `<circle cx="${x}" cy="${y}" r="${n > 1 ? 4.4 : 3}" class="b-ghost"/>`;
+          }
         }
-      } else {
-        out += `<text x="${x}" y="${y}" class="b-lab" style="font-size:${fs}px">${i + 1}</text>`;
       }
     }
-  });
-  // center: PLAY
-  out += `<circle cx="${CX}" cy="${CY}" r="${orbR + 8}" class="play-halo ${timer ? '' : 'pulse'}"/>`;
-  out += `<circle cx="${CX}" cy="${CY}" r="${orbR}" class="play-core" data-play="1"/>`;
-  const g = orbR / 38;
-  out += timer
-    ? `<rect x="${CX - 11 * g}" y="${CY - 11 * g}" width="${22 * g}" height="${22 * g}" rx="2" class="play-glyph"/>`
-    : `<path d="M${CX - 9 * g} ${CY - 14 * g} L${CX + 16 * g} ${CY} L${CX - 9 * g} ${CY + 14 * g} Z" class="play-glyph"/>`;
-  out += `<text x="${CX}" y="${CY + R + 20}" class="pos-lab">bar ${['I', 'II', 'III'][shownBar]} · step ${(shownStep % 16) + 1}</text>`;
+    // hand + cursor notch
+    {
+      const ring = L.rings[Math.floor(shownStep / 16)] || L.rings[0];
+      const [hx, hy] = pos16(shownStep % 16, ring.r - 20 * ring.s - 5);
+      out += `<line x1="${CX}" y1="${CY}" x2="${hx}" y2="${hy}" class="b-hand ${timer ? '' : 'idle'}"/>`;
+      const c = state.cursor % STEPS();
+      const cring = L.rings[Math.floor(c / 16)] || L.rings[0];
+      const [nx, ny] = pos16(c % 16, cring.r);
+      out += `<circle cx="${nx}" cy="${ny}" r="${(19 * cring.s) + 5}" class="b-cursor-notch"/>`;
+    }
+    // stones per ring; unfocused rings get a fat invisible tap-ring to refocus
+    L.rings.forEach((ring, bar) => {
+      if (bar !== state.focusedBar) {
+        out += `<circle cx="${CX}" cy="${CY}" r="${ring.r}" stroke-width="${Math.max(26, 40 * ring.s)}" class="b-focusring" data-focus="${bar}"/>`;
+      }
+      for (let i = 0; i < 16; i++) {
+        const s = bar * 16 + i;
+        const ev = t.steps[s];
+        const [x, y] = pos16(i, ring.r);
+        const accent = i % 4 === 0;
+        const rr = (accent ? 19 : 16) * ring.s;
+        out += `<circle cx="${x}" cy="${y}" r="${rr}" data-s="${s}" class="b-step ${accent ? 'accent' : ''} ${ev ? 'on' : ''} ${state.sel === s ? 'sel' : ''} ${timer && ph === s ? 'playhead' : ''}"/>`;
+        if (bar === state.focusedBar && ring.s > .8) {
+          const fs = 10.5 * ring.s;
+          if (ev) {
+            if (t.key === 'chord') {
+              out += `<text x="${x}" y="${y - 3.5}" class="b-lab on" style="font-size:${fs}px">${ev.label.slice(0, 6)}</text>`;
+              out += `<text x="${x}" y="${y + 7}" class="b-lab on" style="font-size:${fs * .62}px;font-family:var(--body);font-style:italic;opacity:.75">${ev.notes.length}v${ev.len > 1 ? '·' + ev.len : ''}</text>`;
+            } else {
+              out += `<text x="${x}" y="${y}" class="b-lab on" style="font-size:${fs}px">${t.key === 'drum' ? '●' : ev.label}</text>`;
+            }
+          } else {
+            out += `<text x="${x}" y="${y}" class="b-lab" style="font-size:${fs}px">${i + 1}</text>`;
+          }
+        }
+      }
+    });
+    out += `</g>`;
+  }
+
+  // ===== instrument wheel =====
+  if (L.inst > 0.02) {
+    const t2 = active();
+    const names = ALLOWED[t2.key];
+    const wr = 40 + 106 * L.inst; // wheel radius grows out of the orb
+    out += `<g opacity="${L.inst}">`;
+    names.forEach((p, i) => {
+      const a = -90 + (360 / names.length) * i;
+      const [x, y] = polar(a, wr);
+      const cur = state.preset[t2.key] === p;
+      const pr = (names.length > 8 ? 20 : 25) * L.inst;
+      out += `<circle cx="${x}" cy="${y}" r="${pr}" class="p-stone ${cur ? 'cur' : ''}" data-preset="${p}"/>`;
+      out += `<text x="${x}" y="${y}" class="p-lab ${cur ? 'cur' : ''}" style="font-size:${(p.length > 6 ? 8.5 : 10.5) * L.inst}px">${p}</text>`;
+    });
+    // FX arcs: reverb bottom-left, drive bottom-right
+    const arcs = [
+      { key: 'reverb', a0: 115, a1: 163, lab: 'reverb' },
+      { key: 'drive', a0: 17, a1: 65, lab: 'drive' },
+    ];
+    arcs.forEach(({ key, a0, a1, lab }) => {
+      const r = wr + 36;
+      out += `<path d="${arcPath(r, a0, a1)}" class="fx-arc-bg"/>`;
+      const v = state.fx[key];
+      if (v > 0.01) out += `<path d="${arcPath(r, a0, a0 + (a1 - a0) * v)}" class="fx-arc-fill"/>`;
+      out += `<path d="${arcPath(r, a0 - 4, a1 + 4)}" class="fx-arc-hit" data-arc="${key}" data-a0="${a0}" data-a1="${a1}"/>`;
+      const [lx, ly] = polar((a0 + a1) / 2, r + 17);
+      out += `<text x="${lx}" y="${ly}" class="fx-lab">${lab} ${Math.round(v * 100)}</text>`;
+    });
+    out += `</g>`;
+  }
+
+  // ===== center orb =====
+  const orbR = 34;
+  if (state.view === 'steps') {
+    out += `<circle cx="${CX}" cy="${CY}" r="${orbR + 8}" class="play-halo ${timer ? '' : 'pulse'}" style="transform-origin:${CX}px ${CY}px"/>`;
+    out += `<circle cx="${CX}" cy="${CY}" r="${orbR}" class="play-core" data-play="1"/>`;
+    out += timer
+      ? `<rect x="${CX - 10}" y="${CY - 10}" width="20" height="20" rx="2" class="play-glyph"/>`
+      : `<path d="M${CX - 8} ${CY - 12.5} L${CX + 14} ${CY} L${CX - 8} ${CY + 12.5} Z" class="play-glyph"/>`;
+  } else {
+    out += `<circle cx="${CX}" cy="${CY}" r="${orbR}" class="play-core" data-instdone="1"/>`;
+    out += `<text x="${CX}" y="${CY - 4}" class="inst-title" style="font-size:15px" pointer-events="none">${state.preset[active().key]}</text>`;
+    out += `<text x="${CX}" y="${CY + 12}" class="inst-sub" pointer-events="none">✓ done</text>`;
+  }
   svg.innerHTML = out;
+  posLab.textContent = `bar ${['I', 'II', 'III'][Math.floor(shownStep / 16)]} · step ${(shownStep % 16) + 1}`;
 }
 
-// ================= pickers below the circle =================
-const pickStatus = dev.querySelector('.pick-status');
-const pickBody = dev.querySelector('.pick-body');
+// ================= pickers =================
+const pickStatus = app.querySelector('.pick-status');
+const pickBody = app.querySelector('.pick-body');
+let pianoScrolledFor = null;
 function keepScroll(el, fn) {
-  const saves = [...el.querySelectorAll('.strip')].map(s => s.scrollLeft);
+  const saves = [...el.querySelectorAll('.strip, .piano-wrap')].map(s => s.scrollLeft);
   fn();
-  [...el.querySelectorAll('.strip')].forEach((s, i) => { if (saves[i] !== undefined) s.scrollLeft = saves[i]; });
+  [...el.querySelectorAll('.strip, .piano-wrap')].forEach((s, i) => { if (saves[i] !== undefined) s.scrollLeft = saves[i]; });
 }
 function renderPickers() {
   const t = active();
   const ev = state.sel !== null ? t.steps[state.sel] : null;
-  pickStatus.innerHTML = state.sel !== null && ev
-    ? `retuning step ${(state.sel % 16) + 1} — <b>${ev.label}</b>`
-    : `next carve — <b>${stickyEvent().label}</b>`;
+  const sticky = state.stickyEv[t.key];
+  pickStatus.innerHTML = ev
+    ? `retuning step ${(state.sel % 16) + 1} — <b>${ev.label}${ev.len > 1 ? ' ×' + ev.len : ''}</b>`
+    : `next carve — <b>${sticky.label}${sticky.len > 1 ? ' ×' + sticky.len : ''}</b>`;
   keepScroll(pickBody, () => {
+    const lenRow = t.key === 'drum' ? '' : `
+      <div class="len-row"><span class="strip-label">Length</span>${[1, 2, 3, 4, 6, 8].map(l =>
+        `<button class="nbtn util ${((ev ?? sticky).len || 1) === l ? 'sticky' : ''}" data-len="${l}">${l === 1 ? '1 step' : '×' + l}</button>`).join('')}</div>`;
     if (t.key === 'drum') {
-      pickBody.innerHTML = `<div class="drum-note">The drum speaks one voice. Choose it under ⚙ Instrument — steps carry no pitch.</div>`;
+      pickBody.innerHTML = `<div class="drum-note">The drum speaks one voice — pick it under ⚙. Steps carry no pitch.</div>`;
     } else if (t.key === 'chord') {
       const c = state.chordCfg;
       pickBody.innerHTML = `
-        <div class="strip-label">Root</div>
         <div class="strip" data-strip="root">${NOTE_ORDER.map(r =>
           `<button class="nbtn ${r.includes('#') ? 'black' : ''} ${c.root === r ? 'sticky' : ''}" data-root="${r}">${r}</button>`).join('')}</div>
-        <div class="strip-label">Quality</div>
         <div class="strip" data-strip="qual">${CHORD_QUALITIES.map(q =>
-          `<button class="nbtn ${c.qual === q.id ? 'sticky' : ''}" data-qual="${q.id}">${q.label}</button>`).join('')}</div>
-        <div class="strip" data-strip="voicing">
-          <button class="nbtn util" data-oct="-1">oct ${c.oct - 1}▾</button>
-          <button class="nbtn util sticky">oct ${c.oct}</button>
-          <button class="nbtn util" data-oct="1">oct ${c.oct + 1}▴</button>
-          <button class="nbtn util" data-inv="1">inv: ${INVERSIONS[c.inv]}</button>
-          <button class="nbtn util" data-strum="1">♪ strum</button>
-        </div>`;
+          `<button class="nbtn ${c.qual === q.id ? 'sticky' : ''}" data-qual="${q.id}">${q.label}</button>`).join('')}
+          <button class="nbtn util" data-oct="-1">oct▾</button>
+          <button class="nbtn util sticky">o${c.oct}</button>
+          <button class="nbtn util" data-oct="1">oct▴</button>
+          <button class="nbtn util" data-inv="1">${INVERSIONS[c.inv]}</button>
+        </div>
+        ${lenRow}`;
     } else {
-      const base = parseN(state.stickyNote[t.key]).oct;
-      const notes = [];
-      for (let o = Math.max(1, base - 1); o <= Math.min(6, base + 1); o++) for (const n of NOTE_ORDER) notes.push(n + o);
+      // compact horizontal piano roll, C2..B5
+      const stickyNote = sticky.label;
+      const KW = 34, start = 2, octs = 4;
+      let whites = '', blacks = '';
+      let wx = 0;
+      for (let o = start; o < start + octs; o++) {
+        for (let i = 0; i < 12; i++) {
+          const name = NOTE_ORDER[i] + o;
+          if (!NOTE_ORDER[i].includes('#')) {
+            whites += `<div class="pk-w ${name === stickyNote ? 'sticky' : ''}" style="left:${wx}px" data-note="${name}">${NOTE_ORDER[i] === 'C' ? `<span class="pk-lab">C${o}</span>` : ''}</div>`;
+            wx += KW;
+          } else {
+            blacks += `<div class="pk-b ${name === stickyNote ? 'sticky' : ''}" style="left:${wx - 12}px" data-note="${name}"></div>`;
+          }
+        }
+      }
       pickBody.innerHTML = `
-        <div class="strip-label">Note</div>
-        <div class="strip" data-strip="note">${notes.map(n =>
-          `<button class="nbtn ${n.includes('#') ? 'black' : ''} ${state.stickyNote[t.key] === n ? 'sticky' : ''}" data-note="${n}">${n}</button>`).join('')}</div>`;
+        <div class="piano-wrap"><div class="piano" style="width:${wx}px">${whites}${blacks}</div></div>
+        ${lenRow}`;
+      // center once per track on its sticky octave (no smooth scroll — no jacking)
+      if (pianoScrolledFor !== t.key) {
+        pianoScrolledFor = t.key;
+        const wrap = pickBody.querySelector('.piano-wrap');
+        const kEl = wrap.querySelector('.pk-w.sticky, .pk-b.sticky');
+        if (kEl) wrap.scrollLeft = Math.max(0, kEl.offsetLeft - wrap.clientWidth / 2);
+      }
     }
   });
 }
 function applySticky() {
   const t = active();
-  const ev = stickyEvent();
+  if (t.key === 'chord') {
+    const len = state.stickyEv.chord.len || 4;
+    state.stickyEv.chord = buildChord(state.chordCfg, len);
+  }
+  const ev = clone(state.stickyEv[t.key]);
   if (state.sel !== null && t.steps[state.sel]) t.steps[state.sel] = ev;
-  playEvent(t, ev, state.fx);
+  playEvent(t, ev);
   renderRing(); renderPickers();
 }
 pickBody.addEventListener('click', (e) => {
   const t = active();
   const note = e.target.closest('[data-note]');
-  if (note) { state.stickyNote[t.key] = note.dataset.note; applySticky(); return; }
+  if (note) {
+    const len = state.stickyEv[t.key].len || 1;
+    state.stickyEv[t.key] = N(note.dataset.note, len);
+    applySticky(); return;
+  }
   const root = e.target.closest('[data-root]');
   if (root) { state.chordCfg.root = root.dataset.root; applySticky(); return; }
   const qual = e.target.closest('[data-qual]');
@@ -430,71 +573,115 @@ pickBody.addEventListener('click', (e) => {
   if (oct) { state.chordCfg.oct = Math.min(5, Math.max(1, state.chordCfg.oct + +oct.dataset.oct)); applySticky(); return; }
   const inv = e.target.closest('[data-inv]');
   if (inv) { state.chordCfg.inv = (state.chordCfg.inv + 1) % INVERSIONS.length; applySticky(); return; }
-  if (e.target.closest('[data-strum]')) { playEvent(t, stickyEvent(), state.fx); }
+  const len = e.target.closest('[data-len]');
+  if (len) { state.stickyEv[t.key].len = +len.dataset.len; applySticky(); return; }
 });
 
-// ================= ring interaction: tap + wind =================
-// A vertical drag on the ring winds the playback cursor (scroll-to-seek).
-// Only the ring surface captures the gesture — the page scrolls normally.
-let dragY = null, dragged = false, dragStartCursor = 0;
+// ================= ring interaction =================
+let dragY = null, dragged = false, dragStartCursor = 0, arcDrag = null;
 svg.addEventListener('pointerdown', (e) => {
+  const arc = e.target.closest('[data-arc]');
+  if (arc) {
+    arcDrag = { key: arc.dataset.arc, a0: +arc.dataset.a0, a1: +arc.dataset.a1 };
+    try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+    setArcFromPointer(e);
+    return;
+  }
+  if (state.view !== 'steps') return;
   dragY = e.clientY; dragged = false; dragStartCursor = state.cursor;
 });
+function setArcFromPointer(e) {
+  const rect = svg.getBoundingClientRect();
+  const sx = 372 / rect.width;
+  const x = (e.clientX - rect.left) * sx - CX;
+  const y = (e.clientY - rect.top) * sx - CY;
+  let a = Math.atan2(y, x) * 180 / Math.PI;
+  if (a < 0) a += 360;
+  const { key, a0, a1 } = arcDrag;
+  state.fx[key] = Math.min(1, Math.max(0, (a - a0) / (a1 - a0)));
+  renderRing();
+}
 svg.addEventListener('pointermove', (e) => {
+  if (arcDrag) { setArcFromPointer(e); return; }
   if (dragY === null) return;
   const dy = e.clientY - dragY;
   if (!dragged && Math.abs(dy) > 10) {
     dragged = true;
-    // capture only once it IS a drag, so plain taps still click through;
-    // capture keeps the wind alive when the finger wanders off the ring
     try { svg.setPointerCapture(e.pointerId); } catch (_) {}
   }
   if (dragged) {
-    const delta = Math.round(dy / 22); // ~22px per step; drag down = forward
+    const delta = Math.round(dy / 22);
     state.cursor = ((dragStartCursor + delta) % STEPS() + STEPS()) % STEPS();
+    const bar = Math.floor(state.cursor / 16);
+    if (bar !== state.focusedBar && !timer) { state.focusedBar = bar; settle(); }
     renderRing();
   }
 });
-window.addEventListener('pointerup', () => { dragY = null; });
+window.addEventListener('pointerup', () => { dragY = null; arcDrag = null; });
 svg.addEventListener('click', (e) => {
-  if (dragged) { dragged = false; return; } // that was a wind, not a tap
+  if (dragged) { dragged = false; return; }
   if (e.target.closest('[data-play]')) { togglePlay(); return; }
+  if (e.target.closest('[data-instdone]')) { closeInst(); return; }
+  const preset = e.target.closest('[data-preset]');
+  if (preset) {
+    state.preset[active().key] = preset.dataset.preset;
+    playEvent(active(), state.stickyEv[active().key]);
+    renderRing();
+    return;
+  }
+  const focusRing = e.target.closest('[data-focus]');
+  if (focusRing) {
+    state.focusedBar = +focusRing.dataset.focus;
+    settle();
+    return;
+  }
   const st = e.target.closest('[data-s]');
-  if (!st) return;
+  if (!st || state.view !== 'steps') return;
   const s = +st.dataset.s;
+  const bar = Math.floor(s / 16);
+  if (bar !== state.focusedBar) { state.focusedBar = bar; settle(); return; }
   const t = active();
   if (!t.steps[s]) {
-    t.steps[s] = stickyEvent();
+    if (t.key === 'chord') state.stickyEv.chord = buildChord(state.chordCfg, state.stickyEv.chord.len || 4);
+    t.steps[s] = clone(state.stickyEv[t.key]);
     state.sel = s;
-    playEvent(t, t.steps[s], state.fx);
+    playEvent(t, t.steps[s]);
   } else if (state.sel === s) {
     delete t.steps[s];
     state.sel = null;
   } else {
+    // select = low-key copy: the tapped stone becomes the sticky event
     state.sel = s;
-    playEvent(t, t.steps[s], state.fx);
-    // adopt the tapped step into the pickers so retuning starts from it
-    if (t.key === 'chord') { /* keep forge as-is; it retunes on next chip tap */ }
-    else state.stickyNote[t.key] = t.steps[s].label;
+    state.stickyEv[t.key] = clone(t.steps[s]);
+    if (t.key === 'chord' && t.steps[s].cfg) state.chordCfg = clone(t.steps[s].cfg);
+    playEvent(t, t.steps[s]);
   }
   renderRing(); renderPickers();
 });
-// wheel over the ring winds too (contained to the svg; page keeps its scroll)
 svg.addEventListener('wheel', (e) => {
   e.preventDefault();
+  if (state.view !== 'steps') return;
   state.cursor = ((state.cursor + (e.deltaY > 0 ? 1 : -1)) % STEPS() + STEPS()) % STEPS();
+  const bar = Math.floor(state.cursor / 16);
+  if (bar !== state.focusedBar && !timer) { state.focusedBar = bar; settle(); }
   renderRing();
 }, { passive: false });
 
+// ================= instrument wheel open/close =================
+const instBtn = app.querySelector('[data-act="inst"]');
+function openInst() { stopPlay(); state.view = 'inst'; state.sel = null; instBtn.classList.add('lit'); settle(); }
+function closeInst() { state.view = 'steps'; instBtn.classList.remove('lit'); settle(); renderPickers(); }
+instBtn.addEventListener('click', () => { state.view === 'inst' ? closeInst() : openInst(); });
+
 // ================= chrome =================
-const chips = dev.querySelector('.track-chips');
+const chips = app.querySelector('.track-chips');
 function renderChips() {
   chips.innerHTML = state.tracks.map(t => `
-    <div class="tchip ${t.key === state.activeKey ? 'active' : ''} ${state.hidden.has(t.key) ? 'hidden-track' : ''}" data-k="${t.key}">
+    <div class="tchip ${t.key === state.activeKey ? 'active' : ''} ${state.hidden.has(t.key) ? 'hidden-track' : ''}" data-k="${t.key}" style="flex:1">
       <i class="sw ${t.pat}"></i><span class="nm">${t.name}</span>
       <button class="eye" data-eye="${t.key}">${state.hidden.has(t.key)
-        ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18M10.5 10.6a2.3 2.3 0 0 0 3 3M7 7.2C4.7 8.6 3 12 3 12s3.5 6 9 6c1.6 0 3-.4 4.2-1M10 6.2C10.6 6.1 11.3 6 12 6c5.5 0 9 6 9 6s-.7 1.3-2 2.7"/></svg>'
-        : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.4"/></svg>'}</button>
+        ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18M10.5 10.6a2.3 2.3 0 0 0 3 3M7 7.2C4.7 8.6 3 12 3 12s3.5 6 9 6c1.6 0 3-.4 4.2-1M10 6.2C10.6 6.1 11.3 6 12 6c5.5 0 9 6 9 6s-.7 1.3-2 2.7"/></svg>'
+        : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.4"/></svg>'}</button>
     </div>`).join('');
 }
 chips.addEventListener('click', (e) => {
@@ -509,49 +696,28 @@ chips.addEventListener('click', (e) => {
     state.activeKey = chip.dataset.k;
     state.hidden.delete(chip.dataset.k);
     state.sel = null;
-    renderChips(); renderRing(); renderPickers();
+    if (state.view === 'inst') { renderChips(); settle(); } else { renderChips(); renderRing(); }
+    renderPickers();
   }
 });
-dev.querySelector('[data-act="clear"]').addEventListener('click', () => {
+app.querySelector('[data-act="clear"]').addEventListener('click', () => {
   active().steps = {}; state.sel = null; renderRing(); renderPickers();
 });
-// bars = rings: I outermost, time spirals inward
-dev.querySelector('.hint').addEventListener('click', (e) => {
+app.querySelector('.status-row').addEventListener('click', (e) => {
   const b = e.target.closest('[data-bars]');
   if (!b) return;
   stopPlay();
   state.bars = Math.min(3, Math.max(1, state.bars + +b.dataset.bars));
   state.cursor = state.cursor % STEPS();
+  state.focusedBar = Math.min(state.focusedBar, state.bars - 1);
   if (state.sel !== null && state.sel >= STEPS()) state.sel = null;
-  dev.querySelector('.bars-lab').textContent = `${['I', 'II', 'III'][state.bars - 1]} bar${state.bars > 1 ? 's' : ''}`;
-  renderRing();
+  app.querySelector('.bars-lab').textContent = `${['I', 'II', 'III'][state.bars - 1]} bar${state.bars > 1 ? 's' : ''}`;
+  settle();
 });
 
-// instrument sheet
-const veil = dev.querySelector('.sheet-veil');
-const sheet = dev.querySelector('.sheet');
-function renderSheet() {
-  const t = active();
-  sheet.innerHTML = `
-    <h4>${t.name}<small>voice &amp; sorcery</small></h4>
-    <div class="preset-row">${PRESETS[t.key].map(p => `<button data-p="${p}" class="${state.preset[t.key] === p ? 'cur' : ''}">${p}</button>`).join('')}</div>
-    <div class="fx-row"><label>Reverb</label><input type="range" min="0" max="100" value="${state.fx.reverb * 100}" data-fx="reverb" /><output>${Math.round(state.fx.reverb * 100)}</output></div>
-    <div class="fx-row"><label>Drive</label><input type="range" min="0" max="100" value="${state.fx.drive * 100}" data-fx="drive" /><output>${Math.round(state.fx.drive * 100)}</output></div>
-    <div class="close-row"><button data-close>Done</button></div>`;
-}
-sheet.addEventListener('input', (e) => {
-  const r = e.target.closest('[data-fx]');
-  if (r) { state.fx[r.dataset.fx] = r.value / 100; r.nextElementSibling.textContent = r.value; }
-});
-sheet.addEventListener('click', (e) => {
-  const p = e.target.closest('[data-p]');
-  if (p) { state.preset[active().key] = p.dataset.p; renderSheet(); playEvent(active(), stickyEvent(), state.fx); return; }
-  if (e.target.closest('[data-close]')) veil.classList.remove('open');
-});
-veil.addEventListener('click', (e) => { if (e.target === veil) veil.classList.remove('open'); });
-dev.querySelector('[data-act="inst"]').addEventListener('click', () => { renderSheet(); veil.classList.add('open'); });
-
-renderChips(); renderRing(); renderPickers();
+renderChips();
+settle(true);
+renderPickers();
 </script>
 </body>
 </html>
