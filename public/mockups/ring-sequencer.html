@@ -6,7 +6,7 @@
 <title>Deuntjes — the Ritual Ring</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=UnifrakturCook:wght@700&family=Pirata+One&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=UnifrakturCook:wght@700&family=Pirata+One&family=IM+Fell+English:ital@0;1&family=Space+Mono:wght@700&display=swap" rel="stylesheet" />
 <style>
   :root {
     --void: #050505; --iron: #101010; --iron-2: #181818;
@@ -43,19 +43,22 @@
   .curse-strip b { font-family: var(--display); font-style: normal; font-size: 14px; margin-right: 2px; }
 
   .chips-row { display: flex; gap: 6px; margin-bottom: 6px; flex-shrink: 0; align-items: stretch; }
+  .track-chips { display: flex; gap: 6px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .track-chips::-webkit-scrollbar { display: none; }
   .tchip {
-    flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+    flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 5px;
     background: #0d0d0d; border: 1px solid rgba(242,237,227,.16); border-radius: 3px;
-    color: var(--smoke); font: 400 12px var(--gothic); letter-spacing: .04em; padding: 8px 2px;
+    color: var(--smoke); font: 400 12px var(--gothic); letter-spacing: .04em; padding: 8px 9px;
   }
   .tchip .sw { width: 9px; height: 9px; border: 1px solid rgba(242,237,227,.5); flex-shrink: 0; }
   .tchip.active { color: var(--parch-ink); background: linear-gradient(180deg, #f4efe2, #ddd5c2); border-color: #000; }
   .tchip .eye { background: none; border: none; padding: 1px; color: inherit; display: inline-flex; }
   .tchip.hidden-track .sw, .tchip.hidden-track .nm { opacity: .3; }
-  .pat-drum  { background-image: repeating-linear-gradient(45deg, rgba(242,237,227,.95) 0 1px, transparent 1px 4px), repeating-linear-gradient(-45deg, rgba(242,237,227,.95) 0 1px, transparent 1px 4px); }
-  .pat-bass  { background-image: repeating-linear-gradient(0deg, rgba(242,237,227,.95) 0 2px, transparent 2px 5px); }
-  .pat-lead  { background-image: repeating-linear-gradient(45deg, rgba(242,237,227,.95) 0 1.5px, transparent 1.5px 5px); }
-  .pat-chord { background-image: radial-gradient(rgba(242,237,227,.95) 1px, transparent 1.4px); background-size: 5px 5px; }
+  .pat-0 { background-image: repeating-linear-gradient(45deg, rgba(242,237,227,.95) 0 1px, transparent 1px 4px), repeating-linear-gradient(-45deg, rgba(242,237,227,.95) 0 1px, transparent 1px 4px); }
+  .pat-1 { background-image: repeating-linear-gradient(0deg, rgba(242,237,227,.95) 0 2px, transparent 2px 5px); }
+  .pat-2 { background-image: repeating-linear-gradient(45deg, rgba(242,237,227,.95) 0 1.5px, transparent 1.5px 5px); }
+  .pat-3 { background-image: radial-gradient(rgba(242,237,227,.95) 1px, transparent 1.4px); background-size: 5px 5px; }
+  .pat-4 { background-image: repeating-linear-gradient(90deg, rgba(242,237,227,.95) 0 2px, transparent 2px 5px); }
   .tchip.active .sw { filter: invert(1); border-color: rgba(21,18,16,.7); }
   .icon-chip {
     flex: 0 0 42px; display: flex; align-items: center; justify-content: center;
@@ -64,17 +67,20 @@
   }
   .icon-chip.lit { color: var(--ink); border-color: var(--blood-lit); box-shadow: 0 0 12px rgba(212,33,33,.3); }
 
-  .stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
-  .stage svg { max-width: 100%; max-height: 100%; touch-action: none; display: block; }
+  .stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+  .stage svg { max-width: 100%; max-height: 100%; display: block; }
+  .stage .fx-layer { position: absolute; inset: 0; margin: auto; pointer-events: none; }
+  .stage .main-layer { position: relative; z-index: 1; touch-action: none; }
 
   .status-row {
     display: flex; align-items: center; justify-content: center; gap: 12px;
     font-size: 11.5px; font-style: italic; color: var(--smoke); flex-shrink: 0; padding: 2px 0 4px;
   }
-  .status-row .bars-ctl { display: inline-flex; align-items: center; gap: 6px; }
   .status-row button { background: none; border: 1px solid rgba(242,237,227,.25); border-radius: 3px; color: var(--ink-dim); font-size: 12px; padding: 1px 8px; }
   .status-row b { font-family: var(--gothic); font-weight: 400; color: var(--ink-dim); font-style: normal; letter-spacing: .05em; }
 
+  /* decorative spinners live on the static fx-layer so playback re-renders
+     never restart their animation */
   .spin-slow { animation: spin 60s linear infinite; }
   .spin-rev { animation: spin 42s linear infinite reverse; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -89,12 +95,15 @@
   .b-ghost { fill: rgba(242,237,227,.5); }
   .b-rune-ring { fill: none; stroke: rgba(242,237,227,.2); stroke-dasharray: 1 7; }
   .b-rune-ring.r2 { stroke: rgba(212,33,33,.25); stroke-dasharray: 1 11; }
-  .b-sigil { fill: rgba(212,33,33,.05); stroke: rgba(212,33,33,.35); stroke-width: 1; stroke-linejoin: round; }
   .b-hand { stroke: rgba(212,33,33,.85); stroke-width: 2.5; stroke-linecap: round; filter: drop-shadow(0 0 5px rgba(212,33,33,.8)); }
   .b-hand.idle { stroke: rgba(242,237,227,.3); filter: none; stroke-dasharray: 3 5; }
   .b-cursor-notch { fill: none; stroke: var(--blood-lit); stroke-width: 2; stroke-dasharray: 4 4; }
   .b-lenarc { fill: none; stroke: rgba(239,233,219,.4); stroke-linecap: round; }
   .b-focusring { fill: none; stroke: transparent; cursor: pointer; }
+  .bar-tag { fill: #101010; stroke: rgba(242,237,227,.4); stroke-width: 1.2; }
+  .bar-tag.focus { fill: var(--parch); stroke: #000; }
+  .bar-tag-lab { font-family: var(--display); fill: var(--ink-dim); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .bar-tag-lab.focus { fill: var(--parch-ink); }
 
   .play-core { fill: url(#playGrad); stroke: var(--blood-dark); stroke-width: 1.5; }
   .play-halo { fill: none; stroke: rgba(212,33,33,.5); }
@@ -119,8 +128,7 @@
   .pick-status { font-size: 11.5px; font-style: italic; color: var(--smoke); text-align: center; margin: 0 0 6px; min-height: 14px; }
   .pick-status b { color: var(--ink-dim); font-style: normal; font-family: var(--gothic); font-weight: 400; letter-spacing: .05em; }
 
-  /* compact piano of round key-dots, matching the app's sequencer keyboard
-     (two staggered rows: dark sharp-dots above, parchment natural-dots below) */
+  /* key-dot piano (matches the app's sequencer keyboard) */
   .piano-wrap { overflow-x: auto; scrollbar-width: none; padding: 2px 0 7px; }
   .piano-wrap::-webkit-scrollbar { display: none; }
   .piano { position: relative; height: 80px; }
@@ -149,7 +157,6 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 0 10px rgba(212,33,33,.5);
   }
 
-  /* chord forge */
   .strip { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 7px; scrollbar-width: none; }
   .strip::-webkit-scrollbar { display: none; }
   .nbtn {
@@ -160,24 +167,36 @@
   .nbtn.black { background: #000; color: var(--smoke); }
   .nbtn.sticky { background: linear-gradient(180deg, #f4efe2, #ddd5c2); color: var(--parch-ink); border-color: #000; }
   .nbtn.util { border-style: dashed; font-size: 11px; }
-  .strip-label { font: 400 9.5px var(--gothic); letter-spacing: .14em; text-transform: uppercase; color: rgba(242,237,227,.35); padding: 0 4px 2px; }
   .drum-note { text-align: center; color: var(--smoke); font-style: italic; font-size: 12px; padding: 16px 10px; }
-
-  /* length chips */
   .len-row { display: flex; gap: 6px; align-items: center; padding: 0 2px 2px; }
-  .len-row .strip-label { padding: 0 4px 0 2px; }
+  .len-row .lab, .strip-label { font: 400 9.5px var(--gothic); letter-spacing: .14em; text-transform: uppercase; color: rgba(242,237,227,.35); padding: 0 4px 2px; }
   .len-row .nbtn { height: 30px; min-width: 34px; font-size: 11.5px; }
+
+  /* instrument parameter sections (Voice / Tone / EQ / FX like the app) */
+  .ptabs { display: flex; gap: 6px; padding: 0 2px 8px; }
+  .ptabs button {
+    flex: 1; background: #0d0d0d; border: 1px solid rgba(242,237,227,.2); border-radius: 3px;
+    color: var(--smoke); font: 400 12px var(--gothic); letter-spacing: .08em; text-transform: uppercase; padding: 7px 4px;
+  }
+  .ptabs button.cur { background: linear-gradient(180deg, #f4efe2, #ddd5c2); color: var(--parch-ink); border-color: #000; }
+  .prow { display: flex; align-items: center; gap: 9px; padding: 2px 4px 7px; }
+  .prow label { width: 64px; font: 400 12px var(--gothic); letter-spacing: .05em; color: var(--ink-dim); flex-shrink: 0; }
+  .prow input[type=range] { flex: 1; accent-color: var(--blood-lit); min-width: 0; }
+  .prow output { width: 30px; text-align: right; font-size: 11px; color: var(--smoke); flex-shrink: 0; }
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <div class="curse-strip"><b>Minor Key</b> — only notes from a minor scale.</div>
   <div class="chips-row">
-    <div class="track-chips" style="display:flex;gap:6px;flex:1"></div>
+    <div class="track-chips"></div>
     <button class="icon-chip" data-act="inst" title="Instrument">⚙&#xFE0E;</button>
     <button class="icon-chip" data-act="clear" title="Clear track">✕</button>
   </div>
-  <div class="stage"><svg viewBox="0 0 372 372"></svg></div>
+  <div class="stage">
+    <svg class="fx-layer" viewBox="0 0 372 372"></svg>
+    <svg class="main-layer" viewBox="0 0 372 372"></svg>
+  </div>
   <div class="status-row">
     <span class="pos-lab-html">bar I · step 1</span>
     <span class="bars-ctl"><button data-bars="-1">‹</button><b class="bars-lab">II bars</b><button data-bars="1">›</button></span>
@@ -189,7 +208,7 @@
 </div>
 
 <script>
-// ================= notes, chords, audio =================
+// ================= notes, chords =================
 const NOTE_ORDER = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const parseN = (n) => { const m = /^([A-G]#?)(\d)$/.exec(n); return { semi: NOTE_ORDER.indexOf(m[1]), oct: +m[2] }; };
 const midi = (n) => { const p = parseN(n); return (p.oct + 1) * 12 + p.semi; };
@@ -198,26 +217,16 @@ const noteFreq = (n) => 440 * Math.pow(2, (midi(n) - 69) / 12);
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
 const CHORD_QUALITIES = [
-  { id: 'maj', label: 'maj', suffix: '', iv: [0,4,7] },
-  { id: 'min', label: 'min', suffix: 'm', iv: [0,3,7] },
-  { id: '7', label: '7', suffix: '7', iv: [0,4,7,10] },
-  { id: 'maj7', label: 'maj7', suffix: 'M7', iv: [0,4,7,11] },
-  { id: 'm7', label: 'm7', suffix: 'm7', iv: [0,3,7,10] },
-  { id: '6', label: '6', suffix: '6', iv: [0,4,7,9] },
-  { id: 'm6', label: 'm6', suffix: 'm6', iv: [0,3,7,9] },
-  { id: 'sus2', label: 'sus2', suffix: 'sus2', iv: [0,2,7] },
-  { id: 'sus4', label: 'sus4', suffix: 'sus4', iv: [0,5,7] },
-  { id: 'dim', label: 'dim', suffix: 'dim', iv: [0,3,6] },
-  { id: 'dim7', label: 'dim7', suffix: '°7', iv: [0,3,6,9] },
-  { id: 'm7b5', label: 'm7♭5', suffix: 'ø7', iv: [0,3,6,10] },
-  { id: 'aug', label: 'aug', suffix: '+', iv: [0,4,8] },
-  { id: '5', label: '5', suffix: '5', iv: [0,7] },
-  { id: 'add9', label: 'add9', suffix: 'add9', iv: [0,4,7,14] },
-  { id: '9', label: '9', suffix: '9', iv: [0,4,7,10,14] },
-  { id: 'maj9', label: 'maj9', suffix: 'M9', iv: [0,4,7,11,14] },
-  { id: 'm9', label: 'm9', suffix: 'm9', iv: [0,3,7,10,14] },
-  { id: '11', label: '11', suffix: '11', iv: [0,4,7,10,14,17] },
-  { id: '13', label: '13', suffix: '13', iv: [0,4,7,10,14,21] },
+  { id: 'maj', label: 'maj', suffix: '', iv: [0,4,7] }, { id: 'min', label: 'min', suffix: 'm', iv: [0,3,7] },
+  { id: '7', label: '7', suffix: '7', iv: [0,4,7,10] }, { id: 'maj7', label: 'maj7', suffix: 'M7', iv: [0,4,7,11] },
+  { id: 'm7', label: 'm7', suffix: 'm7', iv: [0,3,7,10] }, { id: '6', label: '6', suffix: '6', iv: [0,4,7,9] },
+  { id: 'm6', label: 'm6', suffix: 'm6', iv: [0,3,7,9] }, { id: 'sus2', label: 'sus2', suffix: 'sus2', iv: [0,2,7] },
+  { id: 'sus4', label: 'sus4', suffix: 'sus4', iv: [0,5,7] }, { id: 'dim', label: 'dim', suffix: 'dim', iv: [0,3,6] },
+  { id: 'dim7', label: 'dim7', suffix: '°7', iv: [0,3,6,9] }, { id: 'm7b5', label: 'm7♭5', suffix: 'ø7', iv: [0,3,6,10] },
+  { id: 'aug', label: 'aug', suffix: '+', iv: [0,4,8] }, { id: '5', label: '5', suffix: '5', iv: [0,7] },
+  { id: 'add9', label: 'add9', suffix: 'add9', iv: [0,4,7,14] }, { id: '9', label: '9', suffix: '9', iv: [0,4,7,10,14] },
+  { id: 'maj9', label: 'maj9', suffix: 'M9', iv: [0,4,7,11,14] }, { id: 'm9', label: 'm9', suffix: 'm9', iv: [0,3,7,10,14] },
+  { id: '11', label: '11', suffix: '11', iv: [0,4,7,10,14,17] }, { id: '13', label: '13', suffix: '13', iv: [0,4,7,10,14,21] },
 ];
 const INVERSIONS = ['root', '1st', '2nd'];
 function buildChord(cfg, len = 4) {
@@ -230,11 +239,10 @@ function buildChord(cfg, len = 4) {
 }
 const N = (label, len = 1) => ({ label, notes: [label], len });
 
-// presets mirror the game's per-track whitelists, with playful timbres
+// ================= channels (lots of them) =================
 const ALLOWED = {
   drum: ['Kick', '808', 'Snare', 'Clap', 'Hat', 'Open Hat', 'Tom', 'Perc', 'Rim', 'Crash', 'Ride'],
-  bass: ['Bass', 'Sub', 'Acid', 'Reese'],
-  lead: ['Lead', 'Pluck', 'Acid', 'Bell', 'Marimba', 'Keys'],
+  melodic: ['Bass', 'Sub', 'Acid', 'Reese', 'Lead', 'Pluck', 'Bell', 'Marimba', 'Keys'],
   chord: ['Pad', 'Keys', 'Organ', 'Strings', 'Choir', 'Bell'],
 };
 const TIMBRE = {
@@ -245,54 +253,80 @@ const TIMBRE = {
   Lead: ['triangle', .15], Pluck: ['triangle', .08], Bell: ['sine', .35], Marimba: ['sine', .12], Keys: ['triangle', .18],
   Pad: ['sine', .4], Organ: ['square', .3], Strings: ['sawtooth', .38], Choir: ['sine', .45],
 };
-let AC = null;
-function tone(track, note, len = 1, when = 0) {
-  try {
-    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
-    if (AC.state === 'suspended') AC.resume();
-    const t = AC.currentTime + when;
-    const o = AC.createOscillator(), g = AC.createGain();
-    const [type, base] = TIMBRE[state.preset[track.key]] || ['triangle', .15];
-    o.type = state.fx.drive > .5 ? 'sawtooth' : type;
-    o.frequency.value = track.key === 'drum' ? 82 : noteFreq(note);
-    if (track.key === 'drum') o.frequency.exponentialRampToValueAtTime(38, t + .09);
-    const dur = base * (1 + state.fx.reverb * 2.2) * (track.key === 'drum' ? 1 : Math.max(1, len * .8));
-    g.gain.setValueAtTime(track.key === 'chord' ? .12 : .2, t);
-    g.gain.exponentialRampToValueAtTime(.001, t + dur);
-    o.connect(g).connect(AC.destination);
-    o.start(t); o.stop(t + dur + .02);
-  } catch (_) {}
-}
-function playEvent(track, ev) { ev.notes.forEach((n, i) => tone(track, n, ev.len, i * .012)); }
-
-// ================= state =================
+const defaultParams = () => ({
+  attack: .05, decay: .2, sustain: .6, release: .3,
+  cutoff: .8, resonance: .1, pan: .5, glide: 0,
+  low: .5, mid: .5, high: .5,
+  reverb: .15, delay: 0, chorus: 0, drive: 0,
+});
+const CH = (key, name, kind, preset, steps = {}) => ({ key, name, kind, preset, steps });
 const state = {
   tracks: [
-    { key: 'drum',  name: 'Drum',  pat: 'pat-drum',  steps: { 0: N('C2'), 4: N('C2'), 8: N('C2'), 12: N('C2'), 16: N('C2'), 20: N('C2'), 24: N('C2'), 26: N('C2'), 28: N('C2') } },
-    { key: 'bass',  name: 'Bass',  pat: 'pat-bass',  steps: { 0: N('C2', 2), 6: N('G1'), 8: N('C2', 2), 14: N('A#1'), 16: N('C2', 2), 22: N('D#2'), 24: N('C2'), 30: N('G1') } },
-    { key: 'lead',  name: 'Lead',  pat: 'pat-lead',  steps: {} },
-    { key: 'chord', name: 'Chord', pat: 'pat-chord', steps: { 0: buildChord({ root: 'C', qual: 'min', oct: 3, inv: 0 }), 8: buildChord({ root: 'G', qual: '7', oct: 2, inv: 0 }), 16: buildChord({ root: 'D#', qual: 'maj7', oct: 3, inv: 0 }), 24: buildChord({ root: 'A#', qual: 'maj', oct: 2, inv: 0 }) } },
+    CH('kick',  'Kick',  'drum', 'Kick',  { 0: N('C2'), 4: N('C2'), 8: N('C2'), 12: N('C2'), 16: N('C2'), 20: N('C2'), 24: N('C2'), 28: N('C2') }),
+    CH('snare', 'Snare', 'drum', 'Snare', { 4: N('C2'), 12: N('C2'), 20: N('C2'), 28: N('C2') }),
+    CH('hats',  'Hats',  'drum', 'Hat',   { 2: N('C2'), 6: N('C2'), 10: N('C2'), 14: N('C2'), 18: N('C2'), 22: N('C2'), 26: N('C2'), 30: N('C2') }),
+    CH('perc',  'Perc',  'drum', 'Perc',  { 7: N('C2'), 23: N('C2') }),
+    CH('bass',  'Bass',  'melodic', 'Bass', { 0: N('C2', 2), 6: N('G1'), 8: N('C2', 2), 14: N('A#1'), 16: N('C2', 2), 22: N('D#2'), 24: N('C2'), 30: N('G1') }),
+    CH('sub',   'Sub',   'melodic', 'Sub',  { 0: N('C1', 8), 16: N('G1', 8) }),
+    CH('lead',  'Lead',  'melodic', 'Lead'),
+    CH('arp',   'Arp',   'melodic', 'Pluck', { 1: N('C4'), 3: N('D#4'), 5: N('G4'), 9: N('C5'), 11: N('G4'), 13: N('D#4') }),
+    CH('chord', 'Chord', 'chord', 'Pad', { 0: buildChord({ root: 'C', qual: 'min', oct: 3, inv: 0 }), 8: buildChord({ root: 'G', qual: '7', oct: 2, inv: 0 }), 16: buildChord({ root: 'D#', qual: 'maj7', oct: 3, inv: 0 }), 24: buildChord({ root: 'A#', qual: 'maj', oct: 2, inv: 0 }) }),
+    CH('pads',  'Pads',  'chord', 'Strings', { 0: buildChord({ root: 'C', qual: '5', oct: 2, inv: 0 }, 8), 16: buildChord({ root: 'A#', qual: '5', oct: 1, inv: 0 }, 8) }),
   ],
   activeKey: 'chord',
-  hidden: new Set(),
-  stickyEv: { drum: N('C2'), bass: N('C2'), lead: N('C4'), chord: buildChord({ root: 'C', qual: 'min', oct: 3, inv: 0 }) },
+  hidden: new Set(['sub', 'perc']),
+  stickyEv: {},
   chordCfg: { root: 'C', qual: 'min', oct: 3, inv: 0 },
   sel: null,
   cursor: 0,
   bars: 2,
   focusedBar: 0,
-  view: 'steps', // 'steps' | 'inst'
-  preset: { drum: 'Kick', bass: 'Bass', lead: 'Lead', chord: 'Pad' },
-  fx: { reverb: .15, drive: 0 },
+  view: 'steps',
+  instTab: 'voice',
+  preset: {},
+  params: {},
 };
+state.tracks.forEach((t, i) => {
+  t.pat = 'pat-' + (i % 5);
+  state.preset[t.key] = t.preset;
+  state.params[t.key] = defaultParams();
+  state.stickyEv[t.key] = t.kind === 'chord'
+    ? buildChord({ root: 'C', qual: 'min', oct: 3, inv: 0 })
+    : N(t.kind === 'drum' ? 'C2' : 'C4');
+});
 const STEPS = () => state.bars * 16;
 const active = () => state.tracks.find(t => t.key === state.activeKey);
 const others = () => state.tracks.filter(t => t.key !== state.activeKey && !state.hidden.has(t.key));
 
+// ================= audio =================
+let AC = null;
+function tone(track, note, len = 1, when = 0) {
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    const P = state.params[track.key];
+    const t = AC.currentTime + when;
+    const o = AC.createOscillator(), g = AC.createGain(), f = AC.createBiquadFilter();
+    const [type, base] = TIMBRE[state.preset[track.key]] || ['triangle', .15];
+    o.type = P.drive > .5 ? 'sawtooth' : type;
+    o.frequency.value = track.kind === 'drum' ? 82 : noteFreq(note);
+    if (track.kind === 'drum') o.frequency.exponentialRampToValueAtTime(38, t + .09);
+    f.type = 'lowpass';
+    f.frequency.value = 200 + P.cutoff * 9000;
+    f.Q.value = 1 + P.resonance * 12;
+    const atk = track.kind === 'drum' ? 0.001 : P.attack * .25;
+    const dur = Math.max(atk + .03, base * (1 + P.reverb * 2.2 + P.release) * (track.kind === 'drum' ? 1 : Math.max(1, len * .8)));
+    const peak = track.kind === 'chord' ? .12 : .2;
+    g.gain.setValueAtTime(.0001, t);
+    g.gain.linearRampToValueAtTime(peak, t + atk);
+    g.gain.exponentialRampToValueAtTime(.001, t + dur);
+    o.connect(f).connect(g).connect(AC.destination);
+    o.start(t); o.stop(t + dur + .02);
+  } catch (_) {}
+}
+function playEvent(track, ev) { ev.notes.forEach((n, i) => tone(track, n, ev.len, i * .012)); }
+
 // ================= animated layout =================
-// Each bar-ring has an animated {r, s}; the focused ring is large, earlier
-// bars park as thin outer bands, later bars nest inside. The instrument
-// wheel cross-fades via `inst` 0..1.
 let L = { rings: [], inst: 0 };
 function targetLayout() {
   const f = state.focusedBar;
@@ -345,9 +379,10 @@ function togglePlay() {
   renderRing();
 }
 
-// ================= ring rendering =================
+// ================= rendering =================
 const app = document.getElementById('app');
-const svg = app.querySelector('.stage svg');
+const svg = app.querySelector('.main-layer');
+const fxLayer = app.querySelector('.fx-layer');
 const posLab = app.querySelector('.pos-lab-html');
 const CX = 186, CY = 186, R = 150;
 const pos16 = (i, r) => {
@@ -359,6 +394,12 @@ function arcPath(r, a0, a1) {
   const [x0, y0] = polar(a0, r), [x1, y1] = polar(a1, r);
   return `M${x0} ${y0} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}`;
 }
+// static decorative layer: rendered ONCE so the spin never restarts
+fxLayer.innerHTML = `
+  <g class="spin-slow" style="transform-origin:${CX}px ${CY}px"><circle cx="${CX}" cy="${CY}" r="${R + 24}" class="b-rune-ring"/>
+    <path d="M${CX} ${CY - R - 32} l4 6 -4 6 -4 -6 Z" fill="rgba(242,237,227,.3)"/>
+    <path d="M${CX} ${CY + R + 32} l4 -6 -4 -6 -4 6 Z" fill="rgba(242,237,227,.3)"/></g>
+  <g class="spin-rev" style="transform-origin:${CX}px ${CY}px"><circle cx="${CX}" cy="${CY}" r="${R + 12}" class="b-rune-ring r2"/></g>`;
 
 function renderRing() {
   const t = active();
@@ -369,20 +410,11 @@ function renderRing() {
       <stop offset="0%" stop-color="#e5473a"/><stop offset="55%" stop-color="#a01818"/><stop offset="100%" stop-color="#4a0b0b"/>
     </radialGradient>
   </defs>`;
-  out += `<g class="spin-slow" style="transform-origin:${CX}px ${CY}px"><circle cx="${CX}" cy="${CY}" r="${R + 24}" class="b-rune-ring"/>
-    <path d="M${CX} ${CY - R - 32} l4 6 -4 6 -4 -6 Z" fill="rgba(242,237,227,.3)"/>
-    <path d="M${CX} ${CY + R + 32} l4 -6 -4 -6 -4 6 Z" fill="rgba(242,237,227,.3)"/></g>`;
-  out += `<g class="spin-rev" style="transform-origin:${CX}px ${CY}px"><circle cx="${CX}" cy="${CY}" r="${R + 12}" class="b-rune-ring r2"/></g>`;
 
   if (stepsAlpha > 0.02) {
     out += `<g opacity="${stepsAlpha}">`;
-    // sigil across all rings
     const carved = Object.keys(t.steps).map(Number).filter(s => s < STEPS()).sort((a, b) => a - b);
-    if (carved.length > 1) {
-      const pts = carved.map(s => pos16(s % 16, L.rings[Math.floor(s / 16)].r).join(',')).join(' ');
-      out += `<polygon points="${pts}" class="b-sigil"/>`;
-    }
-    // length arcs (before stones so stones sit on top)
+    // length arcs
     carved.forEach(s => {
       const ev = t.steps[s];
       if (ev.len > 1) {
@@ -391,7 +423,7 @@ function renderRing() {
         out += `<path d="${arcPath(ring.r, a0, a1)}" class="b-lenarc" style="stroke-width:${5 * ring.s}"/>`;
       }
     });
-    // ghosts, focused ring only (declutter)
+    // ghosts on the focused ring
     {
       const fr = L.rings[state.focusedBar];
       if (fr) {
@@ -415,7 +447,7 @@ function renderRing() {
       const [nx, ny] = pos16(c % 16, cring.r);
       out += `<circle cx="${nx}" cy="${ny}" r="${(19 * cring.s) + 5}" class="b-cursor-notch"/>`;
     }
-    // stones per ring; unfocused rings get a fat invisible tap-ring to refocus
+    // stones per ring + bar tags between step 16 and step 1
     L.rings.forEach((ring, bar) => {
       if (bar !== state.focusedBar) {
         out += `<circle cx="${CX}" cy="${CY}" r="${ring.r}" stroke-width="${Math.max(26, 40 * ring.s)}" class="b-focusring" data-focus="${bar}"/>`;
@@ -430,26 +462,35 @@ function renderRing() {
         if (bar === state.focusedBar && ring.s > .8) {
           const fs = 10.5 * ring.s;
           if (ev) {
-            if (t.key === 'chord') {
+            if (t.kind === 'chord') {
               out += `<text x="${x}" y="${y - 3.5}" class="b-lab on" style="font-size:${fs}px">${ev.label.slice(0, 6)}</text>`;
               out += `<text x="${x}" y="${y + 7}" class="b-lab on" style="font-size:${fs * .62}px;font-family:var(--body);font-style:italic;opacity:.75">${ev.notes.length}v${ev.len > 1 ? '·' + ev.len : ''}</text>`;
             } else {
-              out += `<text x="${x}" y="${y}" class="b-lab on" style="font-size:${fs}px">${t.key === 'drum' ? '●' : ev.label}</text>`;
+              out += `<text x="${x}" y="${y}" class="b-lab on" style="font-size:${fs}px">${t.kind === 'drum' ? '●' : ev.label}</text>`;
             }
           } else {
-            out += `<text x="${x}" y="${y}" class="b-lab" style="font-size:${fs}px">${i + 1}</text>`;
+            // absolute step number, so bar II reads 17-32 instead of 1-16
+            out += `<text x="${x}" y="${y}" class="b-lab" style="font-size:${fs}px">${s + 1}</text>`;
           }
         }
+      }
+      // bar tag in the gap before step 1 (11 o'clock-ish)
+      {
+        const [bx, by] = polar(-101.25, ring.r);
+        const tr = Math.max(8, 12 * ring.s);
+        const focus = bar === state.focusedBar;
+        out += `<circle cx="${bx}" cy="${by}" r="${tr}" class="bar-tag ${focus ? 'focus' : ''}" data-focus="${bar}"/>`;
+        out += `<text x="${bx}" y="${by}" class="bar-tag-lab ${focus ? 'focus' : ''}" style="font-size:${Math.max(8, 11 * ring.s)}px">${['I', 'II', 'III'][bar]}</text>`;
       }
     });
     out += `</g>`;
   }
 
-  // ===== instrument wheel =====
+  // instrument wheel
   if (L.inst > 0.02) {
     const t2 = active();
-    const names = ALLOWED[t2.key];
-    const wr = 40 + 106 * L.inst; // wheel radius grows out of the orb
+    const names = ALLOWED[t2.kind];
+    const wr = 40 + 106 * L.inst;
     out += `<g opacity="${L.inst}">`;
     names.forEach((p, i) => {
       const a = -90 + (360 / names.length) * i;
@@ -459,7 +500,7 @@ function renderRing() {
       out += `<circle cx="${x}" cy="${y}" r="${pr}" class="p-stone ${cur ? 'cur' : ''}" data-preset="${p}"/>`;
       out += `<text x="${x}" y="${y}" class="p-lab ${cur ? 'cur' : ''}" style="font-size:${(p.length > 6 ? 8.5 : 10.5) * L.inst}px">${p}</text>`;
     });
-    // FX arcs: reverb bottom-left, drive bottom-right
+    const P = state.params[t2.key];
     const arcs = [
       { key: 'reverb', a0: 115, a1: 163, lab: 'reverb' },
       { key: 'drive', a0: 17, a1: 65, lab: 'drive' },
@@ -467,7 +508,7 @@ function renderRing() {
     arcs.forEach(({ key, a0, a1, lab }) => {
       const r = wr + 36;
       out += `<path d="${arcPath(r, a0, a1)}" class="fx-arc-bg"/>`;
-      const v = state.fx[key];
+      const v = P[key];
       if (v > 0.01) out += `<path d="${arcPath(r, a0, a0 + (a1 - a0) * v)}" class="fx-arc-fill"/>`;
       out += `<path d="${arcPath(r, a0 - 4, a1 + 4)}" class="fx-arc-hit" data-arc="${key}" data-a0="${a0}" data-a1="${a1}"/>`;
       const [lx, ly] = polar((a0 + a1) / 2, r + 17);
@@ -476,7 +517,7 @@ function renderRing() {
     out += `</g>`;
   }
 
-  // ===== center orb =====
+  // center orb
   const orbR = 34;
   if (state.view === 'steps') {
     out += `<circle cx="${CX}" cy="${CY}" r="${orbR + 8}" class="play-halo ${timer ? '' : 'pulse'}" style="transform-origin:${CX}px ${CY}px"/>`;
@@ -490,7 +531,7 @@ function renderRing() {
     out += `<text x="${CX}" y="${CY + 12}" class="inst-sub" pointer-events="none">✓ done</text>`;
   }
   svg.innerHTML = out;
-  posLab.textContent = `bar ${['I', 'II', 'III'][Math.floor(shownStep / 16)]} · step ${(shownStep % 16) + 1}`;
+  posLab.textContent = `bar ${['I', 'II', 'III'][Math.floor(shownStep / 16)]} · step ${shownStep + 1} of ${STEPS()}`;
 }
 
 // ================= pickers =================
@@ -502,20 +543,39 @@ function keepScroll(el, fn) {
   fn();
   [...el.querySelectorAll('.strip, .piano-wrap')].forEach((s, i) => { if (saves[i] !== undefined) s.scrollLeft = saves[i]; });
 }
+const PARAM_TABS = {
+  voice: ['attack', 'decay', 'sustain', 'release'],
+  tone: ['cutoff', 'resonance', 'pan', 'glide'],
+  eq: ['low', 'mid', 'high'],
+  fx: ['reverb', 'delay', 'chorus', 'drive'],
+};
 function renderPickers() {
   const t = active();
+  // instrument view: the pickers area becomes the parameter altar
+  if (state.view === 'inst') {
+    const P = state.params[t.key];
+    pickStatus.innerHTML = `shaping <b>${t.name}</b> — ${state.preset[t.key]}`;
+    pickBody.innerHTML = `
+      <div class="ptabs">${Object.keys(PARAM_TABS).map(tab =>
+        `<button data-ptab="${tab}" class="${state.instTab === tab ? 'cur' : ''}">${tab}</button>`).join('')}</div>
+      ${PARAM_TABS[state.instTab].map(p => `
+        <div class="prow"><label>${p}</label>
+          <input type="range" min="0" max="100" value="${Math.round(P[p] * 100)}" data-param="${p}" />
+          <output>${Math.round(P[p] * 100)}</output></div>`).join('')}`;
+    return;
+  }
   const ev = state.sel !== null ? t.steps[state.sel] : null;
   const sticky = state.stickyEv[t.key];
   pickStatus.innerHTML = ev
-    ? `retuning step ${(state.sel % 16) + 1} — <b>${ev.label}${ev.len > 1 ? ' ×' + ev.len : ''}</b>`
+    ? `retuning step ${state.sel + 1} — <b>${ev.label}${ev.len > 1 ? ' ×' + ev.len : ''}</b>`
     : `next carve — <b>${sticky.label}${sticky.len > 1 ? ' ×' + sticky.len : ''}</b>`;
   keepScroll(pickBody, () => {
-    const lenRow = t.key === 'drum' ? '' : `
-      <div class="len-row"><span class="strip-label">Length</span>${[1, 2, 3, 4, 6, 8].map(l =>
+    const lenRow = t.kind === 'drum' ? '' : `
+      <div class="len-row"><span class="lab">Length</span>${[1, 2, 3, 4, 6, 8].map(l =>
         `<button class="nbtn util ${((ev ?? sticky).len || 1) === l ? 'sticky' : ''}" data-len="${l}">${l === 1 ? '1 step' : '×' + l}</button>`).join('')}</div>`;
-    if (t.key === 'drum') {
-      pickBody.innerHTML = `<div class="drum-note">The drum speaks one voice — pick it under ⚙. Steps carry no pitch.</div>`;
-    } else if (t.key === 'chord') {
+    if (t.kind === 'drum') {
+      pickBody.innerHTML = `<div class="drum-note">${t.name} speaks one voice — pick it under ⚙. Steps carry no pitch.</div>`;
+    } else if (t.kind === 'chord') {
       const c = state.chordCfg;
       pickBody.innerHTML = `
         <div class="strip" data-strip="root">${NOTE_ORDER.map(r =>
@@ -529,8 +589,6 @@ function renderPickers() {
         </div>
         ${lenRow}`;
     } else {
-      // key-dot piano matching the app's sequencer: parchment natural dots
-      // below, dark sharp dots staggered above, note names inside the dots
       const stickyNote = sticky.label;
       const KW = 44, start = 2, octs = 4;
       let whites = '', blacks = '';
@@ -549,7 +607,6 @@ function renderPickers() {
       pickBody.innerHTML = `
         <div class="piano-wrap"><div class="piano" style="width:${wx + 4}px">${whites}${blacks}</div></div>
         ${lenRow}`;
-      // center once per track on its sticky octave (no smooth scroll — no jacking)
       if (pianoScrolledFor !== t.key) {
         pianoScrolledFor = t.key;
         const wrap = pickBody.querySelector('.piano-wrap');
@@ -561,9 +618,9 @@ function renderPickers() {
 }
 function applySticky() {
   const t = active();
-  if (t.key === 'chord') {
-    const len = state.stickyEv.chord.len || 4;
-    state.stickyEv.chord = buildChord(state.chordCfg, len);
+  if (t.kind === 'chord') {
+    const len = state.stickyEv[t.key].len || 4;
+    state.stickyEv[t.key] = buildChord(state.chordCfg, len);
   }
   const ev = clone(state.stickyEv[t.key]);
   if (state.sel !== null && t.steps[state.sel]) t.steps[state.sel] = ev;
@@ -572,6 +629,8 @@ function applySticky() {
 }
 pickBody.addEventListener('click', (e) => {
   const t = active();
+  const ptab = e.target.closest('[data-ptab]');
+  if (ptab) { state.instTab = ptab.dataset.ptab; renderPickers(); return; }
   const note = e.target.closest('[data-note]');
   if (note) {
     const len = state.stickyEv[t.key].len || 1;
@@ -588,6 +647,17 @@ pickBody.addEventListener('click', (e) => {
   if (inv) { state.chordCfg.inv = (state.chordCfg.inv + 1) % INVERSIONS.length; applySticky(); return; }
   const len = e.target.closest('[data-len]');
   if (len) { state.stickyEv[t.key].len = +len.dataset.len; applySticky(); return; }
+});
+pickBody.addEventListener('input', (e) => {
+  const r = e.target.closest('[data-param]');
+  if (!r) return;
+  state.params[active().key][r.dataset.param] = r.value / 100;
+  r.nextElementSibling.textContent = r.value;
+  if (state.view === 'inst') renderRing(); // arcs mirror reverb/drive
+});
+pickBody.addEventListener('change', (e) => {
+  const r = e.target.closest('[data-param]');
+  if (r) playEvent(active(), state.stickyEv[active().key]);
 });
 
 // ================= ring interaction =================
@@ -611,8 +681,8 @@ function setArcFromPointer(e) {
   let a = Math.atan2(y, x) * 180 / Math.PI;
   if (a < 0) a += 360;
   const { key, a0, a1 } = arcDrag;
-  state.fx[key] = Math.min(1, Math.max(0, (a - a0) / (a1 - a0)));
-  renderRing();
+  state.params[active().key][key] = Math.min(1, Math.max(0, (a - a0) / (a1 - a0)));
+  renderRing(); renderPickers();
 }
 svg.addEventListener('pointermove', (e) => {
   if (arcDrag) { setArcFromPointer(e); return; }
@@ -639,7 +709,7 @@ svg.addEventListener('click', (e) => {
   if (preset) {
     state.preset[active().key] = preset.dataset.preset;
     playEvent(active(), state.stickyEv[active().key]);
-    renderRing();
+    renderRing(); renderPickers();
     return;
   }
   const focusRing = e.target.closest('[data-focus]');
@@ -655,7 +725,7 @@ svg.addEventListener('click', (e) => {
   if (bar !== state.focusedBar) { state.focusedBar = bar; settle(); return; }
   const t = active();
   if (!t.steps[s]) {
-    if (t.key === 'chord') state.stickyEv.chord = buildChord(state.chordCfg, state.stickyEv.chord.len || 4);
+    if (t.kind === 'chord') state.stickyEv[t.key] = buildChord(state.chordCfg, state.stickyEv[t.key].len || 4);
     t.steps[s] = clone(state.stickyEv[t.key]);
     state.sel = s;
     playEvent(t, t.steps[s]);
@@ -663,10 +733,9 @@ svg.addEventListener('click', (e) => {
     delete t.steps[s];
     state.sel = null;
   } else {
-    // select = low-key copy: the tapped stone becomes the sticky event
     state.sel = s;
     state.stickyEv[t.key] = clone(t.steps[s]);
-    if (t.key === 'chord' && t.steps[s].cfg) state.chordCfg = clone(t.steps[s].cfg);
+    if (t.kind === 'chord' && t.steps[s].cfg) state.chordCfg = clone(t.steps[s].cfg);
     playEvent(t, t.steps[s]);
   }
   renderRing(); renderPickers();
@@ -680,9 +749,9 @@ svg.addEventListener('wheel', (e) => {
   renderRing();
 }, { passive: false });
 
-// ================= instrument wheel open/close =================
+// ================= instrument view =================
 const instBtn = app.querySelector('[data-act="inst"]');
-function openInst() { stopPlay(); state.view = 'inst'; state.sel = null; instBtn.classList.add('lit'); settle(); }
+function openInst() { stopPlay(); state.view = 'inst'; state.sel = null; instBtn.classList.add('lit'); settle(); renderPickers(); }
 function closeInst() { state.view = 'steps'; instBtn.classList.remove('lit'); settle(); renderPickers(); }
 instBtn.addEventListener('click', () => { state.view === 'inst' ? closeInst() : openInst(); });
 
@@ -690,12 +759,17 @@ instBtn.addEventListener('click', () => { state.view === 'inst' ? closeInst() : 
 const chips = app.querySelector('.track-chips');
 function renderChips() {
   chips.innerHTML = state.tracks.map(t => `
-    <div class="tchip ${t.key === state.activeKey ? 'active' : ''} ${state.hidden.has(t.key) ? 'hidden-track' : ''}" data-k="${t.key}" style="flex:1">
+    <div class="tchip ${t.key === state.activeKey ? 'active' : ''} ${state.hidden.has(t.key) ? 'hidden-track' : ''}" data-k="${t.key}">
       <i class="sw ${t.pat}"></i><span class="nm">${t.name}</span>
       <button class="eye" data-eye="${t.key}">${state.hidden.has(t.key)
         ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18M10.5 10.6a2.3 2.3 0 0 0 3 3M7 7.2C4.7 8.6 3 12 3 12s3.5 6 9 6c1.6 0 3-.4 4.2-1M10 6.2C10.6 6.1 11.3 6 12 6c5.5 0 9 6 9 6s-.7 1.3-2 2.7"/></svg>'
         : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.4"/></svg>'}</button>
     </div>`).join('');
+  // keep the active chip in view (direct scroll, no smooth-jacking)
+  const act = chips.querySelector('.tchip.active');
+  if (act && (act.offsetLeft < chips.scrollLeft || act.offsetLeft + act.offsetWidth > chips.scrollLeft + chips.clientWidth)) {
+    chips.scrollLeft = Math.max(0, act.offsetLeft - chips.clientWidth / 2 + act.offsetWidth / 2);
+  }
 }
 chips.addEventListener('click', (e) => {
   const eye = e.target.closest('[data-eye]');
@@ -709,8 +783,7 @@ chips.addEventListener('click', (e) => {
     state.activeKey = chip.dataset.k;
     state.hidden.delete(chip.dataset.k);
     state.sel = null;
-    if (state.view === 'inst') { renderChips(); settle(); } else { renderChips(); renderRing(); }
-    renderPickers();
+    renderChips(); renderRing(); renderPickers();
   }
 });
 app.querySelector('[data-act="clear"]').addEventListener('click', () => {
