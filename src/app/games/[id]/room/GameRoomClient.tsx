@@ -256,7 +256,7 @@ export function GameRoomClient({
             </div>
           </div>
           <h2 className="misprint" data-text={`Room ${roman} sealed`}>
-            Room {roman} sealed
+            Room <span className="rn">{roman}</span> sealed
           </h2>
           <p>
             Your <b>{channelName}</b> line is bound into the song in blood and iron.

@@ -105,7 +105,9 @@
   .b-focusring { fill: none; stroke: transparent; cursor: pointer; }
   .bar-tag { fill: #101010; stroke: rgba(242,237,227,.4); stroke-width: 1.2; }
   .bar-tag.focus { fill: var(--parch); stroke: #000; }
-  .bar-tag-lab { font-family: var(--display); fill: var(--ink-dim); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  /* roman numerals in blackletter are unreadable (I looks like J) — use the
+     Fell serif for anything numeric that stands alone */
+  .bar-tag-lab { font-family: var(--body); font-style: italic; fill: var(--ink-dim); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
   .bar-tag-lab.focus { fill: var(--parch-ink); }
 
   .play-core { fill: url(#playGrad); stroke: var(--blood-dark); stroke-width: 1.5; }

@@ -65,7 +65,7 @@ export default async function GameMapPage({ params }: { params: Promise<{ id: st
         <Link href={`/games/${game.id}/room`} className="door enterable">
           <span className="door-label">
             <span className="k">✦ It is your turn ✦</span>
-            <span className="v">Room {toRoman(currentRoom.roomIndex + 1)} awaits</span>
+            <span className="v">Room <span className="rn">{toRoman(currentRoom.roomIndex + 1)}</span> awaits</span>
           </span>
           <span className="door-frame">
             <span className={`door-numeral${toRoman(currentRoom.roomIndex + 1).length > 2 ? ' long' : ''}`}>
@@ -81,7 +81,7 @@ export default async function GameMapPage({ params }: { params: Promise<{ id: st
         <div className="door">
           <span className="door-label">
             <span className="k">✦ The crypt is occupied ✦</span>
-            <span className="v">Room {toRoman(currentRoom.roomIndex + 1)}</span>
+            <span className="v">Room <span className="rn">{toRoman(currentRoom.roomIndex + 1)}</span></span>
             <small>
               {currentPlayer ? `${currentPlayer.displayName} is inside — you will be summoned` : 'Awaiting a bard'}
             </small>
