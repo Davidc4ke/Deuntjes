@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
 <title>Deuntjes — the Ritual Ring</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,7 +17,10 @@
     --gothic: "Pirata One", serif;
     --body: "IM Fell English", Georgia, serif;
   }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* touch-action: manipulation kills iOS double-tap zoom on every control
+     (double-pressing chord chips was zooming the page); the ring svg
+     overrides with touch-action: none for the wind gesture */
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   html, body { margin: 0; padding: 0; height: 100%; }
   body {
     background: radial-gradient(130% 90% at 50% -20%, #141414, var(--void) 55%);
@@ -259,7 +262,10 @@ const defaultParams = () => ({
   low: .5, mid: .5, high: .5,
   reverb: .15, delay: 0, chorus: 0, drive: 0,
 });
-const CH = (key, name, kind, preset, steps = {}) => ({ key, name, kind, preset, steps });
+// div = beats per bar for THIS channel (polyrhythm: hats can run 12 over a
+// 16-beat kick). All defaults 16 so the seeds line up.
+const CH = (key, name, kind, preset, steps = {}) => ({ key, name, kind, preset, steps, div: 16 });
+const BEAT_CHOICES = [4, 6, 8, 12, 16, 24];
 const state = {
   tracks: [
     CH('kick',  'Kick',  'drum', 'Kick',  { 0: N('C2'), 4: N('C2'), 8: N('C2'), 12: N('C2'), 16: N('C2'), 20: N('C2'), 24: N('C2'), 28: N('C2') }),
@@ -294,9 +300,15 @@ state.tracks.forEach((t, i) => {
     ? buildChord({ root: 'C', qual: 'min', oct: 3, inv: 0 })
     : N(t.kind === 'drum' ? 'C2' : 'C4');
 });
-const STEPS = () => state.bars * 16;
+// Global time runs on a fine tick grid: 48 ticks per bar (divisible by every
+// BEAT_CHOICES entry), 2s per bar at 120bpm -> ~41.7ms per tick.
+const TPB = 48;
+const BAR_MS = 2000;
+const trackSteps = (t) => state.bars * t.div;
 const active = () => state.tracks.find(t => t.key === state.activeKey);
 const others = () => state.tracks.filter(t => t.key !== state.activeKey && !state.hidden.has(t.key));
+// cursor is stored in ACTIVE-track steps; ticks are the common currency
+const cursorTick = () => Math.round(state.cursor * (TPB / active().div)) % (state.bars * TPB);
 
 // ================= audio =================
 let AC = null;
@@ -361,21 +373,27 @@ function settle(instant = false) {
   })(t0);
 }
 
-// ================= transport =================
-let timer = null, ph = -1;
-function stopPlay() { if (timer) clearInterval(timer); timer = null; ph = -1; renderRing(); }
+// ================= transport (tick-based, per-channel subdivisions) =================
+let timer = null, phTick = -1;
+function stopPlay() { if (timer) clearInterval(timer); timer = null; phTick = -1; renderRing(); }
 function togglePlay() {
   if (timer) { stopPlay(); return; }
-  let pos = state.cursor % STEPS();
-  ph = pos;
+  let tick = cursorTick();
+  phTick = tick;
   timer = setInterval(() => {
-    state.tracks.forEach(t => { const ev = t.steps[pos]; if (ev) playEvent(t, ev); });
-    ph = pos;
-    const bar = Math.floor(pos / 16);
+    const bar = Math.floor(tick / TPB), tib = tick % TPB;
+    state.tracks.forEach(t => {
+      const per = TPB / t.div;
+      if (tib % per === 0) {
+        const ev = t.steps[bar * t.div + tib / per];
+        if (ev) playEvent(t, ev);
+      }
+    });
+    phTick = tick;
     if (bar !== state.focusedBar) { state.focusedBar = bar; settle(); }
     renderRing();
-    pos = (pos + 1) % STEPS();
-  }, 125);
+    tick = (tick + 1) % (state.bars * TPB);
+  }, BAR_MS / TPB);
   renderRing();
 }
 
@@ -385,8 +403,9 @@ const svg = app.querySelector('.main-layer');
 const fxLayer = app.querySelector('.fx-layer');
 const posLab = app.querySelector('.pos-lab-html');
 const CX = 186, CY = 186, R = 150;
-const pos16 = (i, r) => {
-  const a = (-90 + i * 22.5) * Math.PI / 180;
+// position of step i on a ring subdivided into `div` beats
+const posOf = (i, div, r) => {
+  const a = (-90 + i * (360 / div)) * Math.PI / 180;
   return [CX + r * Math.cos(a), CY + r * Math.sin(a)];
 };
 const polar = (deg, r) => [CX + r * Math.cos(deg * Math.PI / 180), CY + r * Math.sin(deg * Math.PI / 180)];
@@ -403,7 +422,11 @@ fxLayer.innerHTML = `
 
 function renderRing() {
   const t = active();
-  const shownStep = (timer ? ph : state.cursor) % STEPS();
+  const div = t.div;
+  const shownTick = timer ? phTick : cursorTick();
+  const shownBar = Math.floor(shownTick / TPB);
+  const per = TPB / div;
+  const playStep = timer ? shownBar * div + Math.floor((shownTick % TPB) / per) : -1;
   const stepsAlpha = 1 - L.inst;
   let out = `<defs>
     <radialGradient id="playGrad" cx="38%" cy="30%">
@@ -413,54 +436,59 @@ function renderRing() {
 
   if (stepsAlpha > 0.02) {
     out += `<g opacity="${stepsAlpha}">`;
-    const carved = Object.keys(t.steps).map(Number).filter(s => s < STEPS()).sort((a, b) => a - b);
-    // length arcs
+    const carved = Object.keys(t.steps).map(Number).filter(s => s < trackSteps(t)).sort((a, b) => a - b);
+    // length arcs (len in this channel's own beats)
     carved.forEach(s => {
       const ev = t.steps[s];
       if (ev.len > 1) {
-        const ring = L.rings[Math.floor(s / 16)];
-        const a0 = -90 + (s % 16) * 22.5 + 6, a1 = -90 + ((s % 16) + ev.len) * 22.5 - 8;
-        out += `<path d="${arcPath(ring.r, a0, a1)}" class="b-lenarc" style="stroke-width:${5 * ring.s}"/>`;
+        const ring = L.rings[Math.floor(s / div)];
+        const a0 = -90 + (s % div) * (360 / div) + 5, a1 = -90 + ((s % div) + ev.len) * (360 / div) - 7;
+        if (a1 > a0) out += `<path d="${arcPath(ring.r, a0, a1)}" class="b-lenarc" style="stroke-width:${5 * ring.s}"/>`;
       }
     });
-    // ghosts on the focused ring
+    // ghosts on the focused ring — each other channel maps through its OWN
+    // subdivision, so a 12-beat hat ghost lands between 16-beat kick stones
     {
       const fr = L.rings[state.focusedBar];
       if (fr) {
         const gr = fr.r - 19 * fr.s - 10;
-        for (let i = 0; i < 16; i++) {
-          const n = others().filter(o => o.steps[state.focusedBar * 16 + i]).length;
-          if (n > 0) {
-            const [x, y] = pos16(i, gr);
-            out += `<circle cx="${x}" cy="${y}" r="${n > 1 ? 4.4 : 3}" class="b-ghost"/>`;
+        others().forEach(o => {
+          for (let i = 0; i < o.div; i++) {
+            if (o.steps[state.focusedBar * o.div + i]) {
+              const [x, y] = posOf(i, o.div, gr);
+              out += `<circle cx="${x}" cy="${y}" r="3" class="b-ghost"/>`;
+            }
           }
-        }
+        });
       }
     }
-    // hand + cursor notch
+    // hand sweeps on the fine tick grid; cursor notch sits on its stone
     {
-      const ring = L.rings[Math.floor(shownStep / 16)] || L.rings[0];
-      const [hx, hy] = pos16(shownStep % 16, ring.r - 20 * ring.s - 5);
-      out += `<line x1="${CX}" y1="${CY}" x2="${hx}" y2="${hy}" class="b-hand ${timer ? '' : 'idle'}"/>`;
-      const c = state.cursor % STEPS();
-      const cring = L.rings[Math.floor(c / 16)] || L.rings[0];
-      const [nx, ny] = pos16(c % 16, cring.r);
+      const ring = L.rings[shownBar] || L.rings[0];
+      const handA = (-90 + ((shownTick % TPB) / TPB) * 360) * Math.PI / 180;
+      const hr = ring.r - 20 * ring.s - 5;
+      out += `<line x1="${CX}" y1="${CY}" x2="${CX + hr * Math.cos(handA)}" y2="${CY + hr * Math.sin(handA)}" class="b-hand ${timer ? '' : 'idle'}"/>`;
+      const c = state.cursor % trackSteps(t);
+      const cring = L.rings[Math.floor(c / div)] || L.rings[0];
+      const [nx, ny] = posOf(c % div, div, cring.r);
       out += `<circle cx="${nx}" cy="${ny}" r="${(19 * cring.s) + 5}" class="b-cursor-notch"/>`;
     }
-    // stones per ring + bar tags between step 16 and step 1
+    // stones per ring (the active channel's own beat count) + bar tags
+    const accentEvery = div % 4 === 0 ? div / 4 : div;
     L.rings.forEach((ring, bar) => {
       if (bar !== state.focusedBar) {
         out += `<circle cx="${CX}" cy="${CY}" r="${ring.r}" stroke-width="${Math.max(26, 40 * ring.s)}" class="b-focusring" data-focus="${bar}"/>`;
       }
-      for (let i = 0; i < 16; i++) {
-        const s = bar * 16 + i;
+      for (let i = 0; i < div; i++) {
+        const s = bar * div + i;
         const ev = t.steps[s];
-        const [x, y] = pos16(i, ring.r);
-        const accent = i % 4 === 0;
-        const rr = (accent ? 19 : 16) * ring.s;
-        out += `<circle cx="${x}" cy="${y}" r="${rr}" data-s="${s}" class="b-step ${accent ? 'accent' : ''} ${ev ? 'on' : ''} ${state.sel === s ? 'sel' : ''} ${timer && ph === s ? 'playhead' : ''}"/>`;
+        const [x, y] = posOf(i, div, ring.r);
+        const accent = i % accentEvery === 0;
+        const crowd = Math.min(1, 16 / div); // shrink stones when many beats
+        const rr = (accent ? 19 : 16) * ring.s * crowd;
+        out += `<circle cx="${x}" cy="${y}" r="${rr}" data-s="${s}" class="b-step ${accent ? 'accent' : ''} ${ev ? 'on' : ''} ${state.sel === s ? 'sel' : ''} ${playStep === s ? 'playhead' : ''}"/>`;
         if (bar === state.focusedBar && ring.s > .8) {
-          const fs = 10.5 * ring.s;
+          const fs = 10.5 * ring.s * crowd;
           if (ev) {
             if (t.kind === 'chord') {
               out += `<text x="${x}" y="${y - 3.5}" class="b-lab on" style="font-size:${fs}px">${ev.label.slice(0, 6)}</text>`;
@@ -469,14 +497,13 @@ function renderRing() {
               out += `<text x="${x}" y="${y}" class="b-lab on" style="font-size:${fs}px">${t.kind === 'drum' ? '●' : ev.label}</text>`;
             }
           } else {
-            // absolute step number, so bar II reads 17-32 instead of 1-16
             out += `<text x="${x}" y="${y}" class="b-lab" style="font-size:${fs}px">${s + 1}</text>`;
           }
         }
       }
-      // bar tag in the gap before step 1 (11 o'clock-ish)
+      // bar tag in the gap before step 1
       {
-        const [bx, by] = polar(-101.25, ring.r);
+        const [bx, by] = polar(-90 - 180 / div, ring.r);
         const tr = Math.max(8, 12 * ring.s);
         const focus = bar === state.focusedBar;
         out += `<circle cx="${bx}" cy="${by}" r="${tr}" class="bar-tag ${focus ? 'focus' : ''}" data-focus="${bar}"/>`;
@@ -531,7 +558,8 @@ function renderRing() {
     out += `<text x="${CX}" y="${CY + 12}" class="inst-sub" pointer-events="none">✓ done</text>`;
   }
   svg.innerHTML = out;
-  posLab.textContent = `bar ${['I', 'II', 'III'][Math.floor(shownStep / 16)]} · step ${shownStep + 1} of ${STEPS()}`;
+  const shownStepOfActive = Math.floor(shownTick / per) % trackSteps(t);
+  posLab.textContent = `bar ${['I', 'II', 'III'][shownBar]} · step ${shownStepOfActive + 1} of ${trackSteps(t)}`;
 }
 
 // ================= pickers =================
@@ -570,11 +598,14 @@ function renderPickers() {
     ? `retuning step ${state.sel + 1} — <b>${ev.label}${ev.len > 1 ? ' ×' + ev.len : ''}</b>`
     : `next carve — <b>${sticky.label}${sticky.len > 1 ? ' ×' + sticky.len : ''}</b>`;
   keepScroll(pickBody, () => {
+    const beatsRow = `
+      <div class="len-row"><span class="lab">Beats</span>${BEAT_CHOICES.map(b =>
+        `<button class="nbtn util ${t.div === b ? 'sticky' : ''}" data-beats="${b}">${b}</button>`).join('')}</div>`;
     const lenRow = t.kind === 'drum' ? '' : `
       <div class="len-row"><span class="lab">Length</span>${[1, 2, 3, 4, 6, 8].map(l =>
         `<button class="nbtn util ${((ev ?? sticky).len || 1) === l ? 'sticky' : ''}" data-len="${l}">${l === 1 ? '1 step' : '×' + l}</button>`).join('')}</div>`;
     if (t.kind === 'drum') {
-      pickBody.innerHTML = `<div class="drum-note">${t.name} speaks one voice — pick it under ⚙. Steps carry no pitch.</div>`;
+      pickBody.innerHTML = `<div class="drum-note">${t.name} speaks one voice — pick it under ⚙. Steps carry no pitch.</div>${beatsRow}`;
     } else if (t.kind === 'chord') {
       const c = state.chordCfg;
       pickBody.innerHTML = `
@@ -587,7 +618,7 @@ function renderPickers() {
           <button class="nbtn util" data-oct="1">oct▴</button>
           <button class="nbtn util" data-inv="1">${INVERSIONS[c.inv]}</button>
         </div>
-        ${lenRow}`;
+        ${lenRow}${beatsRow}`;
     } else {
       const stickyNote = sticky.label;
       const KW = 44, start = 2, octs = 4;
@@ -606,7 +637,7 @@ function renderPickers() {
       }
       pickBody.innerHTML = `
         <div class="piano-wrap"><div class="piano" style="width:${wx + 4}px">${whites}${blacks}</div></div>
-        ${lenRow}`;
+        ${lenRow}${beatsRow}`;
       if (pianoScrolledFor !== t.key) {
         pianoScrolledFor = t.key;
         const wrap = pickBody.querySelector('.piano-wrap');
@@ -631,6 +662,15 @@ pickBody.addEventListener('click', (e) => {
   const t = active();
   const ptab = e.target.closest('[data-ptab]');
   if (ptab) { state.instTab = ptab.dataset.ptab; renderPickers(); return; }
+  const beats = e.target.closest('[data-beats]');
+  if (beats) {
+    // change this channel's subdivision, keeping the wound position in time
+    const tick = cursorTick();
+    t.div = +beats.dataset.beats;
+    state.cursor = Math.round(tick / (TPB / t.div)) % (state.bars * t.div);
+    state.sel = null;
+    renderRing(); renderPickers(); return;
+  }
   const note = e.target.closest('[data-note]');
   if (note) {
     const len = state.stickyEv[t.key].len || 1;
@@ -693,9 +733,10 @@ svg.addEventListener('pointermove', (e) => {
     try { svg.setPointerCapture(e.pointerId); } catch (_) {}
   }
   if (dragged) {
+    const n = trackSteps(active());
     const delta = Math.round(dy / 22);
-    state.cursor = ((dragStartCursor + delta) % STEPS() + STEPS()) % STEPS();
-    const bar = Math.floor(state.cursor / 16);
+    state.cursor = ((dragStartCursor + delta) % n + n) % n;
+    const bar = Math.floor(state.cursor / active().div);
     if (bar !== state.focusedBar && !timer) { state.focusedBar = bar; settle(); }
     renderRing();
   }
@@ -721,7 +762,7 @@ svg.addEventListener('click', (e) => {
   const st = e.target.closest('[data-s]');
   if (!st || state.view !== 'steps') return;
   const s = +st.dataset.s;
-  const bar = Math.floor(s / 16);
+  const bar = Math.floor(s / active().div);
   if (bar !== state.focusedBar) { state.focusedBar = bar; settle(); return; }
   const t = active();
   if (!t.steps[s]) {
@@ -743,8 +784,9 @@ svg.addEventListener('click', (e) => {
 svg.addEventListener('wheel', (e) => {
   e.preventDefault();
   if (state.view !== 'steps') return;
-  state.cursor = ((state.cursor + (e.deltaY > 0 ? 1 : -1)) % STEPS() + STEPS()) % STEPS();
-  const bar = Math.floor(state.cursor / 16);
+  const n = trackSteps(active());
+  state.cursor = ((state.cursor + (e.deltaY > 0 ? 1 : -1)) % n + n) % n;
+  const bar = Math.floor(state.cursor / active().div);
   if (bar !== state.focusedBar && !timer) { state.focusedBar = bar; settle(); }
   renderRing();
 }, { passive: false });
@@ -780,9 +822,14 @@ chips.addEventListener('click', (e) => {
   }
   const chip = e.target.closest('.tchip');
   if (chip) {
+    // keep the wound position in TIME when hopping channels with different
+    // beat counts: convert cursor through ticks
+    const tick = cursorTick();
     state.activeKey = chip.dataset.k;
     state.hidden.delete(chip.dataset.k);
     state.sel = null;
+    const nd = active().div;
+    state.cursor = Math.round(tick / (TPB / nd)) % (state.bars * nd);
     renderChips(); renderRing(); renderPickers();
   }
 });
@@ -794,9 +841,9 @@ app.querySelector('.status-row').addEventListener('click', (e) => {
   if (!b) return;
   stopPlay();
   state.bars = Math.min(3, Math.max(1, state.bars + +b.dataset.bars));
-  state.cursor = state.cursor % STEPS();
+  state.cursor = state.cursor % trackSteps(active());
   state.focusedBar = Math.min(state.focusedBar, state.bars - 1);
-  if (state.sel !== null && state.sel >= STEPS()) state.sel = null;
+  if (state.sel !== null && state.sel >= trackSteps(active())) state.sel = null;
   app.querySelector('.bars-lab').textContent = `${['I', 'II', 'III'][state.bars - 1]} bar${state.bars > 1 ? 's' : ''}`;
   settle();
 });
