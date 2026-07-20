@@ -4,7 +4,7 @@ import { db } from '@/db/client';
 import { games, gameRooms, songs } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { normalizeSequencerState } from '@/lib/sequencerState';
-import { validateTurnSave } from '@/lib/gameLogic';
+import { CHANNEL_ALLOWED_PRESETS, validateTurnSave } from '@/lib/gameLogic';
 import { dealCurse } from '@/lib/curses';
 
 // Seal the current room: commit the final snapshot (if sent), mark the room
@@ -39,7 +39,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       .limit(1);
     if (!song) return NextResponse.json({ error: 'song not found' }, { status: 404 });
     const stored = normalizeSequencerState(song.sequencerData);
-    const verdict = validateTurnSave(stored, body.sequencerData, room.channelId);
+    const verdict = validateTurnSave(stored, body.sequencerData, room.channelId, CHANNEL_ALLOWED_PRESETS[room.channelId]);
     if (!verdict.ok) return NextResponse.json({ error: verdict.error }, { status: 400 });
     await db
       .update(songs)

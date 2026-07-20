@@ -60,35 +60,50 @@ export default async function GameMapPage({ params }: { params: Promise<{ id: st
             ▶︎ Hear the finished song
           </Link>
         </>
-      ) : yourTurn ? (
-        <>
-          <div className="banner">
-            <div className="k">✦ It is your turn ✦</div>
-            <div className="v">
-              Enter Room {toRoman((currentRoom?.roomIndex ?? 0) + 1)}
-              <small>Descend into the crypt and face what it deals you</small>
-            </div>
-          </div>
-          <Link href={`/games/${game.id}/room`} className="gbtn rite">
-            <SwordsGlyph size={20} stroke="#f2ede3" /> Enter the Room
-          </Link>
-        </>
-      ) : (
-        <div className="banner">
-          <div className="k">✦ The crypt waits ✦</div>
-          <div className="v">
-            {currentPlayer ? `${currentPlayer.displayName}'s turn` : 'Awaiting a bard'}
-            <small>Room {toRoman((currentRoom?.roomIndex ?? 0) + 1)} of {toRoman(game.roomCount)} — you will be summoned</small>
-          </div>
+      ) : yourTurn && currentRoom ? (
+        // The next room and the enter action are ONE element: tap the door.
+        <Link href={`/games/${game.id}/room`} className="door enterable">
+          <span className="door-label">
+            <span className="k">✦ It is your turn ✦</span>
+            <span className="v">Room {toRoman(currentRoom.roomIndex + 1)} awaits</span>
+          </span>
+          <span className="door-frame">
+            <span className={`door-numeral${toRoman(currentRoom.roomIndex + 1).length > 2 ? ' long' : ''}`}>
+              {toRoman(currentRoom.roomIndex + 1)}
+            </span>
+            <span className="door-keeper">the Room holds its secrets</span>
+          </span>
+          <span className="door-plate">
+            <SwordsGlyph size={18} stroke="#f2ede3" /> Enter the Room
+          </span>
+        </Link>
+      ) : currentRoom ? (
+        <div className="door">
+          <span className="door-label">
+            <span className="k">✦ The crypt is occupied ✦</span>
+            <span className="v">Room {toRoman(currentRoom.roomIndex + 1)}</span>
+            <small>
+              {currentPlayer ? `${currentPlayer.displayName} is inside — you will be summoned` : 'Awaiting a bard'}
+            </small>
+          </span>
+          <span className="door-frame">
+            <span className={`door-numeral${toRoman(currentRoom.roomIndex + 1).length > 2 ? ' long' : ''}`}>
+              {toRoman(currentRoom.roomIndex + 1)}
+            </span>
+            <span className="door-keeper">
+              {currentPlayer && <span className="med">{initials(currentPlayer.displayName)}</span>}
+              fate undisclosed…
+            </span>
+          </span>
         </div>
-      )}
+      ) : null}
 
       <div className="ornament" />
       <div className="section-label">
         The Dungeon · <b>{toRoman(game.roomCount)}</b> Rooms
       </div>
 
-      {rooms.map((r) => {
+      {rooms.filter((r) => complete || r.status !== 'current').map((r) => {
         const p = byId.get(r.playerId);
         const roman = toRoman(r.roomIndex + 1);
         const curse = curseById(r.curseId);

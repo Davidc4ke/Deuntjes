@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { requireUser } from '@/components/shared/AuthGate';
-import { AppBar } from '@/components/app/AppBar';
 import { signOut } from '@/auth';
 import { db } from '@/db/client';
 import { games, gameRooms, songs, users } from '@/db/schema';
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { defaultSequencerState } from '@/lib/sequencerState';
+import { initials, SkullGlyph, SwordsGlyph, toRoman } from './games/glyphs';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,114 +59,96 @@ export default async function HomePage() {
   const currentByGame = new Map(currentRooms.map((r) => [r.gameId, r]));
 
   return (
-    <>
-      <AppBar
-        title={
-          <span>
+    <div className="grim">
+      <div className="grim-grain" aria-hidden="true" />
+      <main className="grim-page">
+        <div className="grim-bar">
+          <span className="grim-title">Deuntjes</span>
+          <span className="grim-crumb">
             {avatar} {name}
           </span>
-        }
-        right={
           <form
             action={async () => {
               'use server';
               await signOut({ redirectTo: '/login' });
             }}
           >
-            <button type="submit" style={{ padding: '6px 10px' }}>
-              Sign out
+            <button type="submit" className="gbtn ghost" style={{ width: 'auto', padding: '4px 6px' }}>
+              leave
             </button>
           </form>
-        }
-      />
-      <main className="page">
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
-          <Link
-            href="/games/new"
-            className="primary"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              padding: '8px 14px',
-              background: '#a01818',
-              color: '#f2ede3',
-              borderRadius: 8,
-              textDecoration: 'none',
-              fontWeight: 600,
-            }}
-          >
-            ☠︎ New dungeon
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          <Link href="/games/new" className="gbtn rite" style={{ flex: 1 }}>
+            <SkullGlyph size={17} stroke="#f2ede3" eyes="#f2ede3" /> New dungeon
           </Link>
-          <form action={createSongAction}>
-            <button type="submit" className="primary">
+          <form action={createSongAction} style={{ flex: 1, display: 'flex' }}>
+            <button type="submit" className="gbtn iron" style={{ flex: 1 }}>
               + New song
             </button>
           </form>
         </div>
 
         {myGames.length > 0 && (
-          <section style={{ marginBottom: 20 }}>
-            <h2 style={{ fontSize: 14, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.7, margin: '0 0 8px' }}>
-              Dungeons
-            </h2>
+          <section style={{ marginBottom: 26 }}>
+            <div className="section-label">Dungeons</div>
             {myGames.map((g) => {
               const current = currentByGame.get(g.id);
               const yourTurn = g.status === 'active' && current?.playerId === userId;
+              const done = g.status === 'complete';
               return (
-                <Link key={g.id} href={`/games/${g.id}`} className="song-card">
-                  <span style={{ fontSize: 22 }}>{g.status === 'complete' ? '🏆' : '⚔️'}</span>
-                  <div className="song-card-meta">
-                    <div className="song-card-title">{g.title}</div>
-                    <div className="song-card-sub">
-                      {g.status === 'complete'
-                        ? 'Song complete — listen'
-                        : `Room ${(current?.roomIndex ?? 0) + 1} of ${g.roomCount}`}
+                <Link key={g.id} href={`/games/${g.id}`} className={`room${yourTurn ? ' current' : ''}`} style={{ opacity: done ? 0.75 : 1 }}>
+                  <div className="arch">
+                    {done ? '✦' : <SwordsGlyph size={18} stroke="#f2ede3" />}
+                  </div>
+                  <div className="body">
+                    <div className="rm-title">{g.title}</div>
+                    <div className="rm-sub">
+                      {done ? (
+                        <span>The song is complete — listen</span>
+                      ) : (
+                        <span>
+                          Room {toRoman((current?.roomIndex ?? 0) + 1)} of {toRoman(g.roomCount)}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  {yourTurn && (
-                    <span
-                      style={{
-                        background: '#a01818',
-                        color: '#f2ede3',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        letterSpacing: '0.08em',
-                        textTransform: 'uppercase',
-                        padding: '4px 9px',
-                        borderRadius: 999,
-                        flexShrink: 0,
-                      }}
-                    >
-                      Your turn
-                    </span>
-                  )}
+                  {yourTurn && <span className="badge-turn">Your turn</span>}
                 </Link>
               );
             })}
           </section>
         )}
-        {rows.length === 0 ? (
-          <div className="card">
-            <h2 style={{ marginTop: 0 }}>No songs yet</h2>
-            <p className="muted">Tap “New song” to start your first sequencer.</p>
-          </div>
-        ) : (
-          <div>
-            {rows.map((r) => (
-              <Link key={r.id} href={`/songs/${r.id}`} className="song-card">
-                <span style={{ fontSize: 22 }}>{r.creatorAvatar}</span>
-                <div className="song-card-meta">
-                  <div className="song-card-title">{r.title}</div>
-                  <div className="song-card-sub">
-                    {r.creatorName}
-                    {r.createdBy === userId ? ' · you' : ''}
+
+        <section>
+          <div className="section-label">Songbook</div>
+          {rows.length === 0 ? (
+            <p className="deal-intro" style={{ textAlign: 'left' }}>
+              No loose songs yet — raise a dungeon with your friends, or start a song of your own.
+            </p>
+          ) : (
+            rows.map((r) => (
+              <Link key={r.id} href={`/songs/${r.id}`} className="room">
+                <div className="arch">
+                  <span className="med" style={{ border: 'none', fontSize: 15 }}>
+                    {r.creatorAvatar}
+                  </span>
+                </div>
+                <div className="body">
+                  <div className="rm-title">{r.title}</div>
+                  <div className="rm-sub">
+                    <span className="who">
+                      <span className="med">{initials(r.creatorName)}</span> {r.creatorName}
+                      {r.createdBy === userId ? ' · you' : ''}
+                    </span>
                   </div>
                 </div>
               </Link>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </section>
       </main>
-    </>
+    </div>
   );
 }

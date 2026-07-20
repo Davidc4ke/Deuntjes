@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+// The woodcut theme (scoped under .grim) is global so the login and home
+// "lobby" screens share it with the /games area; /songs keeps its own skin.
+import './games/games.css';
 import { QueryProvider } from '@/components/app/QueryProvider';
 
 export const metadata: Metadata = {

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { SequencerEditor } from '@/components/sequencer/SequencerEditor';
 import type { SequencerState } from '@/lib/sequencerState';
 import type { Curse } from '@/lib/curses';
+import { CHANNEL_ALLOWED_PRESETS } from '@/lib/gameLogic';
 import { CHANNEL_PATTERNS, LockGlyph, LuteGlyph, SkullGlyph, SwordsGlyph, toRoman } from '../../glyphs';
 
 // Same autosave tuning as SongPageClient, targeting the game turn endpoint.
@@ -335,6 +336,7 @@ export function GameRoomClient({
           isOwner
           creatorDisplay={`Room ${roman} · ${channelName}`}
           lockedChannelId={channelId}
+          allowedPresets={CHANNEL_ALLOWED_PRESETS[channelId]}
         />
       </div>
     </div>

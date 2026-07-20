@@ -14,6 +14,17 @@ export const CHANNEL_NAMES: Record<number, string> = {
   4: 'Chord',
 };
 
+// Which sequencer presets a dealt track type may use: drums get drum voices,
+// bass gets low mono voices, lead gets melodic mono/plucked voices, chord
+// gets polyphonic voices. Enforced in the editor's preset picker AND by
+// validateTurnSave (names must match PRESETS in the sequencer).
+export const CHANNEL_ALLOWED_PRESETS: Record<number, string[]> = {
+  1: ['bass', 'sub', 'acid', 'reese'], // Bass
+  2: ['kick', '808', 'snare', 'clap', 'hat', 'ohat', 'tom', 'perc', 'rim', 'crash', 'ride'], // Drum
+  3: ['lead', 'pluck', 'acid', 'bell', 'marimba', 'keys'], // Lead
+  4: ['pad', 'keys', 'organ', 'strings', 'choir', 'bell'], // Chord
+};
+
 export function channelForRoom(roomIndex: number): number {
   return CHANNEL_ORDER[roomIndex % CHANNEL_ORDER.length];
 }
@@ -43,6 +54,7 @@ export function validateTurnSave(
   stored: SequencerState,
   incoming: unknown,
   dealtChannelId: number,
+  allowedPresets?: string[],
 ): TurnSaveResult {
   if (!incoming || typeof incoming !== 'object') {
     return { ok: false, error: 'sequencerData must be an object' };
@@ -56,6 +68,13 @@ export function validateTurnSave(
   const nextIds = next.channels.map((c) => c?.id).sort().join(',');
   if (storedIds !== nextIds) {
     return { ok: false, error: 'channels may not be added or removed during a turn' };
+  }
+
+  if (allowedPresets) {
+    const dealt = next.channels.find((c) => c?.id === dealtChannelId);
+    if (dealt && !allowedPresets.includes(dealt.presetName)) {
+      return { ok: false, error: `preset "${dealt.presetName}" is not allowed for this track type` };
+    }
   }
 
   for (const ch of stored.channels) {

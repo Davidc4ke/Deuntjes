@@ -29,27 +29,33 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="stack" style={{ marginTop: 24 }}>
-      <label>
-        <div className="muted" style={{ marginBottom: 6 }}>
-          Username
-        </div>
-        <input
-          autoCapitalize="none"
-          autoCorrect="off"
-          autoComplete="username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="bolbo / dilla / david"
-          required
-        />
+    <form onSubmit={onSubmit} className="gform">
+      <label className="f-label" htmlFor="login-name">
+        Your name, bard
       </label>
-      {error ? <div style={{ color: 'var(--danger)' }}>{error}</div> : null}
-      <button type="submit" disabled={pending} className="primary">
-        {pending ? 'Signing in…' : 'Sign in'}
-      </button>
-      <p className="muted" style={{ fontSize: 13 }}>
-        Private app for 3 friends. No password — usernames are the whole list.
+      <input
+        id="login-name"
+        type="text"
+        autoCapitalize="none"
+        autoCorrect="off"
+        autoComplete="username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        placeholder="bolbo / dilla / david"
+        required
+      />
+      {error ? (
+        <p className="hint" style={{ color: 'var(--blood-lit)' }}>
+          {error}
+        </p>
+      ) : null}
+      <div style={{ marginTop: 18 }}>
+        <button type="submit" disabled={pending} className="gbtn rite">
+          {pending ? 'Opening the gates…' : 'Enter'}
+        </button>
+      </div>
+      <p className="hint" style={{ textAlign: 'center', marginTop: 14 }}>
+        A private hall for three friends. No password — your name is the key.
       </p>
     </form>
   );

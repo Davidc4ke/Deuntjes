@@ -13,6 +13,9 @@ export interface MountOptions {
   // notes on other channels can't be selected. Server-side validation is
   // the backstop; this keeps honest edits from 400-ing the autosave.
   lockedChannelId?: number;
+  // Turn mode: only these presets appear in (and are applicable from) the
+  // instrument picker — drums for a Drum turn, poly voices for Chord, etc.
+  allowedPresets?: string[];
   // Song-level integration hooks (no-ops in the standalone mockup):
   onBack?: () => void;
   onRenameTitle?: (title: string) => void;
@@ -2526,6 +2529,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     const btn = e.target.closest("button[data-value]");
     if (!btn) return;
     const value = btn.dataset.value;
+    if (options.allowedPresets && !options.allowedPresets.includes(value)) return;
     pushUndo();
     const ch = activeChannel();
     ch.presetName = value;
@@ -3158,6 +3162,10 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     cont.innerHTML = "";
     const active = activeChannel().presetName;
     PRESET_CATEGORIES.forEach(cat => {
+      const presets = options.allowedPresets
+        ? cat.presets.filter(name => options.allowedPresets.includes(name))
+        : cat.presets;
+      if (presets.length === 0) return; // whole category off-limits this turn
       const group = document.createElement("div");
       group.className = "preset-group";
       const lab = document.createElement("div");
@@ -3167,7 +3175,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       const seg = document.createElement("div");
       seg.className = "seg seg-presets";
       seg.dataset.group = "instrument";
-      cat.presets.forEach(name => {
+      presets.forEach(name => {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.dataset.value = name;

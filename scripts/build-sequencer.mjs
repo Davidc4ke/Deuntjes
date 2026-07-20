@@ -19,6 +19,8 @@
 //     and the lockedChannelId?: number field on MountOptions.
 //   - unlockAudio(): silent looping <audio> "media kick" so iOS plays sound
 //     with the ringer switch on silent (plus teardown cleanup).
+//   - options.allowedPresets (turn mode): filters renderPresetButtons and
+//     guards the #presetGroups click handler, plus the MountOptions field.
 // Before re-running this script, diff the regenerated output against the
 // checked-in files and re-apply every hand-patch, or you will silently break
 // the game layer.
