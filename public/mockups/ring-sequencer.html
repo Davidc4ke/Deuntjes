@@ -250,6 +250,11 @@ const ALLOWED = {
   melodic: ['Bass', 'Sub', 'Acid', 'Reese', 'Lead', 'Pluck', 'Bell', 'Marimba', 'Keys'],
   chord: ['Pad', 'Keys', 'Organ', 'Strings', 'Choir', 'Bell'],
 };
+// two drum kits: the plain bone kit, and a proper 80s drum machine
+const DRUM_KITS = {
+  'Bone Kit': ALLOWED.drum,
+  'Neon 808': ['808 Kick', '808 Snare', '808 Clap', '808 Hat', '808 Open', '808 Tom', 'Cowbell', 'Rimshot', 'Maracas'],
+};
 const TIMBRE = {
   Kick: ['sine', .1], '808': ['sine', .3], Snare: ['square', .05], Clap: ['square', .06],
   Hat: ['square', .03], 'Open Hat': ['square', .12], Tom: ['sine', .12], Perc: ['sine', .06],
@@ -294,10 +299,12 @@ const state = {
   preset: {},
   params: {},
 };
+state.drumKit = {};
 state.tracks.forEach((t, i) => {
   t.pat = 'pat-' + (i % 5);
   state.preset[t.key] = t.preset;
   state.params[t.key] = defaultParams();
+  if (t.kind === 'drum') state.drumKit[t.key] = 'Bone Kit';
   state.stickyEv[t.key] = t.kind === 'chord'
     ? buildChord({ root: 'C', qual: 'min', oct: 3, inv: 0 })
     : N(t.kind === 'drum' ? 'C2' : 'C4');
@@ -313,23 +320,130 @@ const others = () => state.tracks.filter(t => t.key !== state.activeKey && !stat
 const cursorTick = () => Math.round(state.cursor * (TPB / active().div)) % (state.bars * TPB);
 
 // ================= audio =================
-let AC = null;
+let AC = null, noiseBuf = null;
+function noiseSrc() {
+  if (!noiseBuf) {
+    noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const s = AC.createBufferSource();
+  s.buffer = noiseBuf; s.loop = true;
+  return s;
+}
+function envGain(t, peak, dur) {
+  const g = AC.createGain();
+  g.gain.setValueAtTime(peak, t);
+  g.gain.exponentialRampToValueAtTime(.001, t + dur);
+  return g;
+}
+// Drums carry pitch: `factor` scales every voice from its C2 home.
+function drumVoice(name, t, factor, P) {
+  const out = AC.destination;
+  const rv = 1 + P.reverb * 1.5;
+  switch (name) {
+    case '808 Kick': {
+      const o = AC.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(160 * factor, t);
+      o.frequency.exponentialRampToValueAtTime(Math.max(28, 45 * factor), t + .12);
+      const g = envGain(t, .5, .5 * rv);
+      o.connect(g).connect(out); o.start(t); o.stop(t + .55 * rv); break;
+    }
+    case '808 Snare': {
+      const o = AC.createOscillator(); o.type = 'triangle'; o.frequency.value = 185 * factor;
+      const g = envGain(t, .22, .18 * rv);
+      o.connect(g).connect(out); o.start(t); o.stop(t + .25 * rv);
+      const n = noiseSrc(); const hp = AC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
+      const g2 = envGain(t, .28, .2 * rv);
+      n.connect(hp); hp.connect(g2).connect(out); n.start(t); n.stop(t + .25 * rv); break;
+    }
+    case '808 Clap': {
+      for (let k = 0; k < 3; k++) {
+        const n = noiseSrc(); const bp = AC.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.value = 1200 * factor; bp.Q.value = 1.5;
+        const tt = t + k * .012;
+        const g = envGain(tt, .26, k === 2 ? .25 * rv : .03);
+        n.connect(bp); bp.connect(g).connect(out); n.start(tt); n.stop(tt + .3 * rv);
+      }
+      break;
+    }
+    case '808 Hat': case '808 Open': {
+      const dur = (name === '808 Open' ? .4 : .06) * rv;
+      const hp = AC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 7000;
+      const g = envGain(t, .14, dur);
+      hp.connect(g).connect(out);
+      [2, 3, 4.16, 5.43, 6.79, 8.21].forEach(r => {
+        const o = AC.createOscillator(); o.type = 'square';
+        o.frequency.value = 80 * r * factor;
+        o.connect(hp); o.start(t); o.stop(t + dur + .05);
+      });
+      break;
+    }
+    case '808 Tom': {
+      const o = AC.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(200 * factor, t);
+      o.frequency.exponentialRampToValueAtTime(Math.max(40, 90 * factor), t + .2);
+      const g = envGain(t, .32, .3 * rv);
+      o.connect(g).connect(out); o.start(t); o.stop(t + .38 * rv); break;
+    }
+    case 'Cowbell': {
+      [540, 800].forEach(fq => {
+        const o = AC.createOscillator(); o.type = 'square'; o.frequency.value = fq * factor;
+        const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 800 * factor;
+        const g = envGain(t, .2, .25 * rv);
+        o.connect(bp); bp.connect(g).connect(out); o.start(t); o.stop(t + .35 * rv);
+      });
+      break;
+    }
+    case 'Rimshot': {
+      const o = AC.createOscillator(); o.type = 'square'; o.frequency.value = 1700 * factor;
+      const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1700 * factor; bp.Q.value = 8;
+      const g = envGain(t, .3, .05);
+      o.connect(bp); bp.connect(g).connect(out); o.start(t); o.stop(t + .1); break;
+    }
+    case 'Maracas': {
+      const n = noiseSrc(); const hp = AC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 5000;
+      const g = envGain(t, .18, .05 * rv);
+      n.connect(hp); hp.connect(g).connect(out); n.start(t); n.stop(t + .1); break;
+    }
+    default: {
+      // Bone Kit, now pitch-aware and less flat: noisy voices get real noise
+      const base = (TIMBRE[name] || ['sine', .1])[1];
+      const noisy = { Snare: 1500, Clap: 1200, Hat: 6000, 'Open Hat': 6000, Rim: 3000, Crash: 5000, Ride: 6500 }[name];
+      if (noisy) {
+        const n = noiseSrc(); const hp = AC.createBiquadFilter(); hp.type = 'highpass';
+        hp.frequency.value = noisy * Math.sqrt(factor);
+        const g = envGain(t, .24, base * rv * 2.2);
+        n.connect(hp); hp.connect(g).connect(out); n.start(t); n.stop(t + base * rv * 2.2 + .05);
+      } else {
+        const o = AC.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(Math.max(30, 82 * factor * (name === '808' ? .8 : name === 'Tom' ? 1.6 : name === 'Perc' ? 2.2 : 1)), t);
+        o.frequency.exponentialRampToValueAtTime(Math.max(24, 38 * factor), t + .09);
+        const g = envGain(t, .3, base * rv * 3);
+        o.connect(g).connect(out); o.start(t); o.stop(t + base * rv * 3 + .05);
+      }
+    }
+  }
+}
 function tone(track, note, len = 1, when = 0) {
   try {
     AC = AC || new (window.AudioContext || window.webkitAudioContext)();
     if (AC.state === 'suspended') AC.resume();
     const P = state.params[track.key];
     const t = AC.currentTime + when;
+    if (track.kind === 'drum') {
+      drumVoice(state.preset[track.key], t, noteFreq(note) / 65.41 /* C2 */, P);
+      return;
+    }
     const o = AC.createOscillator(), g = AC.createGain(), f = AC.createBiquadFilter();
     const [type, base] = TIMBRE[state.preset[track.key]] || ['triangle', .15];
     o.type = P.drive > .5 ? 'sawtooth' : type;
-    o.frequency.value = track.kind === 'drum' ? 82 : noteFreq(note);
-    if (track.kind === 'drum') o.frequency.exponentialRampToValueAtTime(38, t + .09);
+    o.frequency.value = noteFreq(note);
     f.type = 'lowpass';
     f.frequency.value = 200 + P.cutoff * 9000;
     f.Q.value = 1 + P.resonance * 12;
-    const atk = track.kind === 'drum' ? 0.001 : P.attack * .25;
-    const dur = Math.max(atk + .03, base * (1 + P.reverb * 2.2 + P.release) * (track.kind === 'drum' ? 1 : Math.max(1, len * .8)));
+    const atk = P.attack * .25;
+    const dur = Math.max(atk + .03, base * (1 + P.reverb * 2.2 + P.release) * Math.max(1, len * .8));
     const peak = track.kind === 'chord' ? .12 : .2;
     g.gain.setValueAtTime(.0001, t);
     g.gain.linearRampToValueAtTime(peak, t + atk);
@@ -496,7 +610,7 @@ function renderRing() {
               out += `<text x="${x}" y="${y - 3.5}" class="b-lab on" style="font-size:${fs}px">${ev.label.slice(0, 6)}</text>`;
               out += `<text x="${x}" y="${y + 7}" class="b-lab on" style="font-size:${fs * .62}px;font-family:var(--body);font-style:italic;opacity:.75">${ev.notes.length}v${ev.len > 1 ? '·' + ev.len : ''}</text>`;
             } else {
-              out += `<text x="${x}" y="${y}" class="b-lab on" style="font-size:${fs}px">${t.kind === 'drum' ? '●' : ev.label}</text>`;
+              out += `<text x="${x}" y="${y}" class="b-lab on" style="font-size:${fs}px">${ev.label}</text>`;
             }
           } else {
             out += `<text x="${x}" y="${y}" class="b-lab" style="font-size:${fs}px">${s + 1}</text>`;
@@ -518,7 +632,7 @@ function renderRing() {
   // instrument wheel
   if (L.inst > 0.02) {
     const t2 = active();
-    const names = ALLOWED[t2.kind];
+    const names = t2.kind === 'drum' ? DRUM_KITS[state.drumKit[t2.key]] : ALLOWED[t2.kind];
     const wr = 40 + 106 * L.inst;
     out += `<g opacity="${L.inst}">`;
     names.forEach((p, i) => {
@@ -585,7 +699,11 @@ function renderPickers() {
   if (state.view === 'inst') {
     const P = state.params[t.key];
     pickStatus.innerHTML = `shaping <b>${t.name}</b> — ${state.preset[t.key]}`;
+    const kitRow = t.kind === 'drum' ? `
+      <div class="ptabs">${Object.keys(DRUM_KITS).map(k =>
+        `<button data-kit="${k}" class="${state.drumKit[t.key] === k ? 'cur' : ''}">${k}</button>`).join('')}</div>` : '';
     pickBody.innerHTML = `
+      ${kitRow}
       <div class="ptabs">${Object.keys(PARAM_TABS).map(tab =>
         `<button data-ptab="${tab}" class="${state.instTab === tab ? 'cur' : ''}">${tab}</button>`).join('')}</div>
       ${PARAM_TABS[state.instTab].map(p => `
@@ -603,12 +721,10 @@ function renderPickers() {
     const beatsRow = `
       <div class="len-row"><span class="lab">Beats</span>${BEAT_CHOICES.map(b =>
         `<button class="nbtn util ${t.div === b ? 'sticky' : ''}" data-beats="${b}">${b}</button>`).join('')}</div>`;
-    const lenRow = t.kind === 'drum' ? '' : `
+    const lenRow = `
       <div class="len-row"><span class="lab">Length</span>${[1, 2, 3, 4, 6, 8].map(l =>
         `<button class="nbtn util ${((ev ?? sticky).len || 1) === l ? 'sticky' : ''}" data-len="${l}">${l === 1 ? '1 step' : '×' + l}</button>`).join('')}</div>`;
-    if (t.kind === 'drum') {
-      pickBody.innerHTML = `<div class="drum-note">${t.name} speaks one voice — pick it under ⚙. Steps carry no pitch.</div>${beatsRow}`;
-    } else if (t.kind === 'chord') {
+    if (t.kind === 'chord') {
       const c = state.chordCfg;
       pickBody.innerHTML = `
         <div class="strip" data-strip="root">${NOTE_ORDER.map(r =>
@@ -664,6 +780,15 @@ pickBody.addEventListener('click', (e) => {
   const t = active();
   const ptab = e.target.closest('[data-ptab]');
   if (ptab) { state.instTab = ptab.dataset.ptab; renderPickers(); return; }
+  const kit = e.target.closest('[data-kit]');
+  if (kit) {
+    state.drumKit[t.key] = kit.dataset.kit;
+    if (!DRUM_KITS[kit.dataset.kit].includes(state.preset[t.key])) {
+      state.preset[t.key] = DRUM_KITS[kit.dataset.kit][0];
+    }
+    playEvent(t, state.stickyEv[t.key]);
+    renderRing(); renderPickers(); return;
+  }
   const beats = e.target.closest('[data-beats]');
   if (beats) {
     // change this channel's subdivision, keeping the wound position in time
