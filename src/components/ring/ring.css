@@ -1,0 +1,172 @@
+/* Ritual Ring sequencer — ported from public/mockups/ring-sequencer.html.
+   Everything is scoped under .ringseq so the rest of the app is untouched.
+   The host element (.ring-host) is sized by its context (room editor fills
+   the compose screen; the finished-song view fills the viewport). */
+
+.ring-host { height: 100%; }
+
+.ringseq {
+  --void: #050505; --iron: #101010; --iron-2: #181818;
+  --ink: #f2ede3; --ink-dim: #b3ac9d; --smoke: #7d7768;
+  --blood: #a01818; --blood-lit: #d42121; --blood-dark: #5c0d0d;
+  --parch: #efe9db; --parch-ink: #151210;
+  --display: "UnifrakturCook", "Pirata One", serif;
+  --gothic: "Pirata One", serif;
+  --body: "IM Fell English", Georgia, serif;
+
+  height: 100%; max-width: 540px; margin: 0 auto;
+  display: flex; flex-direction: column;
+  padding: 4px 10px calc(8px + env(safe-area-inset-bottom));
+  overflow: hidden;
+  background: radial-gradient(130% 90% at 50% -20%, #141414, var(--void) 55%);
+  color: var(--ink); font-family: var(--body);
+  user-select: none; -webkit-user-select: none;
+}
+/* touch-action: manipulation kills iOS double-tap zoom on every control;
+   the ring svg overrides with touch-action: none for the wind gesture */
+.ringseq, .ringseq * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.ringseq button { font-family: inherit; cursor: pointer; }
+
+.ringseq .chips-row { display: flex; gap: 6px; margin-bottom: 6px; flex-shrink: 0; align-items: stretch; }
+.ringseq .track-chips { display: flex; gap: 6px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.ringseq .track-chips::-webkit-scrollbar { display: none; }
+.ringseq .tchip {
+  flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 5px;
+  background: #0d0d0d; border: 1px solid rgba(242,237,227,.16); border-radius: 3px;
+  color: var(--smoke); font: 400 12px var(--gothic); letter-spacing: .04em; padding: 8px 9px;
+}
+.ringseq .tchip .sw { width: 9px; height: 9px; border: 1px solid rgba(242,237,227,.5); flex-shrink: 0; }
+.ringseq .tchip.active { color: var(--parch-ink); background: linear-gradient(180deg, #f4efe2, #ddd5c2); border-color: #000; }
+.ringseq .tchip .eye { background: none; border: none; padding: 1px; color: inherit; display: inline-flex; }
+.ringseq .tchip .lock { display: inline-flex; opacity: .55; }
+.ringseq .tchip.hidden-track .sw, .ringseq .tchip.hidden-track .nm { opacity: .3; }
+.ringseq .pat-0 { background-image: repeating-linear-gradient(45deg, rgba(242,237,227,.95) 0 1px, transparent 1px 4px), repeating-linear-gradient(-45deg, rgba(242,237,227,.95) 0 1px, transparent 1px 4px); }
+.ringseq .pat-1 { background-image: repeating-linear-gradient(0deg, rgba(242,237,227,.95) 0 2px, transparent 2px 5px); }
+.ringseq .pat-2 { background-image: repeating-linear-gradient(45deg, rgba(242,237,227,.95) 0 1.5px, transparent 1.5px 5px); }
+.ringseq .pat-3 { background-image: radial-gradient(rgba(242,237,227,.95) 1px, transparent 1.4px); background-size: 5px 5px; }
+.ringseq .pat-4 { background-image: repeating-linear-gradient(90deg, rgba(242,237,227,.95) 0 2px, transparent 2px 5px); }
+.ringseq .tchip.active .sw { filter: invert(1); border-color: rgba(21,18,16,.7); }
+.ringseq .icon-chip {
+  flex: 0 0 42px; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, var(--iron-2), var(--iron)); color: var(--ink-dim);
+  border: 1px solid rgba(242,237,227,.22); border-radius: 3px; font-size: 16px;
+}
+.ringseq .icon-chip.lit { color: var(--ink); border-color: var(--blood-lit); box-shadow: 0 0 12px rgba(212,33,33,.3); }
+
+.ringseq .stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+.ringseq .stage svg { max-width: 100%; max-height: 100%; display: block; }
+.ringseq .stage .fx-layer { position: absolute; inset: 0; margin: auto; pointer-events: none; }
+.ringseq .stage .main-layer { position: relative; z-index: 1; touch-action: none; }
+
+/* position readout: thin left-aligned line under the channel bar */
+.ringseq .pos-row { flex-shrink: 0; padding: 0 2px 4px; font-size: 11.5px; font-style: italic; color: var(--smoke); }
+
+/* decorative spinners live on the static fx-layer so playback re-renders
+   never restart their animation */
+.ringseq .spin-slow { animation: ringspin 60s linear infinite; }
+.ringseq .spin-rev { animation: ringspin 42s linear infinite reverse; }
+@keyframes ringspin { to { transform: rotate(360deg); } }
+
+.ringseq .b-step { fill: #0d0d0d; stroke: rgba(242,237,227,.32); stroke-width: 1.6; }
+.ringseq .b-step.accent { stroke: rgba(242,237,227,.5); }
+.ringseq .b-step.on { fill: var(--parch); stroke: #000; }
+.ringseq .b-step.sel { stroke: var(--blood-lit); stroke-width: 3; }
+.ringseq .b-step.playhead { stroke: var(--ink); stroke-width: 3; filter: drop-shadow(0 0 6px rgba(242,237,227,.7)); }
+.ringseq .b-lab { font-family: var(--gothic); fill: var(--smoke); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.ringseq .b-lab.on { fill: var(--parch-ink); }
+.ringseq .b-ghost { fill: rgba(242,237,227,.5); }
+.ringseq .b-rune-ring { fill: none; stroke: rgba(242,237,227,.2); stroke-dasharray: 1 7; }
+.ringseq .b-rune-ring.r2 { stroke: rgba(212,33,33,.25); stroke-dasharray: 1 11; }
+.ringseq .b-hand { stroke: rgba(212,33,33,.85); stroke-width: 2.5; stroke-linecap: round; filter: drop-shadow(0 0 5px rgba(212,33,33,.8)); }
+.ringseq .b-hand.idle { stroke: rgba(242,237,227,.3); filter: none; stroke-dasharray: 3 5; }
+.ringseq .b-cursor-notch { fill: none; stroke: var(--blood-lit); stroke-width: 2; stroke-dasharray: 4 4; }
+.ringseq .b-lenarc { fill: none; stroke: rgba(239,233,219,.4); stroke-linecap: round; }
+.ringseq .b-focusring { fill: none; stroke: transparent; cursor: pointer; }
+
+/* ===== skull medallion (play / stop / instrument-confirm) ===== */
+.ringseq .sk-rim { fill: none; stroke: rgba(212,33,33,.45); stroke-width: 2.5; }
+.ringseq .sk-rim.idle { animation: skIdle 3s ease-in-out infinite; }
+.ringseq .sk-rim.lit { stroke: rgba(212,33,33,.95); filter: drop-shadow(0 0 10px rgba(212,33,33,.85)); animation: skLit 1.4s ease-in-out infinite; }
+@keyframes skIdle { 0%,100% { opacity: .35; } 50% { opacity: .7; } }
+@keyframes skLit { 0%,100% { opacity: .7; } 50% { opacity: 1; } }
+.ringseq .sk-disc { fill: url(#skullGrad); stroke: #4a0d0d; stroke-width: 1.5; }
+@keyframes skEye { 0%,100% { opacity: .65; } 50% { opacity: 1; } }
+.ringseq .sk3-pulse { animation: skEye 1.15s ease-in-out infinite; }
+.ringseq .sk3-crack { fill: none; stroke: rgba(58,32,20,.5); stroke-width: .7; stroke-linecap: round; stroke-linejoin: round; }
+.ringseq .sk3-crack.lit { stroke: rgba(255,69,38,.85); stroke-width: .9; filter: drop-shadow(0 0 1.5px #ff3a1f); animation: skEye 1.15s ease-in-out infinite; }
+.ringseq .sk-chip { fill: url(#chipGrad); stroke: #4a0d0d; stroke-width: 1.2; filter: drop-shadow(0 2px 4px rgba(0,0,0,.6)); }
+.ringseq .sk-glyph { fill: #f7f2e8; }
+.ringseq .sk-glyph.check { fill: none; stroke: #f7f2e8; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.ringseq .sk-hit { fill: transparent; cursor: pointer; }
+
+/* instrument wheel */
+.ringseq .p-stone { fill: #12100d; stroke: rgba(242,237,227,.35); stroke-width: 1.5; }
+.ringseq .p-stone.cur { fill: var(--parch); stroke: var(--blood-lit); stroke-width: 2.5; }
+.ringseq .p-lab { font-family: var(--gothic); fill: var(--ink-dim); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.ringseq .p-lab.cur { fill: var(--parch-ink); }
+.ringseq .fx-arc-bg { fill: none; stroke: rgba(242,237,227,.15); stroke-width: 10; stroke-linecap: round; }
+.ringseq .fx-arc-fill { fill: none; stroke: var(--blood-lit); stroke-width: 10; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(212,33,33,.5)); }
+.ringseq .fx-arc-hit { fill: none; stroke: transparent; stroke-width: 34; cursor: pointer; }
+.ringseq .fx-lab { font: italic 10px var(--body); fill: var(--smoke); text-anchor: middle; }
+.ringseq .inst-title { font-family: var(--display); fill: var(--ink); text-anchor: middle; }
+.ringseq .inst-sub { font: italic 10.5px var(--body); fill: var(--smoke); text-anchor: middle; }
+
+/* ===== pickers ===== */
+.ringseq .pickers { flex-shrink: 0; border-top: 1px solid rgba(242,237,227,.1); padding-top: 6px; }
+.ringseq .pick-status { font-size: 11.5px; font-style: italic; color: var(--smoke); text-align: center; margin: 0 0 6px; min-height: 14px; }
+.ringseq .pick-status b { color: var(--ink-dim); font-style: normal; font-family: var(--gothic); font-weight: 400; letter-spacing: .05em; }
+
+/* key-dot piano (matches the app's sequencer keyboard) */
+.ringseq .piano-wrap { overflow-x: auto; scrollbar-width: none; padding: 2px 0 7px; }
+.ringseq .piano-wrap::-webkit-scrollbar { display: none; }
+.ringseq .piano { position: relative; height: 80px; }
+.ringseq .pk-w, .ringseq .pk-b {
+  position: absolute; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font: 700 10px "Space Mono", ui-monospace, monospace; letter-spacing: .03em; text-transform: uppercase;
+  transition: transform .15s ease;
+}
+.ringseq .pk-w:active, .ringseq .pk-b:active { transform: scale(.92); }
+.ringseq .pk-w {
+  top: 38px; width: 40px; height: 40px;
+  background: radial-gradient(circle at 35% 30%, #fbf6e6 0%, #ebe5d3 70%, #d6d0bd 100%);
+  color: rgba(21,18,16,.8); border: 1px solid #b8b0a0;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.7), inset 0 -2px 3px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.5);
+}
+.ringseq .pk-b {
+  top: 0; width: 34px; height: 34px; z-index: 2; font-size: 8.5px;
+  background: radial-gradient(circle at 35% 30%, #2c2c2c 0%, #141414 70%, #060606 100%);
+  color: var(--ink-dim); border: 1px solid #000;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.15), inset 0 -2px 3px rgba(0,0,0,.55), 0 1px 3px rgba(0,0,0,.6);
+}
+.ringseq .pk-w.sticky, .ringseq .pk-b.sticky {
+  background: radial-gradient(circle at 35% 30%, #e5473a 0%, var(--blood) 70%, var(--blood-dark) 100%);
+  color: var(--ink); border-color: var(--blood-dark);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 0 10px rgba(212,33,33,.5);
+}
+
+.ringseq .strip { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 7px; scrollbar-width: none; }
+.ringseq .strip::-webkit-scrollbar { display: none; }
+.ringseq .nbtn {
+  flex-shrink: 0; height: 38px; min-width: 40px; padding: 0 9px; border-radius: 999px;
+  background: #0d0d0d; border: 1.5px solid rgba(242,237,227,.25); color: var(--ink-dim);
+  font: 400 12.5px var(--gothic); letter-spacing: .03em;
+}
+.ringseq .nbtn.black { background: #000; color: var(--smoke); }
+.ringseq .nbtn.sticky { background: linear-gradient(180deg, #f4efe2, #ddd5c2); color: var(--parch-ink); border-color: #000; }
+.ringseq .nbtn.util { border-style: dashed; font-size: 11px; }
+.ringseq .len-row { display: flex; gap: 6px; align-items: center; padding: 0 2px 2px; }
+.ringseq .len-row .lab, .ringseq .strip-label { font: 400 9.5px var(--gothic); letter-spacing: .14em; text-transform: uppercase; color: rgba(242,237,227,.35); padding: 0 4px 2px; }
+.ringseq .len-row .nbtn { height: 30px; min-width: 34px; font-size: 11.5px; }
+
+/* instrument parameter sections (Voice / Tone / EQ / FX) */
+.ringseq .ptabs { display: flex; gap: 6px; padding: 0 2px 8px; }
+.ringseq .ptabs button {
+  flex: 1; background: #0d0d0d; border: 1px solid rgba(242,237,227,.2); border-radius: 3px;
+  color: var(--smoke); font: 400 12px var(--gothic); letter-spacing: .08em; text-transform: uppercase; padding: 7px 4px;
+}
+.ringseq .ptabs button.cur { background: linear-gradient(180deg, #f4efe2, #ddd5c2); color: var(--parch-ink); border-color: #000; }
+.ringseq .prow { display: flex; align-items: center; gap: 9px; padding: 2px 4px 7px; }
+.ringseq .prow label { width: 64px; font: 400 12px var(--gothic); letter-spacing: .05em; color: var(--ink-dim); flex-shrink: 0; }
+.ringseq .prow input[type=range] { flex: 1; accent-color: var(--blood-lit); min-width: 0; }
+.ringseq .prow output { width: 30px; text-align: right; font-size: 11px; color: var(--smoke); flex-shrink: 0; }

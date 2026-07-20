@@ -4,6 +4,7 @@ import { db } from '@/db/client';
 import { games, gameRooms, songs, users } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { normalizeSequencerState } from '@/lib/sequencerState';
+import { isRingState, normalizeRingState } from '@/lib/ringState';
 import { curseById } from '@/lib/curses';
 import { CHANNEL_NAMES, playerForRoom } from '@/lib/gameLogic';
 import { GameRoomClient } from './GameRoomClient';
@@ -57,7 +58,11 @@ export default async function GameRoomPage({ params }: { params: Promise<{ id: s
       channelId={room.channelId}
       channelName={CHANNEL_NAMES[room.channelId] ?? `Channel ${room.channelId}`}
       curse={curse}
-      initialState={normalizeSequencerState(song.sequencerData)}
+      initialState={
+        isRingState(song.sequencerData)
+          ? normalizeRingState(song.sequencerData)
+          : normalizeSequencerState(song.sequencerData)
+      }
       nextPlayer={nextPlayer}
     />
   );

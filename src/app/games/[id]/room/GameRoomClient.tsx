@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SequencerEditor } from '@/components/sequencer/SequencerEditor';
+import { RingSequencer } from '@/components/ring/RingSequencer';
 import type { SequencerState } from '@/lib/sequencerState';
+import { isRingState, type RingSongState } from '@/lib/ringState';
 import type { Curse } from '@/lib/curses';
 import { CHANNEL_ALLOWED_PRESETS } from '@/lib/gameLogic';
 import { CHANNEL_PATTERNS, LockGlyph, LuteGlyph, SkullGlyph, SwordsGlyph, toRoman } from '../../glyphs';
@@ -14,6 +16,10 @@ const RETRY_MS = 3000;
 const KEEPALIVE_MAX_BYTES = 60 * 1024;
 
 type Phase = 'deal' | 'compose' | 'sealed';
+
+// Ring-format games edit through the Ritual Ring; older games keep the
+// legacy grid editor. Both feed the same autosave/lock machinery.
+type SongBlob = SequencerState | RingSongState;
 
 export function GameRoomClient({
   gameId,
@@ -33,7 +39,7 @@ export function GameRoomClient({
   channelId: number;
   channelName: string;
   curse: Curse;
-  initialState: SequencerState;
+  initialState: SongBlob;
   nextPlayer: { displayName: string; avatarEmoji: string } | null;
 }) {
   const router = useRouter();
@@ -48,8 +54,8 @@ export function GameRoomClient({
   const [gameComplete, setGameComplete] = useState(false);
 
   // ----- turn autosave (clone of SongPageClient's machinery) -----
-  const latestStateRef = useRef<SequencerState>(initialState);
-  const pendingRef = useRef<SequencerState | null>(null);
+  const latestStateRef = useRef<SongBlob>(initialState);
+  const pendingRef = useRef<SongBlob | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Once the room is sealed, nothing may save again — the server would 409,
   // and a 3s retry loop on a dead turn helps no one.
@@ -94,7 +100,7 @@ export function GameRoomClient({
     }
   };
 
-  const handleChange = useCallback((next: SequencerState) => {
+  const handleChange = useCallback((next: SongBlob) => {
     if (lockedRef.current) return;
     latestStateRef.current = next;
     pendingRef.current = next;
@@ -327,17 +333,25 @@ export function GameRoomClient({
         </div>
       )}
       <div className="room-editor">
-        <SequencerEditor
-          initialState={initialState}
-          onChange={handleChange}
-          onBack={backToMap}
-          songTitle={`${gameTitle} — Room ${roman}`}
-          onRenameTitle={() => {}}
-          isOwner
-          creatorDisplay={`Room ${roman} · ${channelName}`}
-          lockedChannelId={channelId}
-          allowedPresets={CHANNEL_ALLOWED_PRESETS[channelId]}
-        />
+        {isRingState(initialState) ? (
+          <RingSequencer
+            initialState={initialState}
+            onChange={handleChange}
+            editableChannelId={channelId}
+          />
+        ) : (
+          <SequencerEditor
+            initialState={initialState}
+            onChange={handleChange}
+            onBack={backToMap}
+            songTitle={`${gameTitle} — Room ${roman}`}
+            onRenameTitle={() => {}}
+            isOwner
+            creatorDisplay={`Room ${roman} · ${channelName}`}
+            lockedChannelId={channelId}
+            allowedPresets={CHANNEL_ALLOWED_PRESETS[channelId]}
+          />
+        )}
       </div>
     </div>
   );

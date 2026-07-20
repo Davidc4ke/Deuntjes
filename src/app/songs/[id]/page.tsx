@@ -4,7 +4,9 @@ import { db } from '@/db/client';
 import { games, songs, users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { SongPageClient } from './SongPageClient';
+import { RingSongView } from './RingSongView';
 import { normalizeSequencerState } from '@/lib/sequencerState';
+import { isRingState, normalizeRingState } from '@/lib/ringState';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +33,18 @@ export default async function SongPage({ params }: { params: Promise<{ id: strin
   // would hammer the song PATCH's 409 guard in a retry loop.
   const [game] = await db.select({ id: games.id }).from(games).where(eq(games.songId, id)).limit(1);
   const isOwner = !game && row.createdBy === userId;
+
+  // Dungeon songs composed in the Ritual Ring get the ring listen-view; the
+  // only write path for them is the game's turn API, so it's always read-only.
+  if (isRingState(row.sequencerData)) {
+    return (
+      <RingSongView
+        title={row.title}
+        initialState={normalizeRingState(row.sequencerData)}
+        creator={{ displayName: row.creatorName, avatarEmoji: row.creatorAvatar }}
+      />
+    );
+  }
 
   return (
     <SongPageClient

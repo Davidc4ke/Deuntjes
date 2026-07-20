@@ -2,6 +2,7 @@
 // No db imports — usable from API routes, server actions, and the client.
 
 import type { SequencerState } from './sequencerState';
+import { isRingState, normalizeRingState, type RingSongState } from './ringState';
 
 // Channel ids from defaultSequencerState(): 1=Bass, 2=Drum, 3=Lead, 4=Chord.
 // Rooms deal channels round-robin, drums first so the groove has a spine.
@@ -87,4 +88,40 @@ export function validateTurnSave(
   }
 
   return { ok: true, state: next };
+}
+
+export type RingTurnSaveResult =
+  | { ok: true; state: RingSongState }
+  | { ok: false; error: string };
+
+// Ring-format twin of validateTurnSave. normalizeRingState is the canonical
+// form (fixed lane list, whitelisted fields, deterministic key order), so a
+// straight JSON compare of foreign lanes detects any cross-channel edit,
+// and the returned state is rebuilt from stored-foreign + sanitized-own so
+// nothing outside the whitelist ever lands in the blob. Preset/kit choices
+// outside the lane's allowed set are coerced by the sanitizer rather than
+// rejected. Curse compliance stays honor-system.
+export function validateRingTurnSave(
+  stored: RingSongState,
+  incoming: unknown,
+  dealtChannelId: number,
+): RingTurnSaveResult {
+  if (!isRingState(incoming)) {
+    return { ok: false, error: 'sequencerData must be a ring-format object' };
+  }
+  const before = normalizeRingState(stored);
+  const after = normalizeRingState(incoming);
+  const tracks = before.tracks.map((prev, i) => {
+    const next = after.tracks[i];
+    if (prev.channelId === dealtChannelId) return next;
+    return prev;
+  });
+  for (let i = 0; i < before.tracks.length; i++) {
+    const prev = before.tracks[i];
+    if (prev.channelId === dealtChannelId) continue;
+    if (JSON.stringify(prev) !== JSON.stringify(after.tracks[i])) {
+      return { ok: false, error: `lane "${prev.name}" belongs to a sealed channel and may not be changed` };
+    }
+  }
+  return { ok: true, state: { format: 'ring', tracks } };
 }

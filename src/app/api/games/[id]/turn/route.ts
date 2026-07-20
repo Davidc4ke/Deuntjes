@@ -4,7 +4,8 @@ import { db } from '@/db/client';
 import { games, gameRooms, songs } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { normalizeSequencerState } from '@/lib/sequencerState';
-import { CHANNEL_ALLOWED_PRESETS, validateTurnSave } from '@/lib/gameLogic';
+import { isRingState } from '@/lib/ringState';
+import { CHANNEL_ALLOWED_PRESETS, validateRingTurnSave, validateTurnSave } from '@/lib/gameLogic';
 
 // Debounced autosave target for the current player's turn. Mirrors the song
 // PATCH contract ({ sequencerData } -> { ok }), but authorizes by "you are
@@ -40,8 +41,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .limit(1);
   if (!song) return NextResponse.json({ error: 'song not found' }, { status: 404 });
 
-  const stored = normalizeSequencerState(song.sequencerData);
-  const verdict = validateTurnSave(stored, body.sequencerData, room.channelId, CHANNEL_ALLOWED_PRESETS[room.channelId]);
+  // Ring-format songs (all new dungeons) validate through the ring rules;
+  // legacy grid songs keep the original validator.
+  const verdict = isRingState(song.sequencerData)
+    ? validateRingTurnSave(song.sequencerData, body.sequencerData, room.channelId)
+    : validateTurnSave(
+        normalizeSequencerState(song.sequencerData),
+        body.sequencerData,
+        room.channelId,
+        CHANNEL_ALLOWED_PRESETS[room.channelId],
+      );
   if (!verdict.ok) return NextResponse.json({ error: verdict.error }, { status: 400 });
 
   const now = new Date();

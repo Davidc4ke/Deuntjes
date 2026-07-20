@@ -4,7 +4,7 @@ import { requireUser } from '@/components/shared/AuthGate';
 import { db } from '@/db/client';
 import { games, gameRooms, songs, users } from '@/db/schema';
 import { asc } from 'drizzle-orm';
-import { defaultSequencerState } from '@/lib/sequencerState';
+import { defaultRingSongState } from '@/lib/ringState';
 import { channelForRoom, playerForRoom } from '@/lib/gameLogic';
 import { dealCurse } from '@/lib/curses';
 import { initials, SkullGlyph } from '../glyphs';
@@ -35,7 +35,9 @@ async function createGameAction(formData: FormData) {
 
   const [song] = await db
     .insert(songs)
-    .values({ title, createdBy: userId, sequencerData: defaultSequencerState() })
+    // New dungeons compose in the Ritual Ring; the blob's format field is
+    // what routes the room to the ring editor and the ring validator.
+    .values({ title, createdBy: userId, sequencerData: defaultRingSongState() })
     .returning({ id: songs.id });
 
   const [game] = await db

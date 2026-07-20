@@ -700,6 +700,7 @@
 .grim .room-top .row2 .gbtn.ghost { flex: 0 0 auto; }
 .grim .room-shell .room-editor { flex: 1; min-height: 0; position: relative; }
 .grim .room-shell .room-editor .sequencer-app { position: absolute; inset: 0; }
+.grim .room-shell .room-editor .ring-host { position: absolute; inset: 0; }
 
 /* ===== seal-confirm modal (replaces the native confirm dialog) ===== */
 .grim .grim-modal-veil {
