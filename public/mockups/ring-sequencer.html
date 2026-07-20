@@ -75,12 +75,10 @@
   .stage .fx-layer { position: absolute; inset: 0; margin: auto; pointer-events: none; }
   .stage .main-layer { position: relative; z-index: 1; touch-action: none; }
 
-  .status-row {
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    font-size: 11.5px; font-style: italic; color: var(--smoke); flex-shrink: 0; padding: 2px 0 4px;
+  /* position readout: thin left-aligned line under the channel bar */
+  .pos-row {
+    flex-shrink: 0; padding: 0 2px 4px; font-size: 11.5px; font-style: italic; color: var(--smoke);
   }
-  .status-row button { background: none; border: 1px solid rgba(242,237,227,.25); border-radius: 3px; color: var(--ink-dim); font-size: 12px; padding: 1px 8px; }
-  .status-row b { font-family: var(--gothic); font-weight: 400; color: var(--ink-dim); font-style: normal; letter-spacing: .05em; }
 
   /* decorative spinners live on the static fx-layer so playback re-renders
      never restart their animation */
@@ -198,12 +196,10 @@
     <button class="icon-chip" data-act="inst" title="Instrument">⚙&#xFE0E;</button>
     <button class="icon-chip" data-act="clear" title="Clear track">✕</button>
   </div>
+  <div class="pos-row"><span class="pos-lab-html">bar I · step 1</span></div>
   <div class="stage">
     <svg class="fx-layer" viewBox="0 0 372 372"></svg>
     <svg class="main-layer" viewBox="0 0 372 372"></svg>
-  </div>
-  <div class="status-row">
-    <span class="pos-lab-html">bar I · step 1</span>
   </div>
   <div class="pickers">
     <p class="pick-status"></p>
