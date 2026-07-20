@@ -104,54 +104,46 @@ export default async function GameMapPage({ params }: { params: Promise<{ id: st
         The Dungeon · <b>{toRoman(game.roomCount)}</b> Rooms
       </div>
 
-      {rooms.filter((r) => complete || r.status !== 'current').map((r) => {
-        const p = byId.get(r.playerId);
-        const roman = toRoman(r.roomIndex + 1);
-        const curse = curseById(r.curseId);
-        const isYou = r.playerId === userId;
-        return (
-          <div key={r.id} className={`room ${r.status}`}>
-            <div className="arch">
-              <span className={`roman${roman.length > 2 ? ' long' : ''}`}>{roman}</span>
-            </div>
-            <div className="body">
-              <div className="rm-title">Room {roman}</div>
-              <div className="rm-sub">
-                {r.status === 'pending' ? (
-                  <span>
-                    Awaiting {p?.displayName ?? '?'}
-                    {isYou ? ' (you)' : ''} · fate unrevealed…
-                  </span>
-                ) : r.status === 'current' ? (
-                  // What the room dealt stays hidden until it's locked —
-                  // the reveal belongs to the player inside the room.
+      {/* Only rooms that have been opened and sealed appear on the map —
+          the future stays dark. Deepest (most recent) room first. */}
+      {rooms
+        .filter((r) => r.status === 'locked')
+        .sort((a, b) => b.roomIndex - a.roomIndex)
+        .map((r) => {
+          const p = byId.get(r.playerId);
+          const roman = toRoman(r.roomIndex + 1);
+          const curse = curseById(r.curseId);
+          return (
+            <div key={r.id} className="room locked">
+              <div className="arch">
+                <span className={`roman${roman.length > 2 ? ' long' : ''}`}>{roman}</span>
+              </div>
+              <div className="body">
+                <div className="rm-title">Room {roman}</div>
+                <div className="rm-sub">
                   <span className="who">
                     <span className="med">{initials(p?.displayName ?? '?')}</span> {p?.displayName ?? '?'}
-                    {isYou ? ' — your turn · the Room holds its secrets' : ' is inside · fate undisclosed…'}
                   </span>
-                ) : (
-                  <>
-                    <span className="who">
-                      <span className="med">{initials(p?.displayName ?? '?')}</span> {p?.displayName ?? '?'}
+                  <span className="chip">
+                    <i className={`sw ${CHANNEL_PATTERNS[r.channelId] ?? ''}`} />
+                    {CHANNEL_NAMES[r.channelId] ?? `Ch ${r.channelId}`}
+                  </span>
+                  {curse && (
+                    <span className="chip curse">
+                      <SkullGlyph size={11} /> {curse.name}
                     </span>
-                    <span className="chip">
-                      <i className={`sw ${CHANNEL_PATTERNS[r.channelId] ?? ''}`} />
-                      {CHANNEL_NAMES[r.channelId] ?? `Ch ${r.channelId}`}
-                    </span>
-                    {curse && (
-                      <span className="chip curse">
-                        <SkullGlyph size={11} /> {curse.name}
-                      </span>
-                    )}
-                  </>
-                )}
+                  )}
+                </div>
               </div>
+              <LockGlyph size={24} stroke="rgba(242,237,227,.75)" />
             </div>
-            {r.status === 'locked' && <LockGlyph size={24} stroke="rgba(242,237,227,.75)" />}
-            {r.status === 'current' && <LockGlyph size={24} stroke="#f2ede3" open />}
-          </div>
-        );
-      })}
+          );
+        })}
+      {!rooms.some((r) => r.status === 'locked') && (
+        <p className="deal-intro" style={{ marginTop: 4 }}>
+          No rooms have been sealed yet — the crypt below lies in darkness.
+        </p>
+      )}
 
       {game.createdBy === userId && <DeleteGameButton gameId={game.id} />}
     </main>
