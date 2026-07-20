@@ -101,12 +101,6 @@
   .b-cursor-notch { fill: none; stroke: var(--blood-lit); stroke-width: 2; stroke-dasharray: 4 4; }
   .b-lenarc { fill: none; stroke: rgba(239,233,219,.4); stroke-linecap: round; }
   .b-focusring { fill: none; stroke: transparent; cursor: pointer; }
-  .bar-tag { fill: #101010; stroke: rgba(242,237,227,.4); stroke-width: 1.2; }
-  .bar-tag.focus { fill: var(--parch); stroke: #000; }
-  /* roman numerals in blackletter are unreadable (I looks like J) — use the
-     Fell serif for anything numeric that stands alone */
-  .bar-tag-lab { font-family: var(--body); font-style: italic; fill: var(--ink-dim); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
-  .bar-tag-lab.focus { fill: var(--parch-ink); }
 
   .play-core { fill: url(#playGrad); stroke: var(--blood-dark); stroke-width: 1.5; }
   .play-halo { fill: none; stroke: rgba(212,33,33,.5); }
@@ -678,14 +672,6 @@ function renderRing() {
             out += `<text x="${x}" y="${y}" class="b-lab" style="font-size:${fs}px">${s + 1}</text>`;
           }
         }
-      }
-      // bar tag in the gap before step 1
-      {
-        const [bx, by] = polar(-90 - 180 / div, ring.r);
-        const tr = Math.max(8, 12 * ring.s);
-        const focus = bar === state.focusedBar;
-        out += `<circle cx="${bx}" cy="${by}" r="${tr}" class="bar-tag ${focus ? 'focus' : ''}" data-focus="${bar}"/>`;
-        out += `<text x="${bx}" y="${by}" class="bar-tag-lab ${focus ? 'focus' : ''}" style="font-size:${Math.max(8, 11 * ring.s)}px">${['I', 'II', 'III'][bar]}</text>`;
       }
     });
     out += `</g>`;
