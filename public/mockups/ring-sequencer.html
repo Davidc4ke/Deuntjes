@@ -239,9 +239,9 @@ function buildChord(cfg, len = 4) {
   let vals = q.iv.map(i => root + i);
   for (let i = 0; i < Math.min(cfg.inv, vals.length - 1); i++) vals[i] += 12;
   vals.sort((a, b) => a - b);
-  return { label: cfg.root + q.suffix, notes: vals.map(fromMidi), len, cfg: clone(cfg) };
+  return { label: cfg.root + q.suffix, notes: vals.map(fromMidi), len, vol: 1, cfg: clone(cfg) };
 }
-const N = (label, len = 1) => ({ label, notes: [label], len });
+const N = (label, len = 1, vol = 1) => ({ label, notes: [label], len, vol });
 
 // ================= channels (lots of them) =================
 const ALLOWED = {
@@ -263,6 +263,7 @@ const TIMBRE = {
   Pad: ['sine', .4], Organ: ['square', .3], Strings: ['sawtooth', .38], Choir: ['sine', .45],
 };
 const defaultParams = () => ({
+  volume: .8,
   attack: .05, decay: .2, sustain: .6, release: .3,
   cutoff: .8, resonance: .1, pan: .5, glide: 0,
   low: .5, mid: .5, high: .5,
@@ -336,9 +337,17 @@ function envGain(t, peak, dur) {
   return g;
 }
 // Drums carry pitch: `factor` scales every voice from its C2 home.
-function drumVoice(name, t, factor, P) {
+// `vol` is the step's own velocity; P.volume the channel fader.
+function drumVoice(name, t, factor, P, vol = 1) {
   const out = AC.destination;
   const rv = 1 + P.reverb * 1.5;
+  const vg = vol * (P.volume / .8);
+  const envGain = (tt, peak, dur) => {
+    const g = AC.createGain();
+    g.gain.setValueAtTime(Math.max(.001, peak * vg), tt);
+    g.gain.exponentialRampToValueAtTime(.001, tt + dur);
+    return g;
+  };
   switch (name) {
     case '808 Kick': {
       const o = AC.createOscillator(); o.type = 'sine';
@@ -423,14 +432,14 @@ function drumVoice(name, t, factor, P) {
     }
   }
 }
-function tone(track, note, len = 1, when = 0) {
+function tone(track, note, len = 1, when = 0, vol = 1) {
   try {
     AC = AC || new (window.AudioContext || window.webkitAudioContext)();
     if (AC.state === 'suspended') AC.resume();
     const P = state.params[track.key];
     const t = AC.currentTime + when;
     if (track.kind === 'drum') {
-      drumVoice(state.preset[track.key], t, noteFreq(note) / 65.41 /* C2 */, P);
+      drumVoice(state.preset[track.key], t, noteFreq(note) / 65.41 /* C2 */, P, vol);
       return;
     }
     const o = AC.createOscillator(), g = AC.createGain(), f = AC.createBiquadFilter();
@@ -442,7 +451,7 @@ function tone(track, note, len = 1, when = 0) {
     f.Q.value = 1 + P.resonance * 12;
     const atk = P.attack * .25;
     const dur = Math.max(atk + .03, base * (1 + P.reverb * 2.2 + P.release) * Math.max(1, len * .8));
-    const peak = track.kind === 'chord' ? .12 : .2;
+    const peak = (track.kind === 'chord' ? .12 : .2) * vol * (P.volume / .8);
     g.gain.setValueAtTime(.0001, t);
     g.gain.linearRampToValueAtTime(peak, t + atk);
     g.gain.exponentialRampToValueAtTime(.001, t + dur);
@@ -450,7 +459,7 @@ function tone(track, note, len = 1, when = 0) {
     o.start(t); o.stop(t + dur + .02);
   } catch (_) {}
 }
-function playEvent(track, ev) { ev.notes.forEach((n, i) => tone(track, n, ev.len, i * .012)); }
+function playEvent(track, ev) { ev.notes.forEach((n, i) => tone(track, n, ev.len, i * .012, ev.vol ?? 1)); }
 
 // ================= animated layout =================
 let L = { rings: [], inst: 0 };
@@ -595,7 +604,8 @@ function renderRing() {
         const [x, y] = posOf(i, div, ring.r);
         const accent = i % 4 === 0;
         const rr = (accent ? 19 : 16) * ring.s;
-        out += `<circle cx="${x}" cy="${y}" r="${rr}" data-s="${s}" class="b-step ${accent ? 'accent' : ''} ${ev ? 'on' : ''} ${state.sel === s ? 'sel' : ''} ${playStep === s ? 'playhead' : ''}"/>`;
+        const volStyle = ev && (ev.vol ?? 1) < 1 ? ` style="fill-opacity:${.4 + .6 * ev.vol}"` : '';
+        out += `<circle cx="${x}" cy="${y}" r="${rr}" data-s="${s}"${volStyle} class="b-step ${accent ? 'accent' : ''} ${ev ? 'on' : ''} ${state.sel === s ? 'sel' : ''} ${playStep === s ? 'playhead' : ''}"/>`;
         if (bar === state.focusedBar && ring.s > .8) {
           const fs = 10.5 * ring.s;
           if (ev) {
@@ -680,7 +690,7 @@ function keepScroll(el, fn) {
   [...el.querySelectorAll('.strip, .piano-wrap')].forEach((s, i) => { if (saves[i] !== undefined) s.scrollLeft = saves[i]; });
 }
 const PARAM_TABS = {
-  voice: ['attack', 'decay', 'sustain', 'release'],
+  voice: ['volume', 'attack', 'decay', 'sustain', 'release'],
   tone: ['cutoff', 'resonance', 'pan', 'glide'],
   eq: ['low', 'mid', 'high'],
   fx: ['reverb', 'delay', 'chorus', 'drive'],
@@ -706,9 +716,10 @@ function renderPickers() {
   }
   const ev = state.sel !== null ? t.steps[state.sel] : null;
   const sticky = state.stickyEv[t.key];
+  const volTag = (x) => ((x.vol ?? 1) < 1 ? ` · ${Math.round(x.vol * 100)}%` : '');
   pickStatus.innerHTML = ev
-    ? `retuning step ${state.sel + 1} — <b>${ev.label}${ev.len > 1 ? ' ×' + ev.len : ''}</b>`
-    : `next carve — <b>${sticky.label}${sticky.len > 1 ? ' ×' + sticky.len : ''}</b>`;
+    ? `retuning step ${state.sel + 1} — <b>${ev.label}${ev.len > 1 ? ' ×' + ev.len : ''}${volTag(ev)}</b>`
+    : `next carve — <b>${sticky.label}${sticky.len > 1 ? ' ×' + sticky.len : ''}${volTag(sticky)}</b>`;
   keepScroll(pickBody, () => {
     const beatsRow = `
       <div class="len-row"><span class="lab">Bars</span>${BARS_CHOICES.map(b =>
@@ -716,6 +727,11 @@ function renderPickers() {
     const lenRow = `
       <div class="len-row"><span class="lab">Length</span>${[1, 2, 3, 4, 6, 8].map(l =>
         `<button class="nbtn util ${((ev ?? sticky).len || 1) === l ? 'sticky' : ''}" data-len="${l}">${l === 1 ? '1 step' : '×' + l}</button>`).join('')}</div>`;
+    const stepVol = Math.round(((ev ?? sticky).vol ?? 1) * 100);
+    const volRow = `
+      <div class="len-row"><span class="lab">Step vol</span>
+        <input type="range" min="10" max="100" value="${stepVol}" data-vol style="flex:1;accent-color:var(--blood-lit);min-width:0" />
+        <output style="width:30px;text-align:right;font-size:11px;color:var(--smoke)">${stepVol}</output></div>`;
     if (t.kind === 'chord') {
       // root + octave picked together on the key-dot piano (C1..B4)
       const c = state.chordCfg;
@@ -740,7 +756,7 @@ function renderPickers() {
           `<button class="nbtn ${c.qual === q.id ? 'sticky' : ''}" data-qual="${q.id}">${q.label}</button>`).join('')}
           <button class="nbtn util" data-inv="1">${INVERSIONS[c.inv]}</button>
         </div>
-        ${lenRow}${beatsRow}`;
+        ${lenRow}${volRow}${beatsRow}`;
       if (pianoScrolledFor !== t.key) {
         pianoScrolledFor = t.key;
         const wrap = pickBody.querySelector('.piano-wrap');
@@ -765,7 +781,7 @@ function renderPickers() {
       }
       pickBody.innerHTML = `
         <div class="piano-wrap"><div class="piano" style="width:${wx + 4}px">${whites}${blacks}</div></div>
-        ${lenRow}${beatsRow}`;
+        ${lenRow}${volRow}${beatsRow}`;
       if (pianoScrolledFor !== t.key) {
         pianoScrolledFor = t.key;
         const wrap = pickBody.querySelector('.piano-wrap');
@@ -778,8 +794,9 @@ function renderPickers() {
 function applySticky() {
   const t = active();
   if (t.kind === 'chord') {
-    const len = state.stickyEv[t.key].len || 4;
-    state.stickyEv[t.key] = buildChord(state.chordCfg, len);
+    const prev = state.stickyEv[t.key];
+    state.stickyEv[t.key] = buildChord(state.chordCfg, prev.len || 4);
+    state.stickyEv[t.key].vol = prev.vol ?? 1;
   }
   const ev = clone(state.stickyEv[t.key]);
   if (state.sel !== null && t.steps[state.sel]) t.steps[state.sel] = ev;
@@ -829,6 +846,16 @@ pickBody.addEventListener('click', (e) => {
   if (len) { state.stickyEv[t.key].len = +len.dataset.len; applySticky(); return; }
 });
 pickBody.addEventListener('input', (e) => {
+  const vr = e.target.closest('[data-vol]');
+  if (vr) {
+    const t = active();
+    const v = vr.value / 100;
+    state.stickyEv[t.key].vol = v;
+    if (state.sel !== null && t.steps[state.sel]) t.steps[state.sel].vol = v;
+    vr.nextElementSibling.textContent = vr.value;
+    renderRing();
+    return;
+  }
   const r = e.target.closest('[data-param]');
   if (!r) return;
   state.params[active().key][r.dataset.param] = r.value / 100;
@@ -836,8 +863,10 @@ pickBody.addEventListener('input', (e) => {
   if (state.view === 'inst') renderRing(); // arcs mirror reverb/drive
 });
 pickBody.addEventListener('change', (e) => {
-  const r = e.target.closest('[data-param]');
-  if (r) playEvent(active(), state.stickyEv[active().key]);
+  if (e.target.closest('[data-param]') || e.target.closest('[data-vol]')) {
+    playEvent(active(), state.stickyEv[active().key]);
+    renderPickers();
+  }
 });
 
 // ================= ring interaction =================
@@ -906,7 +935,11 @@ svg.addEventListener('click', (e) => {
   if (bar !== state.focusedBar) { state.focusedBar = bar; settle(); return; }
   const t = active();
   if (!t.steps[s]) {
-    if (t.kind === 'chord') state.stickyEv[t.key] = buildChord(state.chordCfg, state.stickyEv[t.key].len || 4);
+    if (t.kind === 'chord') {
+      const prev = state.stickyEv[t.key];
+      state.stickyEv[t.key] = buildChord(state.chordCfg, prev.len || 4);
+      state.stickyEv[t.key].vol = prev.vol ?? 1;
+    }
     t.steps[s] = clone(state.stickyEv[t.key]);
     state.sel = s;
     playEvent(t, t.steps[s]);
