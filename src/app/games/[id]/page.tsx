@@ -6,7 +6,7 @@ import { games, gameRooms, users } from '@/db/schema';
 import { asc, eq, inArray } from 'drizzle-orm';
 import { curseById } from '@/lib/curses';
 import { CHANNEL_NAMES } from '@/lib/gameLogic';
-import { CHANNEL_PATTERNS, initials, LockGlyph, SwordsGlyph, toRoman } from '../glyphs';
+import { CHANNEL_PATTERNS, initials, LockGlyph, SkullGlyph, SwordsGlyph, toRoman } from '../glyphs';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,23 +106,33 @@ export default async function GameMapPage({ params }: { params: Promise<{ id: st
                     Awaiting {p?.displayName ?? '?'}
                     {isYou ? ' (you)' : ''} · fate unrevealed…
                   </span>
+                ) : r.status === 'current' ? (
+                  // What the room dealt stays hidden until it's locked —
+                  // the reveal belongs to the player inside the room.
+                  <span className="who">
+                    <span className="med">{initials(p?.displayName ?? '?')}</span> {p?.displayName ?? '?'}
+                    {isYou ? ' — your turn · the Room holds its secrets' : ' is inside · fate undisclosed…'}
+                  </span>
                 ) : (
                   <>
                     <span className="who">
                       <span className="med">{initials(p?.displayName ?? '?')}</span> {p?.displayName ?? '?'}
-                      {r.status === 'current' && isYou ? ' — your turn' : ''}
                     </span>
                     <span className="chip">
                       <i className={`sw ${CHANNEL_PATTERNS[r.channelId] ?? ''}`} />
                       {CHANNEL_NAMES[r.channelId] ?? `Ch ${r.channelId}`}
                     </span>
-                    {curse && <span className="chip curse">💀︎ {curse.name}</span>}
+                    {curse && (
+                      <span className="chip curse">
+                        <SkullGlyph size={11} /> {curse.name}
+                      </span>
+                    )}
                   </>
                 )}
               </div>
             </div>
             {r.status === 'locked' && <LockGlyph size={24} stroke="rgba(242,237,227,.75)" />}
-            {r.status === 'current' && <LockGlyph size={24} stroke="#d42121" open />}
+            {r.status === 'current' && <LockGlyph size={24} stroke="#f2ede3" open />}
           </div>
         );
       })}

@@ -3009,8 +3009,24 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   // await this; we deliberately don't attach a document-level capture-phase
   // listener because that interferes with click delivery on iOS Safari.
   let audioUnlockPromise = null;
+  // iOS mutes plain WebAudio output while the ringer switch is on silent.
+  // Looping a (silent) HTML <audio> element flips the audio session into
+  // "playback" mode, which ignores the switch — the standard workaround for
+  // web music apps. Created once, on the same first gesture as Tone.start().
+  let __mediaKick = null;
   function unlockAudio() {
-    if (!audioUnlockPromise) audioUnlockPromise = Tone.start();
+    if (!audioUnlockPromise) {
+      audioUnlockPromise = Tone.start();
+      try {
+        __mediaKick = document.createElement('audio');
+        __mediaKick.setAttribute('playsinline', '');
+        __mediaKick.loop = true;
+        __mediaKick.src =
+          'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+        const p = __mediaKick.play();
+        if (p && p.catch) p.catch(() => {});
+      } catch (_) { __mediaKick = null; }
+    }
     return audioUnlockPromise;
   }
 
@@ -3262,6 +3278,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
 
   return () => {
     __destroyed = true;
+    if (__mediaKick) { try { __mediaKick.pause(); __mediaKick.src = ''; } catch (_) {} __mediaKick = null; }
     if (__raf) { try { cancelAnimationFrame(__raf); } catch (_) {} __raf = 0; }
     if (__resizeHandler) { try { window.removeEventListener('resize', __resizeHandler); } catch (_) {} __resizeHandler = null; }
     try { Tone.Transport.stop(); Tone.Transport.cancel(); } catch (_) {}

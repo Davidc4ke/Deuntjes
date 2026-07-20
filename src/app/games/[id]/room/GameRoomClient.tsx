@@ -41,6 +41,7 @@ export function GameRoomClient({
   const [phase, setPhase] = useState<Phase>('deal');
   const [trackRevealed, setTrackRevealed] = useState(false);
   const [curseRevealed, setCurseRevealed] = useState(false);
+  const [confirmingSeal, setConfirmingSeal] = useState(false);
   const [locking, setLocking] = useState(false);
   const [lockError, setLockError] = useState<string | null>(null);
   const [gameComplete, setGameComplete] = useState(false);
@@ -126,7 +127,7 @@ export function GameRoomClient({
   // ----- lock the room -----
   const handleLock = useCallback(async () => {
     if (locking || lockedRef.current) return;
-    if (!window.confirm('Seal this room? Your carving becomes permanent and the turn passes on.')) return;
+    setConfirmingSeal(false);
     setLocking(true);
     setLockError(null);
     if (timerRef.current) {
@@ -209,7 +210,7 @@ export function GameRoomClient({
                 <span className="ring" />
                 <span className="ring2" />
                 <span style={{ position: 'relative', zIndex: 1 }}>
-                  <SkullGlyph size={52} stroke="#f2ede3" eyes="#d42121" />
+                  <SkullGlyph size={52} stroke="#f2ede3" eyes="#f2ede3" />
                 </span>
                 <div className="kindlab">Curse</div>
                 <div className="tap">· Tap to reveal ·</div>
@@ -217,7 +218,7 @@ export function GameRoomClient({
               <div className="face front curse-card">
                 <div className="kind">— Curse —</div>
                 <div className="icon">
-                  <SkullGlyph size={40} stroke="#151210" eyes="#a01818" />
+                  <SkullGlyph size={40} stroke="#151210" eyes="#151210" />
                 </div>
                 <div className="name">{curse.name}</div>
                 <div className="rule">{curse.rule}</div>
@@ -289,7 +290,7 @@ export function GameRoomClient({
         <div className="curse-pin">
           <span className="nail a" />
           <span className="nail b" />
-          <SkullGlyph size={26} stroke="#a01818" eyes="#a01818" />
+          <SkullGlyph size={26} stroke="#151210" eyes="#151210" />
           <div className="txt">
             <div className="n">{curse.name}</div>
             <div className="r">{curse.rule}</div>
@@ -299,7 +300,7 @@ export function GameRoomClient({
           <button className="gbtn ghost" onClick={backToMap} title="Save & flee">
             ‹
           </button>
-          <button className="gbtn rite" onClick={handleLock} disabled={locking}>
+          <button className="gbtn rite" onClick={() => setConfirmingSeal(true)} disabled={locking}>
             <LockGlyph size={18} stroke="#f2ede3" /> {locking ? 'Sealing…' : 'Lock the Room & pass'}
           </button>
         </div>
@@ -309,6 +310,21 @@ export function GameRoomClient({
           </div>
         )}
       </div>
+      {confirmingSeal && (
+        <div className="grim-modal-veil" onClick={() => setConfirmingSeal(false)}>
+          <div className="grim-modal" onClick={(e) => e.stopPropagation()}>
+            <LockGlyph size={34} stroke="#151210" />
+            <h3>Seal this room?</h3>
+            <p>Your carving becomes permanent and the turn passes on. There is no way back through a sealed door.</p>
+            <button className="gbtn rite" onClick={handleLock}>
+              Seal it
+            </button>
+            <button className="gbtn ghost dark" onClick={() => setConfirmingSeal(false)}>
+              Not yet — keep carving
+            </button>
+          </div>
+        </div>
+      )}
       <div className="room-editor">
         <SequencerEditor
           initialState={initialState}

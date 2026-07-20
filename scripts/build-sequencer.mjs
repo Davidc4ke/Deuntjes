@@ -17,6 +17,8 @@
 //     renderChannelStrip (single header, no gear), openChannelsPopup, plus the
 //     forced active channel + .seq-channel-locked class after initialState load,
 //     and the lockedChannelId?: number field on MountOptions.
+//   - unlockAudio(): silent looping <audio> "media kick" so iOS plays sound
+//     with the ringer switch on silent (plus teardown cleanup).
 // Before re-running this script, diff the regenerated output against the
 // checked-in files and re-apply every hand-patch, or you will silently break
 // the game layer.
