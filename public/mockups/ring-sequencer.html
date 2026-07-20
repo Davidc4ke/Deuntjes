@@ -295,6 +295,7 @@ const state = {
   focusedBar: 0,
   view: 'steps',
   instTab: 'voice',
+  pickTab: 'notes', // bottom bar tab: 'notes' | 'timing'
   preset: {},
   params: {},
 };
@@ -783,6 +784,7 @@ function renderPickers() {
     ? `retuning step ${state.sel + 1} — <b>${ev.label}${ev.len > 1 ? ' ×' + ev.len : ''}${volTag(ev)}</b>`
     : `next carve — <b>${sticky.label}${sticky.len > 1 ? ' ×' + sticky.len : ''}${volTag(sticky)}</b>`;
   keepScroll(pickBody, () => {
+    // ----- Timing tab content -----
     const beatsRow = `
       <div class="len-row"><span class="lab">Bars</span>${BARS_CHOICES.map(b =>
         `<button class="nbtn util ${t.barsN === b ? 'sticky' : ''}" data-barsn="${b}">${['I', 'II', 'III'][b - 1]}</button>`).join('')}</div>`;
@@ -794,62 +796,46 @@ function renderPickers() {
       <div class="len-row"><span class="lab">Step vol</span>
         <input type="range" min="10" max="100" value="${stepVol}" data-vol style="flex:1;accent-color:var(--blood-lit);min-width:0" />
         <output style="width:30px;text-align:right;font-size:11px;color:var(--smoke)">${stepVol}</output></div>`;
-    if (t.kind === 'chord') {
-      // root + octave picked together on the key-dot piano (C1..B4)
-      const c = state.chordCfg;
-      const rootKey = c.root + c.oct;
-      const KW = 44;
-      let whites = '', blacks = '';
-      let wx = 4;
-      for (let o = 1; o <= 4; o++) {
-        for (let i = 0; i < 12; i++) {
-          const name = NOTE_ORDER[i] + o;
-          if (!NOTE_ORDER[i].includes('#')) {
-            whites += `<div class="pk-w ${name === rootKey ? 'sticky' : ''}" style="left:${wx}px" data-note="${name}">${name}</div>`;
-            wx += KW;
-          } else {
-            blacks += `<div class="pk-b ${name === rootKey ? 'sticky' : ''}" style="left:${wx - 21}px" data-note="${name}">${name}</div>`;
-          }
+
+    // ----- Notes tab content: key-dot piano (+ chord quality) -----
+    const KW = 44;
+    const isChord = t.kind === 'chord';
+    const litKey = isChord ? state.chordCfg.root + state.chordCfg.oct : sticky.label;
+    const [oLo, oHi] = isChord ? [1, 4] : [2, 5];
+    let whites = '', blacks = '', wx = 4;
+    for (let o = oLo; o <= oHi; o++) {
+      for (let i = 0; i < 12; i++) {
+        const name = NOTE_ORDER[i] + o;
+        if (!NOTE_ORDER[i].includes('#')) {
+          whites += `<div class="pk-w ${name === litKey ? 'sticky' : ''}" style="left:${wx}px" data-note="${name}">${name}</div>`;
+          wx += KW;
+        } else {
+          blacks += `<div class="pk-b ${name === litKey ? 'sticky' : ''}" style="left:${wx - 21}px" data-note="${name}">${name}</div>`;
         }
       }
-      pickBody.innerHTML = `
-        <div class="piano-wrap"><div class="piano" style="width:${wx + 4}px">${whites}${blacks}</div></div>
-        <div class="strip" data-strip="qual">${CHORD_QUALITIES.map(q =>
-          `<button class="nbtn ${c.qual === q.id ? 'sticky' : ''}" data-qual="${q.id}">${q.label}</button>`).join('')}
-          <button class="nbtn util" data-inv="1">${INVERSIONS[c.inv]}</button>
-        </div>
-        ${lenRow}${volRow}${beatsRow}`;
-      if (pianoScrolledFor !== t.key) {
-        pianoScrolledFor = t.key;
-        const wrap = pickBody.querySelector('.piano-wrap');
-        const kEl = wrap.querySelector('.pk-w.sticky, .pk-b.sticky');
-        if (kEl) wrap.scrollLeft = Math.max(0, kEl.offsetLeft - wrap.clientWidth / 2);
-      }
-    } else {
-      const stickyNote = sticky.label;
-      const KW = 44, start = 2, octs = 4;
-      let whites = '', blacks = '';
-      let wx = 4;
-      for (let o = start; o < start + octs; o++) {
-        for (let i = 0; i < 12; i++) {
-          const name = NOTE_ORDER[i] + o;
-          if (!NOTE_ORDER[i].includes('#')) {
-            whites += `<div class="pk-w ${name === stickyNote ? 'sticky' : ''}" style="left:${wx}px" data-note="${name}">${name}</div>`;
-            wx += KW;
-          } else {
-            blacks += `<div class="pk-b ${name === stickyNote ? 'sticky' : ''}" style="left:${wx - 21}px" data-note="${name}">${name}</div>`;
-          }
-        }
-      }
-      pickBody.innerHTML = `
-        <div class="piano-wrap"><div class="piano" style="width:${wx + 4}px">${whites}${blacks}</div></div>
-        ${lenRow}${volRow}${beatsRow}`;
-      if (pianoScrolledFor !== t.key) {
-        pianoScrolledFor = t.key;
-        const wrap = pickBody.querySelector('.piano-wrap');
-        const kEl = wrap.querySelector('.pk-w.sticky, .pk-b.sticky');
-        if (kEl) wrap.scrollLeft = Math.max(0, kEl.offsetLeft - wrap.clientWidth / 2);
-      }
+    }
+    const qualRow = isChord ? `
+      <div class="strip" data-strip="qual">${CHORD_QUALITIES.map(q =>
+        `<button class="nbtn ${state.chordCfg.qual === q.id ? 'sticky' : ''}" data-qual="${q.id}">${q.label}</button>`).join('')}
+        <button class="nbtn util" data-inv="1">${INVERSIONS[state.chordCfg.inv]}</button>
+      </div>` : '';
+    const notesContent = `
+      <div class="piano-wrap"><div class="piano" style="width:${wx + 4}px">${whites}${blacks}</div></div>
+      ${qualRow}`;
+
+    const tabBar = `<div class="ptabs pick-tabs">
+      <button data-picktab="notes" class="${state.pickTab === 'notes' ? 'cur' : ''}">${isChord ? 'chord' : 'notes'}</button>
+      <button data-picktab="timing" class="${state.pickTab === 'timing' ? 'cur' : ''}">timing</button>
+    </div>`;
+    pickBody.innerHTML = tabBar + (state.pickTab === 'notes'
+      ? notesContent
+      : `${lenRow}${volRow}${beatsRow}`);
+
+    if (state.pickTab === 'notes' && pianoScrolledFor !== t.key) {
+      pianoScrolledFor = t.key;
+      const wrap = pickBody.querySelector('.piano-wrap');
+      const kEl = wrap.querySelector('.pk-w.sticky, .pk-b.sticky');
+      if (kEl) wrap.scrollLeft = Math.max(0, kEl.offsetLeft - wrap.clientWidth / 2);
     }
   });
 }
@@ -867,6 +853,12 @@ function applySticky() {
 }
 pickBody.addEventListener('click', (e) => {
   const t = active();
+  const picktab = e.target.closest('[data-picktab]');
+  if (picktab) {
+    state.pickTab = picktab.dataset.picktab;
+    if (state.pickTab === 'notes') pianoScrolledFor = null; // re-center the piano
+    renderPickers(); return;
+  }
   const ptab = e.target.closest('[data-ptab]');
   if (ptab) { state.instTab = ptab.dataset.ptab; renderPickers(); return; }
   const kit = e.target.closest('[data-kit]');
