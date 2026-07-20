@@ -119,23 +119,35 @@
   .pick-status { font-size: 11.5px; font-style: italic; color: var(--smoke); text-align: center; margin: 0 0 6px; min-height: 14px; }
   .pick-status b { color: var(--ink-dim); font-style: normal; font-family: var(--gothic); font-weight: 400; letter-spacing: .05em; }
 
-  /* compact horizontal piano roll */
-  .piano-wrap { overflow-x: auto; scrollbar-width: none; padding-bottom: 6px; }
+  /* compact piano of round key-dots, matching the app's sequencer keyboard
+     (two staggered rows: dark sharp-dots above, parchment natural-dots below) */
+  .piano-wrap { overflow-x: auto; scrollbar-width: none; padding: 2px 0 7px; }
   .piano-wrap::-webkit-scrollbar { display: none; }
-  .piano { position: relative; height: 74px; }
+  .piano { position: relative; height: 80px; }
+  .pk-w, .pk-b {
+    position: absolute; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font: 700 10px "Space Mono", ui-monospace, monospace; letter-spacing: .03em; text-transform: uppercase;
+    transition: transform .15s ease;
+  }
+  .pk-w:active, .pk-b:active { transform: scale(.92); }
   .pk-w {
-    position: absolute; top: 0; height: 74px; width: 34px;
-    background: linear-gradient(180deg, #f6f1e4, #ddd5c2);
-    border: 1px solid #0a0a0a; border-radius: 0 0 5px 5px;
+    top: 38px; width: 40px; height: 40px;
+    background: radial-gradient(circle at 35% 30%, #fbf6e6 0%, #ebe5d3 70%, #d6d0bd 100%);
+    color: rgba(21,18,16,.8); border: 1px solid #b8b0a0;
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.7), inset 0 -2px 3px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.5);
   }
-  .pk-w .pk-lab { position: absolute; bottom: 4px; left: 0; right: 0; text-align: center; font: 400 9.5px var(--gothic); color: rgba(21,18,16,.55); pointer-events: none; }
   .pk-b {
-    position: absolute; top: 0; height: 44px; width: 22px; z-index: 2;
-    background: linear-gradient(180deg, #262626, #0a0a0a);
-    border: 1px solid #000; border-radius: 0 0 4px 4px;
+    top: 0; width: 34px; height: 34px; z-index: 2; font-size: 8.5px;
+    background: radial-gradient(circle at 35% 30%, #2c2c2c 0%, #141414 70%, #060606 100%);
+    color: var(--ink-dim); border: 1px solid #000;
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.15), inset 0 -2px 3px rgba(0,0,0,.55), 0 1px 3px rgba(0,0,0,.6);
   }
-  .pk-w.sticky { background: linear-gradient(180deg, #e8b9b0, #d99a8e); }
-  .pk-b.sticky { background: linear-gradient(180deg, var(--blood-lit), var(--blood-dark)); }
+  .pk-w.sticky, .pk-b.sticky {
+    background: radial-gradient(circle at 35% 30%, #e5473a 0%, var(--blood) 70%, var(--blood-dark) 100%);
+    color: var(--ink); border-color: var(--blood-dark);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 0 10px rgba(212,33,33,.5);
+  }
 
   /* chord forge */
   .strip { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 7px; scrollbar-width: none; }
@@ -517,24 +529,25 @@ function renderPickers() {
         </div>
         ${lenRow}`;
     } else {
-      // compact horizontal piano roll, C2..B5
+      // key-dot piano matching the app's sequencer: parchment natural dots
+      // below, dark sharp dots staggered above, note names inside the dots
       const stickyNote = sticky.label;
-      const KW = 34, start = 2, octs = 4;
+      const KW = 44, start = 2, octs = 4;
       let whites = '', blacks = '';
-      let wx = 0;
+      let wx = 4;
       for (let o = start; o < start + octs; o++) {
         for (let i = 0; i < 12; i++) {
           const name = NOTE_ORDER[i] + o;
           if (!NOTE_ORDER[i].includes('#')) {
-            whites += `<div class="pk-w ${name === stickyNote ? 'sticky' : ''}" style="left:${wx}px" data-note="${name}">${NOTE_ORDER[i] === 'C' ? `<span class="pk-lab">C${o}</span>` : ''}</div>`;
+            whites += `<div class="pk-w ${name === stickyNote ? 'sticky' : ''}" style="left:${wx}px" data-note="${name}">${name}</div>`;
             wx += KW;
           } else {
-            blacks += `<div class="pk-b ${name === stickyNote ? 'sticky' : ''}" style="left:${wx - 12}px" data-note="${name}"></div>`;
+            blacks += `<div class="pk-b ${name === stickyNote ? 'sticky' : ''}" style="left:${wx - 21}px" data-note="${name}">${name}</div>`;
           }
         }
       }
       pickBody.innerHTML = `
-        <div class="piano-wrap"><div class="piano" style="width:${wx}px">${whites}${blacks}</div></div>
+        <div class="piano-wrap"><div class="piano" style="width:${wx + 4}px">${whites}${blacks}</div></div>
         ${lenRow}`;
       // center once per track on its sticky octave (no smooth scroll — no jacking)
       if (pianoScrolledFor !== t.key) {
