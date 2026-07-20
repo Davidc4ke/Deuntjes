@@ -108,6 +108,24 @@
   @keyframes halo { 0%,100% { opacity: .25; } 50% { opacity: .75; } }
   .play-glyph { fill: var(--ink); pointer-events: none; }
 
+  /* ===== skull medallion (play / stop / instrument-confirm) ===== */
+  .sk-rim { fill: none; stroke: rgba(212,33,33,.45); stroke-width: 2.5; }
+  .sk-rim.idle { animation: skIdle 3s ease-in-out infinite; }
+  .sk-rim.lit { stroke: rgba(212,33,33,.95); filter: drop-shadow(0 0 10px rgba(212,33,33,.85)); animation: skLit 1.4s ease-in-out infinite; }
+  @keyframes skIdle { 0%,100% { opacity: .35; } 50% { opacity: .7; } }
+  @keyframes skLit { 0%,100% { opacity: .7; } 50% { opacity: 1; } }
+  .sk-disc { fill: url(#skullGrad); stroke: #4a0d0d; stroke-width: 1.5; }
+  .sk-bone { fill: #e9e3d5; stroke: rgba(10,5,5,.45); stroke-width: .4; }
+  .sk-eye { fill: #1a0606; }
+  .sk-eye.lit { fill: #ff351f; filter: drop-shadow(0 0 3px #ff351f); animation: skEye 1.05s ease-in-out infinite; }
+  @keyframes skEye { 0%,100% { opacity: .75; } 50% { opacity: 1; } }
+  .sk-nose { fill: #1a0606; }
+  .sk-teeth { stroke: rgba(10,5,5,.5); stroke-width: .7; fill: none; }
+  .sk-chip { fill: url(#chipGrad); stroke: #4a0d0d; stroke-width: 1.2; filter: drop-shadow(0 2px 4px rgba(0,0,0,.6)); }
+  .sk-glyph { fill: #f7f2e8; }
+  .sk-glyph.check { fill: none; stroke: #f7f2e8; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .sk-hit { fill: transparent; cursor: pointer; }
+
   /* instrument wheel */
   .p-stone { fill: #12100d; stroke: rgba(242,237,227,.35); stroke-width: 1.5; }
   .p-stone.cur { fill: var(--parch); stroke: var(--blood-lit); stroke-width: 2.5; }
@@ -575,7 +593,34 @@ const app = document.getElementById('app');
 const svg = app.querySelector('.main-layer');
 const fxLayer = app.querySelector('.fx-layer');
 const posLab = app.querySelector('.pos-lab-html');
-const CX = 186, CY = 186, R = 150;
+const CX = 186, CY = 186, R = 150, orbR = 34;
+
+// The center control: an engraved bone skull on a blood-iron medallion.
+// mode 'play' (idle) · 'stop' (playing: eyes blaze + rim pulses) · 'done'
+// (instrument-confirm: red check chip). One transparent hit circle on top
+// carries the click, so the detailed art stays pointer-inert.
+function skullMedallion(mode) {
+  const lit = mode === 'stop';
+  const hitAttr = mode === 'done' ? 'data-instdone="1"' : 'data-play="1"';
+  const sk = 2.4, tx = (CX - 12 * sk).toFixed(1), ty = (CY - 5 - 10.5 * sk).toFixed(1);
+  let g = '';
+  g += `<circle cx="${CX}" cy="${CY}" r="${orbR + 7}" class="sk-rim ${lit ? 'lit' : 'idle'}"/>`;
+  g += `<circle cx="${CX}" cy="${CY}" r="${orbR + 2}" class="sk-disc"/>`;
+  g += `<g transform="translate(${tx},${ty}) scale(${sk})" pointer-events="none">
+    <path d="M12 2C7 2 4 5.5 4 10c0 2.4 1.1 3.9 2 4.8V18a2 2 0 0 0 2 2h.5v-2.2h1.3V20h4.4v-2.2h1.3V20H16a2 2 0 0 0 2-2v-3.2c.9-.9 2-2.4 2-4.8 0-4.5-3-8-8-8Z" class="sk-bone"/>
+    <circle cx="9" cy="11" r="2.1" class="sk-eye ${lit ? 'lit' : ''}"/>
+    <circle cx="15" cy="11" r="2.1" class="sk-eye ${lit ? 'lit' : ''}"/>
+    <path d="M12 13 12.9 15.2 11.1 15.2Z" class="sk-nose"/>
+    <path d="M9.5 17.7v2.1M12 18v2.1M14.5 17.7v2.1" class="sk-teeth"/>
+  </g>`;
+  const cyc = CY + orbR + 1;
+  g += `<circle cx="${CX}" cy="${cyc}" r="10.5" class="sk-chip" pointer-events="none"/>`;
+  if (mode === 'done') g += `<path d="M${CX - 4.5} ${cyc + .5} l3 3 l6 -6.5" class="sk-glyph check" pointer-events="none"/>`;
+  else if (mode === 'stop') g += `<rect x="${CX - 4}" y="${cyc - 4}" width="8" height="8" rx="1.5" class="sk-glyph" pointer-events="none"/>`;
+  else g += `<path d="M${CX - 3.5} ${cyc - 5} L${CX + 5} ${cyc} L${CX - 3.5} ${cyc + 5} Z" class="sk-glyph" pointer-events="none"/>`;
+  g += `<circle cx="${CX}" cy="${CY + 5}" r="${orbR + 12}" class="sk-hit" ${hitAttr}/>`;
+  return g;
+}
 // position of step i on a ring subdivided into `div` beats
 const posOf = (i, div, r) => {
   const a = (-90 + i * (360 / div)) * Math.PI / 180;
@@ -602,6 +647,12 @@ function renderRing() {
   const stepsAlpha = 1 - L.inst;
   let out = `<defs>
     <radialGradient id="playGrad" cx="38%" cy="30%">
+      <stop offset="0%" stop-color="#e5473a"/><stop offset="55%" stop-color="#a01818"/><stop offset="100%" stop-color="#4a0b0b"/>
+    </radialGradient>
+    <radialGradient id="skullGrad" cx="42%" cy="34%">
+      <stop offset="0%" stop-color="#5e1616"/><stop offset="52%" stop-color="#280a0a"/><stop offset="100%" stop-color="#0b0303"/>
+    </radialGradient>
+    <radialGradient id="chipGrad" cx="38%" cy="30%">
       <stop offset="0%" stop-color="#e5473a"/><stop offset="55%" stop-color="#a01818"/><stop offset="100%" stop-color="#4a0b0b"/>
     </radialGradient>
   </defs>`;
@@ -708,18 +759,10 @@ function renderRing() {
     out += `</g>`;
   }
 
-  // center orb
-  const orbR = 34;
-  if (state.view === 'steps') {
-    out += `<circle cx="${CX}" cy="${CY}" r="${orbR + 8}" class="play-halo ${timer ? '' : 'pulse'}" style="transform-origin:${CX}px ${CY}px"/>`;
-    out += `<circle cx="${CX}" cy="${CY}" r="${orbR}" class="play-core" data-play="1"/>`;
-    out += timer
-      ? `<rect x="${CX - 10}" y="${CY - 10}" width="20" height="20" rx="2" class="play-glyph"/>`
-      : `<path d="M${CX - 8} ${CY - 12.5} L${CX + 14} ${CY} L${CX - 8} ${CY + 12.5} Z" class="play-glyph"/>`;
-  } else {
-    out += `<circle cx="${CX}" cy="${CY}" r="${orbR}" class="play-core" data-instdone="1"/>`;
-    out += `<text x="${CX}" y="${CY - 4}" class="inst-title" style="font-size:15px" pointer-events="none">${state.preset[active().key]}</text>`;
-    out += `<text x="${CX}" y="${CY + 12}" class="inst-sub" pointer-events="none">✓ done</text>`;
+  // center: engraved blood-iron skull medallion (play / stop / confirm)
+  out += skullMedallion(state.view === 'inst' ? 'done' : (timer ? 'stop' : 'play'));
+  if (state.view === 'inst') {
+    out += `<text x="${CX}" y="${CY + orbR + 26}" class="inst-title" style="font-size:14px" pointer-events="none">${state.preset[active().key]}</text>`;
   }
   svg.innerHTML = out;
   posLab.textContent = `bar ${['I', 'II', 'III'][shownBar]} · step ${shownStep + 1} of ${trackSteps(t)}`;
