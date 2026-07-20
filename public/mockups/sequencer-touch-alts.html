@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Deuntjes — touch sequencer, 3 directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=UnifrakturCook:wght@700&family=Pirata+One&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --void: #050505; --iron: #101010; --iron-2: #181818;
+    --ink: #f2ede3; --ink-dim: #b3ac9d; --smoke: #7d7768;
+    --blood: #a01818; --blood-lit: #d42121; --blood-dark: #5c0d0d;
+    --parch: #efe9db; --parch-ink: #151210;
+    --display: "UnifrakturCook", "Pirata One", serif;
+    --gothic: "Pirata One", serif;
+    --body: "IM Fell English", Georgia, serif;
+    --chain-x: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='12'><g fill='none' stroke='%23f2ede3' stroke-opacity='0.38' stroke-width='1.5'><ellipse cx='6.5' cy='6' rx='5' ry='3.4'/><ellipse cx='19.5' cy='6' rx='5' ry='3.4'/></g></svg>");
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: radial-gradient(130% 90% at 50% -20%, #121212, var(--void) 55%); color: var(--ink); font-family: var(--body); }
+  body { padding: 26px 12px 80px; }
+  button { font-family: inherit; cursor: pointer; }
+
+  .page-head { text-align: center; max-width: 520px; margin: 0 auto 26px; }
+  .page-head h1 { font-family: var(--display); font-size: 40px; margin: 0; }
+  .page-head h1 b { color: var(--blood-lit); font-weight: 700; }
+  .page-head p { color: var(--smoke); font-size: 14px; font-style: italic; line-height: 1.55; margin: 8px 0 0; }
+
+  .design { max-width: 460px; margin: 0 auto 64px; }
+  .design > header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .label-chip {
+    background: linear-gradient(180deg, var(--blood-lit), var(--blood)); color: var(--ink);
+    width: 30px; height: 30px; border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    font: 700 16px var(--gothic); border: 1px solid var(--blood-dark);
+  }
+  .design > header h2 { font-family: var(--display); font-size: 24px; margin: 0; }
+  .design .summary { color: var(--smoke); font-size: 13.5px; font-style: italic; line-height: 1.55; margin: 0 0 14px; }
+  .design .notes { display: flex; gap: 16px; margin-top: 12px; font-size: 12.5px; line-height: 1.45; font-style: italic; }
+  .design .notes .col { flex: 1; }
+  .design .notes .pros { color: #9ab08d; }
+  .design .notes .cons { color: #b08d8d; }
+
+  /* phone frame */
+  .device {
+    width: 402px; max-width: 100%; margin: 0 auto; min-height: 780px;
+    background: var(--void);
+    border: 1px solid #2b2b2b; border-radius: 36px;
+    box-shadow: 0 22px 60px rgba(0,0,0,.8);
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column;
+    padding: 14px 12px 16px;
+  }
+
+  /* shared chrome inside frames */
+  .curse-strip {
+    display: flex; align-items: center; gap: 9px;
+    background: linear-gradient(180deg, #f4efe2, #ddd5c2); color: var(--parch-ink);
+    padding: 7px 11px; margin-bottom: 10px; transform: rotate(-.6deg);
+    clip-path: polygon(0 8%, 2% 0, 98% 3%, 100% 14%, 99% 90%, 96% 100%, 3% 97%, 0 88%);
+    font-size: 12px; font-style: italic; flex-shrink: 0;
+  }
+  .curse-strip b { font-family: var(--display); font-style: normal; font-size: 14px; margin-right: 2px; }
+  .topbtns { display: flex; gap: 8px; margin-bottom: 10px; flex-shrink: 0; }
+  .tbtn {
+    flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    background: linear-gradient(180deg, var(--iron-2), var(--iron)); color: var(--ink-dim);
+    border: 1px solid rgba(242,237,227,.22); border-radius: 3px;
+    font: 400 14px var(--gothic); letter-spacing: .05em; padding: 10px 8px;
+  }
+  .tbtn:active { transform: translateY(1px); }
+  .tbtn.rite { background: linear-gradient(180deg, var(--blood-lit), var(--blood) 55%, var(--blood-dark)); color: var(--ink); border-color: var(--blood-dark); }
+  .tbtn.on { color: var(--ink); border-color: rgba(242,237,227,.55); }
+
+  /* track chips with eyes */
+  .track-chips { display: flex; gap: 6px; margin-bottom: 12px; flex-shrink: 0; }
+  .tchip {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    background: #0d0d0d; border: 1px solid rgba(242,237,227,.16); border-radius: 3px;
+    color: var(--smoke); font: 400 12.5px var(--gothic); letter-spacing: .05em; padding: 8px 4px;
+  }
+  .tchip .sw { width: 10px; height: 10px; border: 1px solid rgba(242,237,227,.5); flex-shrink: 0; }
+  .tchip.active { color: var(--parch-ink); background: linear-gradient(180deg, #f4efe2, #ddd5c2); border-color: #000; }
+  .tchip.active .eye { color: var(--parch-ink); }
+  .tchip .eye { background: none; border: none; padding: 2px; color: var(--smoke); display: inline-flex; }
+  .tchip.hidden-track .sw, .tchip.hidden-track .nm { opacity: .3; }
+  .pat-drum  { background-image: repeating-linear-gradient(45deg, rgba(242,237,227,.95) 0 1px, transparent 1px 4px), repeating-linear-gradient(-45deg, rgba(242,237,227,.95) 0 1px, transparent 1px 4px); }
+  .pat-bass  { background-image: repeating-linear-gradient(0deg, rgba(242,237,227,.95) 0 2px, transparent 2px 5px); }
+  .pat-lead  { background-image: repeating-linear-gradient(45deg, rgba(242,237,227,.95) 0 1.5px, transparent 1.5px 5px); }
+  .pat-chord { background-image: radial-gradient(rgba(242,237,227,.95) 1px, transparent 1.4px); background-size: 5px 5px; }
+  .tchip.active .sw.pat-drum  { background-image: repeating-linear-gradient(45deg, rgba(21,18,16,.95) 0 1px, transparent 1px 4px), repeating-linear-gradient(-45deg, rgba(21,18,16,.95) 0 1px, transparent 1px 4px); border-color: rgba(21,18,16,.7); }
+  .tchip.active .sw.pat-bass  { background-image: repeating-linear-gradient(0deg, rgba(21,18,16,.95) 0 2px, transparent 2px 5px); border-color: rgba(21,18,16,.7); }
+  .tchip.active .sw.pat-lead  { background-image: repeating-linear-gradient(45deg, rgba(21,18,16,.95) 0 1.5px, transparent 1.5px 5px); border-color: rgba(21,18,16,.7); }
+  .tchip.active .sw.pat-chord { background-image: radial-gradient(rgba(21,18,16,.95) 1px, transparent 1.4px); border-color: rgba(21,18,16,.7); }
+
+  /* ============ A: PAD ALTAR ============ */
+  .a-grid {
+    flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    align-content: center; justify-items: center; padding: 6px 4px; touch-action: pan-y;
+  }
+  .pad {
+    width: 76px; height: 76px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #1c1c1c, #0c0c0c 70%);
+    border: 2px solid rgba(242,237,227,.22);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,.8);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    color: var(--smoke); font: 400 15px var(--gothic);
+    position: relative;
+  }
+  .pad .beat { position: absolute; top: 6px; font-size: 9px; letter-spacing: .1em; color: rgba(242,237,227,.35); font-family: var(--body); font-style: italic; }
+  .pad.on {
+    background: radial-gradient(circle at 35% 30%, #fbf6e9, var(--parch) 60%, #d8cfba);
+    border-color: #000; color: var(--parch-ink);
+    box-shadow: 0 4px 14px rgba(0,0,0,.6), inset 0 -3px 8px rgba(90,70,40,.35);
+    font-size: 18px;
+  }
+  .pad.sel { outline: 3px solid var(--blood-lit); outline-offset: 2px; }
+  .pad.playhead { border-color: var(--ink); box-shadow: 0 0 16px rgba(242,237,227,.35), inset 0 2px 8px rgba(0,0,0,.8); }
+  .pad.on.playhead { box-shadow: 0 0 20px rgba(242,237,227,.5), inset 0 -3px 8px rgba(90,70,40,.35); }
+  .pad .ghosts { display: flex; gap: 3px; position: absolute; bottom: 8px; }
+  .pad .ghosts i { width: 7px; height: 7px; border-radius: 50%; border: 1px solid rgba(242,237,227,.4); }
+  .pad.on .ghosts i { border-color: rgba(21,18,16,.5); }
+  .a-pager { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 8px 0 10px; flex-shrink: 0; }
+  .a-pager button { background: none; border: 1px solid rgba(242,237,227,.25); border-radius: 3px; color: var(--ink-dim); font-size: 16px; padding: 4px 14px; }
+  .a-pager .dots { display: flex; gap: 7px; }
+  .a-pager .dots i { width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(242,237,227,.5); }
+  .a-pager .dots i.cur { background: var(--ink); }
+  .a-ribbon {
+    display: flex; gap: 7px; overflow-x: auto; padding: 10px 4px 12px; flex-shrink: 0;
+    scrollbar-width: none; border-top: 1px solid rgba(242,237,227,.1);
+  }
+  .a-ribbon::-webkit-scrollbar { display: none; }
+  .nbtn {
+    flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%;
+    background: #0d0d0d; border: 1.5px solid rgba(242,237,227,.25); color: var(--ink-dim);
+    font: 400 13px var(--gothic);
+  }
+  .nbtn.black { background: #000; color: var(--smoke); }
+  .nbtn.sticky { background: linear-gradient(180deg, #f4efe2, #ddd5c2); color: var(--parch-ink); border-color: #000; }
+
+  /* ============ B: RITUAL RING ============ */
+  .b-stage { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+  .b-stage svg { width: 100%; max-width: 360px; height: auto; touch-action: manipulation; }
+  .b-step { fill: #0d0d0d; stroke: rgba(242,237,227,.3); stroke-width: 1.6; }
+  .b-step.on { fill: var(--parch); stroke: #000; }
+  .b-step.sel { stroke: var(--blood-lit); stroke-width: 3; }
+  .b-step.playhead { stroke: var(--ink); stroke-width: 3; }
+  .b-lab { font: 400 10px var(--gothic); fill: var(--smoke); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .b-lab.on { fill: var(--parch-ink); font-size: 11px; }
+  .b-ghost { fill: rgba(242,237,227,.55); }
+  .b-ring-guide { fill: none; stroke: rgba(242,237,227,.1); stroke-dasharray: 2 5; }
+  .b-hand { stroke: rgba(212,33,33,.75); stroke-width: 2; stroke-linecap: round; }
+  .b-center-note { font: 700 34px var(--display); fill: var(--ink); text-anchor: middle; }
+  .b-center-sub { font: italic 10px var(--body); fill: var(--smoke); text-anchor: middle; }
+  .b-nbtn { fill: #101010; stroke: rgba(242,237,227,.35); }
+  .b-nbtn-lab { font: 400 15px var(--gothic); fill: var(--ink-dim); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .b-barrow { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 6px 0 4px; color: var(--smoke); font-style: italic; font-size: 13px; flex-shrink: 0; }
+  .b-barrow button { background: none; border: 1px solid rgba(242,237,227,.25); border-radius: 3px; color: var(--ink-dim); font-size: 15px; padding: 3px 13px; }
+
+  /* ============ C: BEAD LADDER ============ */
+  .c-scroll { flex: 1; overflow-y: auto; padding: 4px 2px; scrollbar-width: none; position: relative; }
+  .c-scroll::-webkit-scrollbar { display: none; }
+  .c-row { display: flex; align-items: center; gap: 10px; padding: 3px 6px; position: relative; }
+  .c-row.barline { border-top: 1px dashed rgba(242,237,227,.14); margin-top: 5px; padding-top: 8px; }
+  .c-row .snum { width: 22px; font-size: 10.5px; color: rgba(242,237,227,.3); font-style: italic; text-align: right; flex-shrink: 0; }
+  .c-ghost-col { display: flex; gap: 6px; width: 84px; justify-content: flex-end; flex-shrink: 0; }
+  .c-ghost { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(242,237,227,.18); flex-shrink: 0; }
+  .c-ghost.on { border-color: rgba(242,237,227,.5); }
+  .c-main {
+    width: 58px; height: 58px; border-radius: 50%; flex-shrink: 0;
+    background: radial-gradient(circle at 35% 30%, #1c1c1c, #0c0c0c 70%);
+    border: 2px solid rgba(242,237,227,.22); color: var(--smoke);
+    font: 400 15px var(--gothic);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,.8);
+  }
+  .c-main.on { background: radial-gradient(circle at 35% 30%, #fbf6e9, var(--parch) 60%, #d8cfba); border-color: #000; color: var(--parch-ink); font-size: 17px; }
+  .c-main.sel { outline: 3px solid var(--blood-lit); outline-offset: 2px; }
+  .c-main.playhead { border-color: var(--ink); box-shadow: 0 0 14px rgba(242,237,227,.4); }
+  .c-chain { flex: 1; height: 8px; background: var(--chain-x) repeat-x center / 26px 12px; opacity: .25; }
+  .c-fan {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    display: flex; gap: 5px; align-items: center;
+    background: linear-gradient(180deg, #f4efe2, #ddd5c2); border-radius: 999px;
+    padding: 6px 8px; box-shadow: 0 8px 22px rgba(0,0,0,.7); z-index: 5;
+  }
+  .c-fan button {
+    width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid rgba(21,18,16,.5);
+    background: transparent; color: var(--parch-ink); font: 400 13px var(--gothic);
+  }
+  .c-fan button.cur { background: var(--parch-ink); color: var(--parch); }
+  .c-fan button.oct { font-size: 11px; border-style: dashed; }
+
+  /* instrument / fx sheet (shared) */
+  .sheet-veil { position: absolute; inset: 0; background: rgba(5,5,5,.72); z-index: 20; display: none; align-items: flex-end; border-radius: 36px; }
+  .sheet-veil.open { display: flex; }
+  .sheet {
+    width: 100%; background: linear-gradient(180deg, #161616, #0b0b0b);
+    border-top: 2px solid rgba(242,237,227,.25); border-radius: 22px 22px 34px 34px;
+    padding: 16px 16px 20px;
+  }
+  .sheet h4 { font-family: var(--display); font-size: 20px; margin: 0 0 10px; }
+  .sheet h4 small { font-family: var(--body); font-style: italic; font-size: 12px; color: var(--smoke); margin-left: 6px; }
+  .preset-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+  .preset-row button {
+    background: #0d0d0d; border: 1px solid rgba(242,237,227,.22); border-radius: 999px;
+    color: var(--ink-dim); font: 400 13px var(--gothic); letter-spacing: .04em; padding: 8px 14px;
+  }
+  .preset-row button.cur { background: linear-gradient(180deg, var(--blood-lit), var(--blood)); color: var(--ink); border-color: var(--blood-dark); }
+  .fx-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .fx-row label { width: 62px; font: 400 13px var(--gothic); letter-spacing: .06em; color: var(--ink-dim); }
+  .fx-row input[type=range] { flex: 1; accent-color: var(--blood-lit); }
+  .fx-row output { width: 34px; text-align: right; font-size: 12px; color: var(--smoke); }
+  .sheet .close-row { margin-top: 6px; }
+  .sheet .close-row button { width: 100%; padding: 12px; font: 400 15px var(--gothic); background: linear-gradient(180deg, #f4efe2, #ddd5c2); color: var(--parch-ink); border: 1px solid #000; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>The compose step, <b>three</b> ways</h1>
+  <p>Streamlined touch sequencers for a dungeon turn. Big circular steps; tap to carve, tap again to retune or remove. New steps remember the last note you chose. Blips are placeholder sounds — the real thing keeps the full synth engine.</p>
+</div>
+
+<!-- ============================================================ A -->
+<section class="design">
+  <header><span class="label-chip">A</span><h2>The Pad Altar</h2></header>
+  <p class="summary">A drum-machine altar: one bar of 16 fat pads per page, swipe or arrows for the next bar. The note ribbon under your thumb retunes the selected pad and stays sticky for the next one. Other tracks appear as tiny ghost beads on each pad.</p>
+  <div class="device" id="devA">
+    <div class="curse-strip"><b>Sparse Soul</b> — use at most 4 notes.</div>
+    <div class="topbtns">
+      <button class="tbtn rite" data-act="play">▶&#xFE0E; Play</button>
+      <button class="tbtn" data-act="inst">⚙&#xFE0E; Instrument</button>
+    </div>
+    <div class="track-chips"></div>
+    <div class="a-grid"></div>
+    <div class="a-pager">
+      <button data-act="prev">‹</button>
+      <div class="dots"><i class="cur"></i><i></i></div>
+      <button data-act="next">›</button>
+    </div>
+    <div class="a-ribbon"></div>
+    <div class="sheet-veil"><div class="sheet"></div></div>
+  </div>
+  <div class="notes">
+    <div class="col pros"><b>+</b> fastest carving; everything within thumb reach; pads big enough to never miss.</div>
+    <div class="col cons"><b>−</b> melody reads left-to-right in rows of four — less "melodic" at a glance than a lane.</div>
+  </div>
+</section>
+
+<!-- ============================================================ B -->
+<section class="design">
+  <header><span class="label-chip">B</span><h2>The Ritual Ring</h2></header>
+  <p class="summary">One bar as a summoning circle: sixteen steps around the ring, a blood hand sweeps as it plays. The heart of the circle shows your current note — raise or lower it with the talons. Other tracks orbit as inner ghost rings.</p>
+  <div class="device" id="devB">
+    <div class="curse-strip"><b>Minor Key</b> — only notes from a minor scale.</div>
+    <div class="topbtns">
+      <button class="tbtn rite" data-act="play">▶&#xFE0E; Play</button>
+      <button class="tbtn" data-act="inst">⚙&#xFE0E; Instrument</button>
+    </div>
+    <div class="track-chips"></div>
+    <div class="b-stage"><svg viewBox="0 0 340 340"></svg></div>
+    <div class="b-barrow">
+      <button data-act="prev">‹</button>
+      <span class="b-barlab">Bar I of II</span>
+      <button data-act="next">›</button>
+    </div>
+    <div class="sheet-veil"><div class="sheet"></div></div>
+  </div>
+  <div class="notes">
+    <div class="col pros"><b>+</b> the loop is literally a loop — rhythm placement is instant to read; pure dungeon theatre.</div>
+    <div class="col cons"><b>−</b> pitch lives in the middle, so melodies take more taps; ring gets tight beyond 16 steps.</div>
+  </div>
+</section>
+
+<!-- ============================================================ C -->
+<section class="design">
+  <header><span class="label-chip">C</span><h2>The Bead Ladder</h2></header>
+  <p class="summary">Time flows down a chain of beads you scroll with one thumb, like the tracker — but each step is one huge bead. Tap a bead to carve it; tap it again and a note fan unfolds beside your thumb. Other tracks hang as slim ghost beads on the left.</p>
+  <div class="device" id="devC">
+    <div class="curse-strip"><b>Off the Grid</b> — no notes on the downbeat.</div>
+    <div class="topbtns">
+      <button class="tbtn rite" data-act="play">▶&#xFE0E; Play</button>
+      <button class="tbtn" data-act="inst">⚙&#xFE0E; Instrument</button>
+    </div>
+    <div class="track-chips"></div>
+    <div class="c-scroll"></div>
+    <div class="sheet-veil"><div class="sheet"></div></div>
+  </div>
+  <div class="notes">
+    <div class="col pros"><b>+</b> keeps the current tracker mental model; infinite scroll; the note fan lands under the thumb.</div>
+    <div class="col cons"><b>−</b> only ~8 steps visible at once; ghost beads are read, not edited, until you swap tracks.</div>
+  </div>
+</section>
+
+<script>
+// ================= shared: notes + audio =================
+const NOTE_ORDER = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function parseNote(n) { const m = /^([A-G]#?)(\d)$/.exec(n); return { semi: NOTE_ORDER.indexOf(m[1]), oct: +m[2] }; }
+function noteFreq(n) { const { semi, oct } = parseNote(n); return 440 * Math.pow(2, ((oct + 1) * 12 + semi - 69) / 12); }
+function shiftNote(n, d) {
+  const { semi, oct } = parseNote(n);
+  let v = Math.min(Math.max((oct + 1) * 12 + semi + d, 24), 96); // C1..C7
+  return NOTE_ORDER[v % 12] + (Math.floor(v / 12) - 1);
+}
+let AC = null;
+function blip(track, note, fx) {
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    const t = AC.currentTime;
+    const o = AC.createOscillator(), g = AC.createGain();
+    const timbre = { drum: ['sine', .09], bass: ['square', .16], lead: ['triangle', .15], chord: ['sine', .3] }[track.key];
+    o.type = fx.drive > .5 ? 'sawtooth' : timbre[0];
+    o.frequency.value = track.key === 'drum' ? 82 : noteFreq(note);
+    if (track.key === 'drum') o.frequency.exponentialRampToValueAtTime(38, t + .09);
+    const dur = timbre[1] * (1 + fx.reverb * 2.2);
+    g.gain.setValueAtTime(track.key === 'chord' ? .16 : .22, t);
+    g.gain.exponentialRampToValueAtTime(.001, t + dur);
+    o.connect(g).connect(AC.destination);
+    o.start(t); o.stop(t + dur + .02);
+  } catch (_) {}
+}
+
+const PRESETS = {
+  drum: ['Kick', '808', 'Snare', 'Hat'], bass: ['Bass', 'Sub', 'Acid', 'Reese'],
+  lead: ['Lead', 'Pluck', 'Bell', 'Keys'], chord: ['Pad', 'Organ', 'Strings', 'Choir'],
+};
+const STEPS = 32;
+function makeState() {
+  return {
+    tracks: [
+      { key: 'drum',  name: 'Drum',  pat: 'pat-drum',  def: 'C2', steps: { 0:'C2', 4:'C2', 8:'C2', 12:'C2', 16:'C2', 20:'C2', 24:'C2', 26:'C2', 28:'C2' } },
+      { key: 'bass',  name: 'Bass',  pat: 'pat-bass',  def: 'C2', steps: { 0:'C2', 6:'G1', 8:'C2', 14:'A#1', 16:'C2', 22:'D#2', 24:'C2', 30:'G1' } },
+      { key: 'lead',  name: 'Lead',  pat: 'pat-lead',  def: 'C4', steps: {} },
+      { key: 'chord', name: 'Chord', pat: 'pat-chord', def: 'D#3', steps: { 2:'D#3', 10:'G3', 18:'D#3', 26:'F3' } },
+    ],
+    activeKey: 'lead',
+    hidden: new Set(),
+    sticky: { drum: 'C2', bass: 'C2', lead: 'C4', chord: 'D#3' },
+    sel: null,
+    preset: { drum: 'Kick', bass: 'Bass', lead: 'Lead', chord: 'Pad' },
+    fx: { reverb: .15, drive: 0 },
+  };
+}
+const active = (s) => s.tracks.find(t => t.key === s.activeKey);
+const others = (s) => s.tracks.filter(t => t.key !== s.activeKey && !s.hidden.has(t.key));
+
+// one global transport: starting a design stops the others
+let currentStop = null;
+function makePlayer(state, onStep) {
+  let timer = null, pos = 0;
+  const stop = () => { if (timer) clearInterval(timer); timer = null; onStep(-1); if (currentStop === stop) currentStop = null; };
+  return {
+    get playing() { return !!timer; },
+    stop,
+    toggle() {
+      if (timer) { stop(); return false; }
+      if (currentStop) currentStop();
+      currentStop = stop;
+      pos = 0;
+      timer = setInterval(() => {
+        state.tracks.forEach(t => { const n = t.steps[pos]; if (n) blip(t, n, state.fx); });
+        onStep(pos);
+        pos = (pos + 1) % STEPS;
+      }, 125);
+      return true;
+    },
+  };
+}
+
+// shared chip row + instrument sheet wiring
+function wireChrome(dev, state, rerender) {
+  const chips = dev.querySelector('.track-chips');
+  function renderChips() {
+    chips.innerHTML = state.tracks.map(t => `
+      <div class="tchip ${t.key === state.activeKey ? 'active' : ''} ${state.hidden.has(t.key) ? 'hidden-track' : ''}" data-k="${t.key}">
+        <i class="sw ${t.pat}"></i><span class="nm">${t.name}</span>
+        <button class="eye" data-eye="${t.key}" title="show/hide">${state.hidden.has(t.key)
+          ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18M10.5 10.6a2.3 2.3 0 0 0 3 3M7 7.2C4.7 8.6 3 12 3 12s3.5 6 9 6c1.6 0 3-.4 4.2-1M10 6.2C10.6 6.1 11.3 6 12 6c5.5 0 9 6 9 6s-.7 1.3-2 2.7"/></svg>'
+          : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.4"/></svg>'}</button>
+      </div>`).join('');
+  }
+  chips.addEventListener('click', (e) => {
+    const eye = e.target.closest('[data-eye]');
+    if (eye) {
+      const k = eye.dataset.eye;
+      if (k !== state.activeKey) { state.hidden.has(k) ? state.hidden.delete(k) : state.hidden.add(k); }
+      renderChips(); rerender(); return;
+    }
+    const chip = e.target.closest('.tchip');
+    if (chip) {
+      state.activeKey = chip.dataset.k;
+      state.hidden.delete(chip.dataset.k);
+      state.sel = null;
+      renderChips(); rerender();
+    }
+  });
+  renderChips();
+
+  // instrument sheet
+  const veil = dev.querySelector('.sheet-veil');
+  const sheet = dev.querySelector('.sheet');
+  function renderSheet() {
+    const t = active(state);
+    sheet.innerHTML = `
+      <h4>${t.name}<small>voice &amp; sorcery</small></h4>
+      <div class="preset-row">${PRESETS[t.key].map(p =>
+        `<button data-p="${p}" class="${state.preset[t.key] === p ? 'cur' : ''}">${p}</button>`).join('')}</div>
+      <div class="fx-row"><label>Reverb</label><input type="range" min="0" max="100" value="${state.fx.reverb * 100}" data-fx="reverb" /><output>${Math.round(state.fx.reverb * 100)}</output></div>
+      <div class="fx-row"><label>Drive</label><input type="range" min="0" max="100" value="${state.fx.drive * 100}" data-fx="drive" /><output>${Math.round(state.fx.drive * 100)}</output></div>
+      <div class="close-row"><button data-close>Done</button></div>`;
+  }
+  sheet.addEventListener('input', (e) => {
+    const r = e.target.closest('[data-fx]');
+    if (r) { state.fx[r.dataset.fx] = r.value / 100; r.nextElementSibling.textContent = r.value; }
+  });
+  sheet.addEventListener('click', (e) => {
+    const p = e.target.closest('[data-p]');
+    if (p) { state.preset[active(state).key] = p.dataset.p; renderSheet(); blip(active(state), state.sticky[state.activeKey], state.fx); return; }
+    if (e.target.closest('[data-close]')) veil.classList.remove('open');
+  });
+  veil.addEventListener('click', (e) => { if (e.target === veil) veil.classList.remove('open'); });
+  dev.querySelector('[data-act="inst"]').addEventListener('click', () => { renderSheet(); veil.classList.add('open'); });
+
+  return { renderChips };
+}
+
+// tap semantics shared by all three:
+//   empty step  -> place sticky note (and preview it)
+//   filled step -> select it (ribbon/dial/fan retunes)
+//   selected    -> remove it
+function tapStep(state, step, onSelectOpen) {
+  const t = active(state);
+  if (t.steps[step] === undefined) {
+    t.steps[step] = state.sticky[t.key];
+    state.sel = step;
+    blip(t, t.steps[step], state.fx);
+  } else if (state.sel === step) {
+    delete t.steps[step];
+    state.sel = null;
+  } else {
+    state.sel = step;
+    blip(t, t.steps[step], state.fx);
+    if (onSelectOpen) onSelectOpen(step);
+  }
+}
+function retune(state, note) {
+  const t = active(state);
+  state.sticky[t.key] = note;
+  if (state.sel !== null && t.steps[state.sel] !== undefined) t.steps[state.sel] = note;
+  blip(t, note, state.fx);
+}
+
+// ================= A: PAD ALTAR =================
+(function () {
+  const dev = document.getElementById('devA');
+  const state = makeState();
+  let page = 0, ph = -1;
+  const grid = dev.querySelector('.a-grid');
+  const ribbon = dev.querySelector('.a-ribbon');
+  const dots = dev.querySelectorAll('.a-pager .dots i');
+
+  function render() {
+    const t = active(state);
+    grid.innerHTML = Array.from({ length: 16 }, (_, i) => {
+      const s = page * 16 + i;
+      const note = t.steps[s];
+      const ghost = others(state).filter(o => o.steps[s] !== undefined);
+      return `<button class="pad ${note !== undefined ? 'on' : ''} ${state.sel === s ? 'sel' : ''} ${ph === s ? 'playhead' : ''}" data-s="${s}">
+        ${i % 4 === 0 ? `<span class="beat">${i / 4 + 1 + page * 4}</span>` : ''}
+        <span>${note !== undefined ? (t.key === 'drum' ? '●' : note) : ''}</span>
+        <span class="ghosts">${ghost.map(o => `<i class="${o.pat}"></i>`).join('')}</span>
+      </button>`;
+    }).join('');
+    dots.forEach((d, i) => d.classList.toggle('cur', i === page));
+    renderRibbon();
+  }
+  function renderRibbon() {
+    const t = active(state);
+    if (t.key === 'drum') { ribbon.innerHTML = '<span style="color:var(--smoke);font-style:italic;font-size:12.5px;padding:12px 6px">Drums keep one voice — no notes to pick. Choose the voice under ⚙ Instrument.</span>'; return; }
+    const base = parseNote(state.sticky[t.key]).oct;
+    const notes = [];
+    for (let o = base - 1; o <= base + 1; o++) for (const n of NOTE_ORDER) notes.push(n + o);
+    ribbon.innerHTML = notes.map(n =>
+      `<button class="nbtn ${n.includes('#') ? 'black' : ''} ${n === state.sticky[t.key] ? 'sticky' : ''}" data-n="${n}">${n}</button>`).join('');
+    const s = ribbon.querySelector('.sticky');
+    if (s) s.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }
+  grid.addEventListener('click', (e) => {
+    const pad = e.target.closest('.pad');
+    if (pad) { tapStep(state, +pad.dataset.s); render(); }
+  });
+  ribbon.addEventListener('click', (e) => {
+    const b = e.target.closest('.nbtn');
+    if (b) { retune(state, b.dataset.n); render(); }
+  });
+  dev.querySelector('[data-act="prev"]').addEventListener('click', () => { page = Math.max(0, page - 1); render(); });
+  dev.querySelector('[data-act="next"]').addEventListener('click', () => { page = Math.min(1, page + 1); render(); });
+  // swipe between pages
+  let sx = null;
+  grid.addEventListener('pointerdown', (e) => { sx = e.clientX; });
+  grid.addEventListener('pointerup', (e) => {
+    if (sx === null) return;
+    const dx = e.clientX - sx; sx = null;
+    if (dx < -48) { page = Math.min(1, page + 1); render(); }
+    if (dx > 48) { page = Math.max(0, page - 1); render(); }
+  });
+  const playBtn = dev.querySelector('[data-act="play"]');
+  const player = makePlayer(state, (pos) => {
+    ph = pos;
+    if (pos >= 0 && Math.floor(pos / 16) !== page) { page = Math.floor(pos / 16); }
+    if (!player.playing && pos === -1) playBtn.innerHTML = '▶&#xFE0E; Play';
+    render();
+  });
+  playBtn.addEventListener('click', () => {
+    playBtn.innerHTML = player.toggle() ? '■ Stop' : '▶&#xFE0E; Play';
+  });
+  wireChrome(dev, state, render);
+  render();
+})();
+
+// ================= B: RITUAL RING =================
+(function () {
+  const dev = document.getElementById('devB');
+  const state = makeState();
+  state.activeKey = 'bass';
+  let bar = 0, ph = -1;
+  const svg = dev.querySelector('svg');
+  const barlab = dev.querySelector('.b-barlab');
+  const CX = 170, CY = 170, R = 138;
+  const pos = (i, r) => {
+    const a = (-90 + i * 22.5) * Math.PI / 180;
+    return [CX + r * Math.cos(a), CY + r * Math.sin(a)];
+  };
+  function render() {
+    const t = active(state);
+    const oth = others(state);
+    let out = `<circle cx="${CX}" cy="${CY}" r="${R}" class="b-ring-guide"/>`;
+    // quarter tick runes
+    for (let q = 0; q < 4; q++) {
+      const [tx, ty] = pos(q * 4, R + 19);
+      out += `<text x="${tx}" y="${ty}" class="b-lab" style="font-size:11px">${['I', 'IV', 'VIII', 'XII'][q]}</text>`;
+    }
+    // ghost rings
+    oth.forEach((o, oi) => {
+      const r = 106 - oi * 20;
+      out += `<circle cx="${CX}" cy="${CY}" r="${r}" class="b-ring-guide"/>`;
+      for (let i = 0; i < 16; i++) {
+        if (o.steps[bar * 16 + i] !== undefined) {
+          const [x, y] = pos(i, r);
+          out += `<circle cx="${x}" cy="${y}" r="4.6" class="b-ghost"/>`;
+        }
+      }
+    });
+    // playhead hand
+    if (ph >= 0 && Math.floor(ph / 16) === bar) {
+      const [hx, hy] = pos(ph % 16, R - 22);
+      out += `<line x1="${CX}" y1="${CY}" x2="${hx}" y2="${hy}" class="b-hand"/>`;
+    }
+    // main step circles
+    for (let i = 0; i < 16; i++) {
+      const s = bar * 16 + i;
+      const note = t.steps[s];
+      const [x, y] = pos(i, R);
+      out += `<circle cx="${x}" cy="${y}" r="17" data-s="${s}" class="b-step ${note !== undefined ? 'on' : ''} ${state.sel === s ? 'sel' : ''} ${ph === s ? 'playhead' : ''}"/>`;
+      out += `<text x="${x}" y="${y}" class="b-lab ${note !== undefined ? 'on' : ''}">${note !== undefined ? (t.key === 'drum' ? '●' : note) : i + 1}</text>`;
+    }
+    // center dial
+    out += `<text x="${CX}" y="${CY + 10}" class="b-center-note">${t.key === 'drum' ? '●' : state.sticky[t.key]}</text>`;
+    out += `<text x="${CX}" y="${CY + 30}" class="b-center-sub">${state.sel !== null ? 'retuning step ' + (state.sel % 16 + 1) : 'next carve'}</text>`;
+    if (t.key !== 'drum') {
+      out += `<circle cx="${CX}" cy="${CY - 44}" r="17" class="b-nbtn" data-dial="1"/><text x="${CX}" y="${CY - 44}" class="b-nbtn-lab">▲</text>`;
+      out += `<circle cx="${CX}" cy="${CY + 52}" r="17" class="b-nbtn" data-dial="-1"/><text x="${CX}" y="${CY + 52}" class="b-nbtn-lab">▼</text>`;
+    }
+    svg.innerHTML = out;
+    barlab.textContent = `Bar ${bar === 0 ? 'I' : 'II'} of II`;
+  }
+  svg.addEventListener('click', (e) => {
+    const st = e.target.closest('[data-s]');
+    if (st) { tapStep(state, +st.dataset.s); render(); return; }
+    const d = e.target.closest('[data-dial]');
+    if (d) { retune(state, shiftNote(state.sticky[state.activeKey], +d.dataset.dial)); render(); }
+  });
+  dev.querySelector('[data-act="prev"]').addEventListener('click', () => { bar = 0; render(); });
+  dev.querySelector('[data-act="next"]').addEventListener('click', () => { bar = 1; render(); });
+  const playBtn = dev.querySelector('[data-act="play"]');
+  const player = makePlayer(state, (p) => {
+    ph = p;
+    if (p >= 0) bar = Math.floor(p / 16);
+    if (!player.playing && p === -1) playBtn.innerHTML = '▶&#xFE0E; Play';
+    render();
+  });
+  playBtn.addEventListener('click', () => { playBtn.innerHTML = player.toggle() ? '■ Stop' : '▶&#xFE0E; Play'; });
+  wireChrome(dev, state, render);
+  render();
+})();
+
+// ================= C: BEAD LADDER =================
+(function () {
+  const dev = document.getElementById('devC');
+  const state = makeState();
+  let ph = -1, fanFor = null;
+  const scroll = dev.querySelector('.c-scroll');
+  function render() {
+    const t = active(state);
+    const oth = others(state);
+    scroll.innerHTML = Array.from({ length: STEPS }, (_, s) => {
+      const note = t.steps[s];
+      const ghosts = oth.map(o =>
+        `<i class="c-ghost ${o.steps[s] !== undefined ? `on ${o.pat}` : ''}"></i>`).join('');
+      let fan = '';
+      if (fanFor === s && t.key !== 'drum') {
+        const oct = parseNote(t.steps[s] ?? state.sticky[t.key]).oct;
+        const cur = t.steps[s];
+        fan = `<span class="c-fan">
+          <button class="oct" data-oct="-1">${oct - 1}▾</button>
+          ${['C', 'D', 'E', 'F', 'G', 'A', 'B'].map(L =>
+            `<button data-fn="${L}${oct}" class="${cur === L + oct ? 'cur' : ''}">${L}</button>`).join('')}
+          <button class="oct" data-oct="1">${oct + 1}▴</button>
+        </span>`;
+      }
+      return `<div class="c-row ${s % 4 === 0 ? 'barline' : ''}" data-row="${s}">
+        <span class="snum">${s + 1}</span>
+        <span class="c-ghost-col">${ghosts}</span>
+        <button class="c-main ${note !== undefined ? 'on' : ''} ${state.sel === s ? 'sel' : ''} ${ph === s ? 'playhead' : ''}" data-s="${s}">
+          ${note !== undefined ? (t.key === 'drum' ? '●' : note) : ''}
+        </button>
+        <span class="c-chain"></span>
+        ${fan}
+      </div>`;
+    }).join('');
+  }
+  scroll.addEventListener('click', (e) => {
+    const fn = e.target.closest('[data-fn]');
+    if (fn) { retune(state, fn.dataset.fn); render(); return; }
+    const oc = e.target.closest('[data-oct]');
+    if (oc) {
+      const t = active(state);
+      retune(state, shiftNote(t.steps[fanFor] ?? state.sticky[t.key], 12 * +oc.dataset.oct));
+      render(); return;
+    }
+    const main = e.target.closest('.c-main');
+    if (main) {
+      const s = +main.dataset.s;
+      const t = active(state);
+      const had = t.steps[s] !== undefined;
+      const wasSel = state.sel === s;
+      tapStep(state, s);
+      fanFor = had && !wasSel ? s : null; // fan opens on select, closes on delete/place
+      render();
+      return;
+    }
+    fanFor = null; render();
+  });
+  const playBtn = dev.querySelector('[data-act="play"]');
+  const player = makePlayer(state, (p) => {
+    ph = p;
+    if (!player.playing && p === -1) playBtn.innerHTML = '▶&#xFE0E; Play';
+    render();
+    if (p >= 0) {
+      const row = scroll.querySelector(`[data-row="${p}"]`);
+      if (row) row.scrollIntoView({ block: 'center', behavior: 'auto' });
+    }
+  });
+  playBtn.addEventListener('click', () => { playBtn.innerHTML = player.toggle() ? '■ Stop' : '▶&#xFE0E; Play'; });
+  wireChrome(dev, state, () => { fanFor = null; render(); });
+  render();
+})();
+</script>
+</body>
+</html>
