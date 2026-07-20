@@ -28,6 +28,7 @@
   .page-head p { color: var(--smoke); font-size: 13.5px; font-style: italic; line-height: 1.55; margin: 8px 0 0; }
 
   .device {
+    user-select: none; -webkit-user-select: none;
     width: 402px; max-width: 100%; margin: 0 auto; min-height: 770px;
     background: var(--void);
     border: 1px solid #2b2b2b; border-radius: 36px;
@@ -75,6 +76,9 @@
   .stage { flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; }
   .stage svg { width: 100%; max-width: 372px; height: auto; touch-action: none; display: block; }
   .hint { text-align: center; font-size: 11px; font-style: italic; color: rgba(242,237,227,.35); margin: 0 0 4px; flex-shrink: 0; }
+  .bars-ctl { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; }
+  .bars-ctl button { background: none; border: 1px solid rgba(242,237,227,.25); border-radius: 3px; color: var(--ink-dim); font-size: 12px; padding: 1px 8px; }
+  .bars-ctl .bars-lab { font-style: normal; font-family: var(--gothic); font-weight: 400; color: var(--ink-dim); letter-spacing: .06em; }
 
   .spin-slow { animation: spin 60s linear infinite; transform-origin: 186px 186px; }
   .spin-rev { animation: spin 42s linear infinite reverse; transform-origin: 186px 186px; }
@@ -144,7 +148,7 @@
 
 <div class="page-head">
   <h1>The Ritual Ring, <b>v2</b></h1>
-  <p>Play burns at the heart of the circle. Drag up or down on the ring (or mouse-wheel over it) to wind the playback position — the page itself never gets hijacked. Notes are picked below the circle; the Chord track opens the full chord forge.</p>
+  <p>Play burns at the heart of the circle, and every bar is its own ring — bar I outermost, time spiraling inward. Drag up or down on the ring (or mouse-wheel over it) to wind the playback position through all of them; the page itself never gets hijacked. Notes are picked below the circle; the Chord track opens the full chord forge.</p>
 </div>
 
 <div class="device" id="dev">
@@ -154,7 +158,9 @@
     <button class="tbtn" data-act="clear">✕ Clear track</button>
   </div>
   <div class="track-chips"></div>
-  <p class="hint">tap a stone to carve · drag ↑↓ on the ring to wind the song</p>
+  <p class="hint">tap a stone to carve · drag ↑↓ on the ring to wind through every bar
+    <span class="bars-ctl"><button data-bars="-1">‹</button><b class="bars-lab">II bars</b><button data-bars="1">›</button></span>
+  </p>
   <div class="stage"><svg viewBox="0 0 372 372"></svg></div>
   <div class="pickers">
     <p class="pick-status"></p>
@@ -224,7 +230,10 @@ function tone(track, note, fx, when = 0) {
 function playEvent(track, ev, fx) { ev.notes.forEach((n, i) => tone(track, n, fx, i * .012)); }
 
 // ================= state =================
-const STEPS = 32;
+// Each bar is a concentric ring: bar I outermost, later bars spiral inward.
+const BAR_RADII = { 1: [150], 2: [150, 104], 3: [150, 112, 74] };
+const stoneR = (ringR, accent) =>
+  ringR >= 140 ? (accent ? 19 : 16) : ringR >= 100 ? (accent ? 15 : 12.5) : (accent ? 12 : 10);
 const N = (label) => ({ label, notes: [label] });
 const state = {
   tracks: [
@@ -239,9 +248,11 @@ const state = {
   chordCfg: { root: 'C', qual: 'min', oct: 3, inv: 0 },
   sel: null,
   cursor: 0,       // playback position, wound by scrolling the ring
+  bars: 2,         // 1-3 bars = 1-3 concentric rings
   preset: { drum: 'Kick', bass: 'Bass', lead: 'Lead', chord: 'Pad' },
   fx: { reverb: .15, drive: 0 },
 };
+const STEPS = () => state.bars * 16;
 const PRESETS = { drum: ['Kick', '808', 'Snare', 'Hat'], bass: ['Bass', 'Sub', 'Acid', 'Reese'], lead: ['Lead', 'Pluck', 'Bell', 'Keys'], chord: ['Pad', 'Organ', 'Strings', 'Choir'] };
 const active = () => state.tracks.find(t => t.key === state.activeKey);
 const others = () => state.tracks.filter(t => t.key !== state.activeKey && !state.hidden.has(t.key));
@@ -255,13 +266,13 @@ let timer = null, ph = -1;
 function stopPlay() { if (timer) clearInterval(timer); timer = null; ph = -1; renderRing(); }
 function togglePlay() {
   if (timer) { stopPlay(); return; }
-  let pos = state.cursor;
+  let pos = state.cursor % STEPS();
   ph = pos;
   timer = setInterval(() => {
     state.tracks.forEach(t => { const ev = t.steps[pos]; if (ev) playEvent(t, ev, state.fx); });
     ph = pos;
     renderRing();
-    pos = (pos + 1) % STEPS;
+    pos = (pos + 1) % STEPS();
   }, 125);
   renderRing();
 }
@@ -276,74 +287,83 @@ const pos16 = (i, r) => {
 };
 function renderRing() {
   const t = active();
-  const shownStep = timer ? ph : state.cursor;
-  const bar = Math.floor(((shownStep + STEPS) % STEPS) / 16);
+  const radii = BAR_RADII[state.bars];
+  const shownStep = (timer ? ph : state.cursor) % STEPS();
+  const shownBar = Math.floor(shownStep / 16);
+  // orb shrinks a little when three rings crowd the center
+  const orbR = state.bars === 3 ? 30 : 38;
   let out = `<defs>
     <radialGradient id="playGrad" cx="38%" cy="30%">
-      <stop offset="0%" stop-color="#e5473a"/><stop offset="55%" stop-color="${'#a01818'}"/><stop offset="100%" stop-color="#4a0b0b"/>
+      <stop offset="0%" stop-color="#e5473a"/><stop offset="55%" stop-color="#a01818"/><stop offset="100%" stop-color="#4a0b0b"/>
     </radialGradient>
   </defs>`;
   // decorative counter-rotating rune rings
   out += `<g class="spin-slow"><circle cx="${CX}" cy="${CY}" r="${R + 24}" class="b-rune-ring"/>
     <path d="M${CX} ${CY - R - 32} l4 6 -4 6 -4 -6 Z" fill="rgba(242,237,227,.3)"/>
     <path d="M${CX} ${CY + R + 32} l4 -6 -4 -6 -4 6 Z" fill="rgba(242,237,227,.3)"/></g>`;
-  out += `<g class="spin-rev"><circle cx="${CX}" cy="${CY}" r="${R - 26}" class="b-rune-ring r2"/></g>`;
-  // sigil: connect the active track's carved steps of this bar
-  const carved = [];
-  for (let i = 0; i < 16; i++) if (t.steps[bar * 16 + i]) carved.push(i);
+  out += `<g class="spin-rev"><circle cx="${CX}" cy="${CY}" r="${R + 12}" class="b-rune-ring r2"/></g>`;
+  // sigil: connect ALL carved steps of the active track, in time order —
+  // the polygon spirals across the bar rings
+  const carved = Object.keys(t.steps).map(Number).filter(s => s < STEPS()).sort((a, b) => a - b);
   if (carved.length > 1) {
-    const pts = carved.map(i => pos16(i, R).join(',')).join(' ');
+    const pts = carved.map(s => pos16(s % 16, radii[Math.floor(s / 16)]).join(',')).join(' ');
     out += `<polygon points="${pts}" class="b-sigil"/>`;
   }
-  // ghost rings
-  others().forEach((o, oi) => {
-    const r = 112 - oi * 18;
-    out += `<circle cx="${CX}" cy="${CY}" r="${r}" class="b-guide"/>`;
+  // per-bar ghost bands: dots where other visible tracks strike (identity
+  // via the eye toggles; dot grows when several tracks share the step)
+  radii.forEach((ringR, bar) => {
+    const gr = ringR - stoneR(ringR, true) - 9;
+    if (gr < orbR + 14) return; // no room inside the smallest ring
     for (let i = 0; i < 16; i++) {
-      if (o.steps[bar * 16 + i]) {
-        const [x, y] = pos16(i, r);
-        out += `<circle cx="${x}" cy="${y}" r="4.4" class="b-ghost"/>`;
+      const n = others().filter(o => o.steps[bar * 16 + i]).length;
+      if (n > 0) {
+        const [x, y] = pos16(i, gr);
+        out += `<circle cx="${x}" cy="${y}" r="${n > 1 ? 4.6 : 3.2}" class="b-ghost"/>`;
       }
     }
   });
-  // hand (playhead when running, idle cursor hand when stopped)
-  if (Math.floor(shownStep / 16) === bar) {
-    const [hx, hy] = pos16(shownStep % 16, R - 26);
+  // hand reaches the ring of the shown bar
+  {
+    const [hx, hy] = pos16(shownStep % 16, radii[shownBar] - stoneR(radii[shownBar], true) - 4);
     out += `<line x1="${CX}" y1="${CY}" x2="${hx}" y2="${hy}" class="b-hand ${timer ? '' : 'idle'}"/>`;
   }
-  // cursor notch (start-of-play marker)
-  if (Math.floor(state.cursor / 16) === bar) {
-    const [nx, ny] = pos16(state.cursor % 16, R);
-    out += `<circle cx="${nx}" cy="${ny}" r="24" class="b-cursor-notch"/>`;
+  // cursor notch on its ring
+  {
+    const c = state.cursor % STEPS();
+    const cr = radii[Math.floor(c / 16)];
+    const [nx, ny] = pos16(c % 16, cr);
+    out += `<circle cx="${nx}" cy="${ny}" r="${stoneR(cr, true) + 5}" class="b-cursor-notch"/>`;
   }
-  // main step stones
-  for (let i = 0; i < 16; i++) {
-    const s = bar * 16 + i;
-    const ev = t.steps[s];
-    const [x, y] = pos16(i, R);
-    const accent = i % 4 === 0;
-    const rr = accent ? 19 : 16;
-    out += `<circle cx="${x}" cy="${y}" r="${rr}" data-s="${s}" class="b-step ${accent ? 'accent' : ''} ${ev ? 'on' : ''} ${state.sel === s ? 'sel' : ''} ${timer && ph === s ? 'playhead' : ''}"/>`;
-    if (ev) {
-      if (t.key === 'chord') {
-        out += `<text x="${x}" y="${y - 3.5}" class="b-lab on">${ev.label.length > 5 ? ev.label.slice(0, 5) : ev.label}</text>`;
-        out += `<text x="${x}" y="${y + 6.5}" class="b-lab2">${ev.notes.length} voices</text>`;
+  // stones, one ring per bar (bar I outermost)
+  radii.forEach((ringR, bar) => {
+    for (let i = 0; i < 16; i++) {
+      const s = bar * 16 + i;
+      const ev = t.steps[s];
+      const [x, y] = pos16(i, ringR);
+      const accent = i % 4 === 0;
+      const rr = stoneR(ringR, accent);
+      out += `<circle cx="${x}" cy="${y}" r="${rr}" data-s="${s}" class="b-step ${accent ? 'accent' : ''} ${ev ? 'on' : ''} ${state.sel === s ? 'sel' : ''} ${timer && ph === s ? 'playhead' : ''}"/>`;
+      const fs = ringR >= 140 ? 10.5 : ringR >= 100 ? 9 : 7.5;
+      if (ev) {
+        if (t.key === 'chord' && ringR >= 140) {
+          out += `<text x="${x}" y="${y - 3.5}" class="b-lab on" style="font-size:${fs}px">${ev.label.slice(0, 6)}</text>`;
+          out += `<text x="${x}" y="${y + 6.5}" class="b-lab2">${ev.notes.length} voices</text>`;
+        } else {
+          out += `<text x="${x}" y="${y}" class="b-lab on" style="font-size:${fs}px">${t.key === 'drum' ? '●' : ev.label.slice(0, 6)}</text>`;
+        }
       } else {
-        out += `<text x="${x}" y="${y}" class="b-lab on">${t.key === 'drum' ? '●' : ev.label}</text>`;
+        out += `<text x="${x}" y="${y}" class="b-lab" style="font-size:${fs}px">${i + 1}</text>`;
       }
-    } else {
-      out += `<text x="${x}" y="${y}" class="b-lab">${i + 1}</text>`;
     }
-  }
+  });
   // center: PLAY
-  out += `<circle cx="${CX}" cy="${CY}" r="46" class="play-halo ${timer ? '' : 'pulse'}"/>`;
-  out += `<circle cx="${CX}" cy="${CY}" r="38" class="play-core" data-play="1"/>`;
+  out += `<circle cx="${CX}" cy="${CY}" r="${orbR + 8}" class="play-halo ${timer ? '' : 'pulse'}"/>`;
+  out += `<circle cx="${CX}" cy="${CY}" r="${orbR}" class="play-core" data-play="1"/>`;
+  const g = orbR / 38;
   out += timer
-    ? `<rect x="${CX - 11}" y="${CY - 11}" width="22" height="22" rx="2" class="play-glyph"/>`
-    : `<path d="M${CX - 9} ${CY - 14} L${CX + 16} ${CY} L${CX - 9} ${CY + 14} Z" class="play-glyph"/>`;
-  out += `<text x="${CX}" y="${CY + 62}" class="pos-lab">bar ${bar === 0 ? 'I' : 'II'} · step ${(shownStep % 16) + 1}</text>`;
-  out += `<circle cx="${CX - 7}" cy="${CY + 76}" r="3.4" class="bar-dot ${bar === 0 ? 'cur' : ''}"/>`;
-  out += `<circle cx="${CX + 7}" cy="${CY + 76}" r="3.4" class="bar-dot ${bar === 1 ? 'cur' : ''}"/>`;
+    ? `<rect x="${CX - 11 * g}" y="${CY - 11 * g}" width="${22 * g}" height="${22 * g}" rx="2" class="play-glyph"/>`
+    : `<path d="M${CX - 9 * g} ${CY - 14 * g} L${CX + 16 * g} ${CY} L${CX - 9 * g} ${CY + 14 * g} Z" class="play-glyph"/>`;
+  out += `<text x="${CX}" y="${CY + R + 20}" class="pos-lab">bar ${['I', 'II', 'III'][shownBar]} · step ${(shownStep % 16) + 1}</text>`;
   svg.innerHTML = out;
 }
 
@@ -417,14 +437,21 @@ pickBody.addEventListener('click', (e) => {
 // A vertical drag on the ring winds the playback cursor (scroll-to-seek).
 // Only the ring surface captures the gesture — the page scrolls normally.
 let dragY = null, dragged = false, dragStartCursor = 0;
-svg.addEventListener('pointerdown', (e) => { dragY = e.clientY; dragged = false; dragStartCursor = state.cursor; });
+svg.addEventListener('pointerdown', (e) => {
+  dragY = e.clientY; dragged = false; dragStartCursor = state.cursor;
+});
 svg.addEventListener('pointermove', (e) => {
   if (dragY === null) return;
   const dy = e.clientY - dragY;
-  if (Math.abs(dy) > 10) dragged = true;
+  if (!dragged && Math.abs(dy) > 10) {
+    dragged = true;
+    // capture only once it IS a drag, so plain taps still click through;
+    // capture keeps the wind alive when the finger wanders off the ring
+    try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+  }
   if (dragged) {
     const delta = Math.round(dy / 22); // ~22px per step; drag down = forward
-    state.cursor = ((dragStartCursor + delta) % STEPS + STEPS) % STEPS;
+    state.cursor = ((dragStartCursor + delta) % STEPS() + STEPS()) % STEPS();
     renderRing();
   }
 });
@@ -455,7 +482,7 @@ svg.addEventListener('click', (e) => {
 // wheel over the ring winds too (contained to the svg; page keeps its scroll)
 svg.addEventListener('wheel', (e) => {
   e.preventDefault();
-  state.cursor = ((state.cursor + (e.deltaY > 0 ? 1 : -1)) % STEPS + STEPS) % STEPS;
+  state.cursor = ((state.cursor + (e.deltaY > 0 ? 1 : -1)) % STEPS() + STEPS()) % STEPS();
   renderRing();
 }, { passive: false });
 
@@ -487,6 +514,17 @@ chips.addEventListener('click', (e) => {
 });
 dev.querySelector('[data-act="clear"]').addEventListener('click', () => {
   active().steps = {}; state.sel = null; renderRing(); renderPickers();
+});
+// bars = rings: I outermost, time spirals inward
+dev.querySelector('.hint').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-bars]');
+  if (!b) return;
+  stopPlay();
+  state.bars = Math.min(3, Math.max(1, state.bars + +b.dataset.bars));
+  state.cursor = state.cursor % STEPS();
+  if (state.sel !== null && state.sel >= STEPS()) state.sel = null;
+  dev.querySelector('.bars-lab').textContent = `${['I', 'II', 'III'][state.bars - 1]} bar${state.bars > 1 ? 's' : ''}`;
+  renderRing();
 });
 
 // instrument sheet
