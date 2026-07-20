@@ -7,6 +7,7 @@ import { asc, eq, inArray } from 'drizzle-orm';
 import { curseById } from '@/lib/curses';
 import { CHANNEL_NAMES } from '@/lib/gameLogic';
 import { CHANNEL_PATTERNS, initials, LockGlyph, SkullGlyph, SwordsGlyph, toRoman } from '../glyphs';
+import { DeleteGameButton } from './DeleteGameButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -151,6 +152,8 @@ export default async function GameMapPage({ params }: { params: Promise<{ id: st
           </div>
         );
       })}
+
+      {game.createdBy === userId && <DeleteGameButton gameId={game.id} />}
     </main>
   );
 }
