@@ -686,12 +686,12 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
   const CX = 186, CY = 186, R = 150, orbR = 34;
 
   // The center control: an engraved bone skull on a blood-iron medallion.
-  // mode 'play' (idle) · 'stop' (playing: eyes blaze + rim pulses) · 'done'
-  // (instrument-confirm: red check chip). One transparent hit circle on top
-  // carries the click, so the detailed art stays pointer-inert.
+  // mode 'play' (idle) · 'stop' (playing: eyes blaze + rim pulses). One
+  // transparent hit circle on top carries the click, so the detailed art
+  // stays pointer-inert.
   function skullMedallion(mode: string) {
     const lit = mode === 'stop';
-    const hitAttr = mode === 'done' ? 'data-instdone="1"' : 'data-play="1"';
+    const hitAttr = 'data-play="1"';
     const ss = 0.68, tx = (CX - 45 * ss).toFixed(1), ty = (CY - 4 - 44.5 * ss).toFixed(1);
     const litC = lit ? ' lit' : '';
     let g = '';
@@ -747,8 +747,7 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     </g>`;
     const cyc = CY + orbR + 1;
     g += `<circle cx="${CX}" cy="${cyc}" r="10.5" class="sk-chip" pointer-events="none"/>`;
-    if (mode === 'done') g += `<path d="M${CX - 4.5} ${cyc + .5} l3 3 l6 -6.5" class="sk-glyph check" pointer-events="none"/>`;
-    else if (mode === 'stop') g += `<rect x="${CX - 4}" y="${cyc - 4}" width="8" height="8" rx="1.5" class="sk-glyph" pointer-events="none"/>`;
+    if (mode === 'stop') g += `<rect x="${CX - 4}" y="${cyc - 4}" width="8" height="8" rx="1.5" class="sk-glyph" pointer-events="none"/>`;
     else g += `<path d="M${CX - 3.5} ${cyc - 5} L${CX + 5} ${cyc} L${CX - 3.5} ${cyc + 5} Z" class="sk-glyph" pointer-events="none"/>`;
     g += `<circle cx="${CX}" cy="${CY + 5}" r="${orbR + 12}" class="sk-hit" ${hitAttr}/>`;
     return g;
@@ -913,8 +912,10 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       out += `</g>`;
     }
 
-    // center: engraved blood-iron skull medallion (play / stop / confirm)
-    out += skullMedallion(state.view === 'inst' ? 'done' : timer ? 'stop' : 'play');
+    // center: engraved blood-iron skull medallion. Play/stop EVERYWHERE —
+    // in instrument mode too, so parameter changes can be auditioned against
+    // the running loop; the wheel closes via the lit gear chip instead.
+    out += skullMedallion(timer ? 'stop' : 'play');
     if (state.view === 'inst') {
       out += `<text x="${CX}" y="${CY + orbR + 26}" class="inst-title" style="font-size:14px" pointer-events="none">${active().preset}</text>`;
     }
@@ -1227,7 +1228,6 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     if (dragged) { dragged = false; return; }
     const target = e.target as HTMLElement;
     if (target.closest('[data-play]')) { togglePlay(); return; }
-    if (target.closest('[data-instdone]')) { closeInst(); return; }
     const preset = target.closest('[data-preset]') as HTMLElement | null;
     if (preset && canEdit(active())) {
       active().preset = preset.dataset.preset!;
@@ -1295,7 +1295,9 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
   const instBtn = app.querySelector('[data-act="inst"]') as HTMLElement;
   const clearBtn = app.querySelector('[data-act="clear"]') as HTMLElement;
   function openInst() {
-    stopPlay(); state.view = 'inst'; state.sel = null;
+    // playback keeps running — tweaking an instrument against the loop is
+    // exactly what the wheel is for
+    state.view = 'inst'; state.sel = null;
     instBtn.classList.add('lit');
     clearBtn.style.display = 'none'; // reads as a "close" button next to the wheel
     settle(); renderPickers();
