@@ -644,6 +644,7 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     gQ = q;
     timer = setInterval(() => {
       state.tracks.forEach((t: LiveTrack) => {
+        if (state.hidden.has(t.key)) return; // the eye is a true mute
         const per = period(t);
         const cyc = trackCycleQ(t);
         for (let j = 0; j < SUB; j++) {
@@ -1383,9 +1384,9 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       <div class="tchip ${t.key === state.activeKey ? 'active' : ''} ${state.hidden.has(t.key) ? 'hidden-track' : ''}" data-k="${t.key}">
         <i class="sw ${t.pat}"></i><span class="nm">${t.name}</span>
         ${!readOnly && !canEdit(t) ? `<span class="lock">${LOCK_SVG}</span>` : ''}
-        <button class="eye" data-eye="${t.key}">${state.hidden.has(t.key)
-          ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18M10.5 10.6a2.3 2.3 0 0 0 3 3M7 7.2C4.7 8.6 3 12 3 12s3.5 6 9 6c1.6 0 3-.4 4.2-1M10 6.2C10.6 6.1 11.3 6 12 6c5.5 0 9 6 9 6s-.7 1.3-2 2.7"/></svg>'
-          : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.4"/></svg>'}</button>
+        <button class="eye" data-eye="${t.key}" title="Mute lane">${state.hidden.has(t.key)
+          ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18M10.5 10.6a2.3 2.3 0 0 0 3 3M7 7.2C4.7 8.6 3 12 3 12s3.5 6 9 6c1.6 0 3-.4 4.2-1M10 6.2C10.6 6.1 11.3 6 12 6c5.5 0 9 6 9 6s-.7 1.3-2 2.7"/></svg>'
+          : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.4"/></svg>'}</button>
       </div>`).join('');
     // keep the active chip in view (direct scroll, no smooth-jacking)
     const act = chips.querySelector('.tchip.active') as HTMLElement | null;
@@ -1397,17 +1398,15 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     const target = e.target as HTMLElement;
     const eye = target.closest('[data-eye]') as HTMLElement | null;
     if (eye) {
+      // mute toggle — any lane, including the active one
       const k = eye.dataset.eye!;
-      if (k !== state.activeKey) {
-        if (state.hidden.has(k)) state.hidden.delete(k);
-        else state.hidden.add(k);
-      }
+      if (state.hidden.has(k)) state.hidden.delete(k);
+      else state.hidden.add(k);
       renderChips(); renderRing(); return;
     }
     const chip = target.closest('.tchip') as HTMLElement | null;
     if (chip) {
       state.activeKey = chip.dataset.k;
-      state.hidden.delete(chip.dataset.k!);
       state.sel = null;
       if (state.view === 'inst') {
         // switching lanes exits the wheel — it belongs to the previous lane

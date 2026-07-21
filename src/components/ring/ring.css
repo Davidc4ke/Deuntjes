@@ -39,7 +39,16 @@
 }
 .ringseq .tchip .sw { width: 9px; height: 9px; border: 1px solid rgba(242,237,227,.5); flex-shrink: 0; }
 .ringseq .tchip.active { color: var(--parch-ink); background: linear-gradient(180deg, #f4efe2, #ddd5c2); border-color: #000; }
-.ringseq .tchip .eye { background: none; border: none; padding: 1px; color: inherit; display: inline-flex; }
+/* The mute toggle is its own full-height zone at the chip's edge — a real
+   tap target, visually split from the "select lane" body. */
+.ringseq .tchip { padding-right: 0; }
+.ringseq .tchip .eye {
+  background: none; border: none; padding: 0; color: inherit;
+  display: flex; align-items: center; justify-content: center;
+  align-self: stretch; width: 31px; margin-left: 2px;
+  border-left: 1px solid rgba(242,237,227,.14);
+}
+.ringseq .tchip.active .eye { border-left-color: rgba(21,18,16,.3); }
 .ringseq .tchip .lock { display: inline-flex; opacity: .55; }
 .ringseq .tchip.hidden-track .sw, .ringseq .tchip.hidden-track .nm { opacity: .3; }
 .ringseq .pat-0 { background-image: repeating-linear-gradient(45deg, rgba(242,237,227,.95) 0 1px, transparent 1px 4px), repeating-linear-gradient(-45deg, rgba(242,237,227,.95) 0 1px, transparent 1px 4px); }
@@ -73,7 +82,7 @@
 
 /* The ring must stay big enough to touch no matter how tall the bottom bar
    grows — the pickers scroll instead of eating the stage. */
-.ringseq .stage { flex: 1; min-height: min(300px, 48dvh); display: flex; align-items: center; justify-content: center; position: relative; }
+.ringseq .stage { flex: 1; min-height: min(390px, 52dvh); display: flex; align-items: center; justify-content: center; position: relative; }
 .ringseq .stage svg { max-width: 100%; max-height: 100%; display: block; }
 .ringseq .stage .fx-layer { position: absolute; inset: 0; margin: auto; pointer-events: none; }
 .ringseq .stage .main-layer { position: relative; z-index: 1; touch-action: none; }

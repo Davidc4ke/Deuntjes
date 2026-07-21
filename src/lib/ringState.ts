@@ -80,7 +80,8 @@ export function defaultRingParams(): RingParams {
     attack: 0.05, decay: 0.2, sustain: 0.6, release: 0.3,
     cutoff: 0.8, resonance: 0.1, pan: 0.5, glide: 0,
     low: 0.5, mid: 0.5, high: 0.5,
-    reverb: 0.15, delay: 0, chorus: 0, drive: 0,
+    // all sends dry by default — space is a choice, not a preset
+    reverb: 0, delay: 0, chorus: 0, drive: 0,
   };
 }
 
