@@ -672,7 +672,6 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
         <button class="icon-chip" data-act="inst" title="Instrument">⚙&#xFE0E;</button>
         <button class="icon-chip" data-act="clear" title="Clear lane">✕</button>
       </div>
-      <div class="pos-row"><span class="pos-lab-html">bar I · step 1</span></div>
       <div class="stage">
         <svg class="fx-layer" viewBox="0 0 372 372"></svg>
         <svg class="main-layer" viewBox="0 0 372 372"></svg>
@@ -685,7 +684,6 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
   const app = container.firstElementChild as HTMLElement;
   const svg = app.querySelector('.main-layer') as SVGSVGElement;
   const fxLayer = app.querySelector('.fx-layer') as SVGSVGElement;
-  const posLab = app.querySelector('.pos-lab-html') as HTMLElement;
   const CX = 186, CY = 186, R = 150, orbR = 34;
 
   // The center control: an engraved bone skull on a blood-iron medallion.
@@ -923,8 +921,6 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       out += `<text x="${CX}" y="${CY + orbR + 26}" class="inst-title" style="font-size:14px" pointer-events="none">${active().preset}</text>`;
     }
     svg.innerHTML = out;
-    const paceTag = t.speed && t.speed !== '1' ? ` · ${t.speed}× pace` : '';
-    posLab.textContent = `bar ${['I', 'II', 'III'][shownBar]} · step ${shownStep + 1} of ${trackSteps(t)} · ${BPM} bpm${paceTag}`;
   }
 
   // ================= pickers =================
@@ -990,7 +986,7 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     // instrument view: the pickers area becomes the parameter altar
     if (state.view === 'inst') {
       const P: any = t.params;
-      pickStatus.innerHTML = `shaping <b>${t.name}</b> — ${t.preset}`;
+      pickStatus.innerHTML = '';
       const kitRow = t.kind === 'drum' ? `
         <div class="ptabs">${Object.keys(DRUM_KITS).map((k) =>
           `<button data-kit="${k}" class="${(t.drumKit ?? 'Bone Kit') === k ? 'cur' : ''}">${k}</button>`).join('')}</div>` : '';
@@ -1006,11 +1002,7 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     }
     const ev = state.sel !== null ? stepAt(t, state.sel) : null;
     const sticky = state.stickyEv[t.key];
-    const volTag = (x: RingEvent) => ((x.vol ?? 1) < 1 ? ` · ${Math.round((x.vol ?? 1) * 100)}%` : '');
-    const shapeTag = (x: RingEvent) => (x.params && Object.keys(x.params).length > 0 ? ' · shaped' : '');
-    pickStatus.innerHTML = ev
-      ? `retuning step ${state.sel + 1} — <b>${ev.label}${ev.len > 1 ? ' ×' + ev.len : ''}${volTag(ev)}${shapeTag(ev)}</b>`
-      : `next carve — <b>${sticky.label}${sticky.len > 1 ? ' ×' + sticky.len : ''}${volTag(sticky)}${shapeTag(sticky)}</b>`;
+    pickStatus.innerHTML = '';
     keepScroll(pickBody, () => {
       // ----- Timing tab content -----
       const beatsRow = `

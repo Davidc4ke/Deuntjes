@@ -301,30 +301,30 @@ export function GameRoomClient({
   // ---------- compose ----------
   return (
     <div className="room-shell">
+      {/* One compact line: back · curse card · seal — every saved pixel goes
+          to the ring below. */}
       <div className="room-top">
+        <button className="gbtn ghost rt-back" onClick={backToMap} title="Save & flee">
+          ‹
+        </button>
         <div className="curse-pin">
           <span className="nail a" />
           <span className="nail b" />
-          <SkullGlyph size={26} stroke="#151210" eyes="#151210" />
+          <SkullGlyph size={18} stroke="#151210" eyes="#151210" />
           <div className="txt">
             <div className="n">{curse.name}</div>
             <div className="r">{curse.rule}</div>
           </div>
         </div>
-        <div className="row2">
-          <button className="gbtn ghost" onClick={backToMap} title="Save & flee">
-            ‹
-          </button>
-          <button className="gbtn rite" onClick={() => setConfirmingSeal(true)} disabled={locking}>
-            <LockGlyph size={18} stroke="#f2ede3" /> {locking ? 'Sealing…' : 'Lock the Room & pass'}
-          </button>
-        </div>
-        {lockError && (
-          <div className="deal-intro" style={{ color: 'var(--blood-lit)', margin: 0 }}>
-            {lockError}
-          </div>
-        )}
+        <button className="gbtn rite rt-seal" onClick={() => setConfirmingSeal(true)} disabled={locking}>
+          <LockGlyph size={15} stroke="#f2ede3" /> {locking ? '…' : 'Seal'}
+        </button>
       </div>
+      {lockError && (
+        <div className="deal-intro" style={{ color: 'var(--blood-lit)', margin: '0 10px 4px' }}>
+          {lockError}
+        </div>
+      )}
       {confirmingSeal && (
         <div className="grim-modal-veil" onClick={() => setConfirmingSeal(false)}>
           <div className="grim-modal" onClick={(e) => e.stopPropagation()}>

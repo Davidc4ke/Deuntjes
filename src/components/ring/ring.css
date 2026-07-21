@@ -33,7 +33,9 @@
 .ringseq .tchip {
   flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 5px;
   background: #0d0d0d; border: 1px solid rgba(242,237,227,.16); border-radius: 3px;
-  color: var(--smoke); font: 400 12px var(--gothic); letter-spacing: .04em; padding: 8px 9px;
+  color: var(--smoke); font: 400 12px var(--gothic); letter-spacing: .04em;
+  /* same height as the bottom-bar tab buttons */
+  padding: 0 9px; height: 32px;
 }
 .ringseq .tchip .sw { width: 9px; height: 9px; border: 1px solid rgba(242,237,227,.5); flex-shrink: 0; }
 .ringseq .tchip.active { color: var(--parch-ink); background: linear-gradient(180deg, #f4efe2, #ddd5c2); border-color: #000; }
@@ -47,16 +49,16 @@
 .ringseq .pat-4 { background-image: repeating-linear-gradient(90deg, rgba(242,237,227,.95) 0 2px, transparent 2px 5px); }
 .ringseq .tchip.active .sw { filter: invert(1); border-color: rgba(21,18,16,.7); }
 .ringseq .icon-chip {
-  flex: 0 0 42px; display: flex; align-items: center; justify-content: center;
+  flex: 0 0 40px; height: 32px; display: flex; align-items: center; justify-content: center;
   background: linear-gradient(180deg, var(--iron-2), var(--iron)); color: var(--ink-dim);
-  border: 1px solid rgba(242,237,227,.22); border-radius: 3px; font-size: 16px;
+  border: 1px solid rgba(242,237,227,.22); border-radius: 3px; font-size: 15px;
 }
 .ringseq .icon-chip.lit { color: var(--ink); border-color: var(--blood-lit); box-shadow: 0 0 12px rgba(212,33,33,.3); }
 /* The forge (instrument) button should beckon: parchment face, bigger gear,
    and a slow breathing red halo. While the wheel is open it burns steady. */
 .ringseq .icon-chip[data-act="inst"] {
   background: linear-gradient(180deg, #f4efe2, #ddd5c2);
-  color: var(--parch-ink); border-color: #000; font-size: 19px;
+  color: var(--parch-ink); border-color: #000; font-size: 17px;
   animation: instBeckon 2.6s ease-in-out infinite;
 }
 @keyframes instBeckon {
@@ -137,7 +139,10 @@
   border-top: 1px solid rgba(242,237,227,.1); padding-top: 6px;
   scrollbar-width: thin;
 }
-.ringseq .pick-status { font-size: 11.5px; font-style: italic; color: var(--smoke); text-align: center; margin: 0 0 6px; min-height: 14px; }
+/* Only speaks when it must (sealed/read-only lanes); otherwise it takes no
+   space at all. */
+.ringseq .pick-status { font-size: 11.5px; font-style: italic; color: var(--smoke); text-align: center; margin: 0 0 6px; }
+.ringseq .pick-status:empty { display: none; }
 .ringseq .pick-status b { color: var(--ink-dim); font-style: normal; font-family: var(--gothic); font-weight: 400; letter-spacing: .05em; }
 
 /* key-dot piano (matches the app's sequencer keyboard) */

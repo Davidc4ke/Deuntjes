@@ -694,10 +694,17 @@
 
 /* ===== compose screen shell ===== */
 .grim .room-shell { position: fixed; inset: 0; display: flex; flex-direction: column; z-index: 10; background: var(--void); }
-.grim .room-shell .room-top { flex-shrink: 0; padding: calc(6px + env(safe-area-inset-top)) 10px 8px; display: flex; flex-direction: column; gap: 8px; }
-.grim .room-top .row2 { display: flex; align-items: center; gap: 8px; }
-.grim .room-top .row2 .gbtn { width: auto; flex: 1; padding: 10px 12px; font-size: 15px; }
-.grim .room-top .row2 .gbtn.ghost { flex: 0 0 auto; }
+/* one line: back · curse card · seal */
+.grim .room-shell .room-top { flex-shrink: 0; padding: calc(6px + env(safe-area-inset-top)) 10px 6px; display: flex; flex-direction: row; align-items: stretch; gap: 7px; }
+.grim .room-top .gbtn { width: auto; margin: 0; }
+.grim .room-top .rt-back { flex: 0 0 auto; padding: 0 13px; font-size: 18px; }
+.grim .room-top .rt-seal { flex: 0 0 auto; padding: 0 13px; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+.grim .room-top .curse-pin { flex: 1; min-width: 0; padding: 5px 10px; gap: 8px; transform: rotate(-0.5deg); }
+.grim .room-top .curse-pin .txt .n { font-size: 13.5px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grim .room-top .curse-pin .txt .r {
+  font-size: 10px; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
 .grim .room-shell .room-editor { flex: 1; min-height: 0; position: relative; }
 .grim .room-shell .room-editor .sequencer-app { position: absolute; inset: 0; }
 .grim .room-shell .room-editor .ring-host { position: absolute; inset: 0; }
