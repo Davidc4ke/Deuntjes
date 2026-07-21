@@ -53,7 +53,9 @@
 }
 .ringseq .icon-chip.lit { color: var(--ink); border-color: var(--blood-lit); box-shadow: 0 0 12px rgba(212,33,33,.3); }
 
-.ringseq .stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+/* The ring must stay big enough to touch no matter how tall the bottom bar
+   grows — the pickers scroll instead of eating the stage. */
+.ringseq .stage { flex: 1; min-height: min(300px, 48dvh); display: flex; align-items: center; justify-content: center; position: relative; }
 .ringseq .stage svg { max-width: 100%; max-height: 100%; display: block; }
 .ringseq .stage .fx-layer { position: absolute; inset: 0; margin: auto; pointer-events: none; }
 .ringseq .stage .main-layer { position: relative; z-index: 1; touch-action: none; }
@@ -112,7 +114,13 @@
 .ringseq .inst-sub { font: italic 10.5px var(--body); fill: var(--smoke); text-anchor: middle; }
 
 /* ===== pickers ===== */
-.ringseq .pickers { flex-shrink: 0; border-top: 1px solid rgba(242,237,227,.1); padding-top: 6px; }
+/* Shrinks when space runs out and scrolls internally; its height changes are
+   animated from JS (renderPickers measures before/after and transitions). */
+.ringseq .pickers {
+  flex: 0 1 auto; min-height: 0; overflow-y: auto;
+  border-top: 1px solid rgba(242,237,227,.1); padding-top: 6px;
+  scrollbar-width: thin;
+}
 .ringseq .pick-status { font-size: 11.5px; font-style: italic; color: var(--smoke); text-align: center; margin: 0 0 6px; min-height: 14px; }
 .ringseq .pick-status b { color: var(--ink-dim); font-style: normal; font-family: var(--gothic); font-weight: 400; letter-spacing: .05em; }
 

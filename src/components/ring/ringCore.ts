@@ -924,9 +924,40 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
   }
 
   // ================= pickers =================
+  const pickersEl = app.querySelector('.pickers') as HTMLElement;
   const pickStatus = app.querySelector('.pick-status') as HTMLElement;
   const pickBody = app.querySelector('.pick-body') as HTMLElement;
   let pianoScrolledFor: string | null = null;
+  // Animate bottom-bar height changes (view/tab switches) instead of letting
+  // the stage snap: measure before/after the rebuild, pin the old height,
+  // transition to the new one, then release back to natural flex sizing.
+  let pickHeightTimer: ReturnType<typeof setTimeout> | null = null;
+  function animatePickHeight(mutate: () => void) {
+    const h0 = pickersEl.offsetHeight;
+    if (pickHeightTimer) {
+      // mid-animation: release the pin so the new natural height measures true
+      clearTimeout(pickHeightTimer);
+      pickHeightTimer = null;
+      pickersEl.style.transition = '';
+      pickersEl.style.height = '';
+      pickersEl.style.overflow = '';
+    }
+    mutate();
+    const h1 = pickersEl.offsetHeight;
+    if (Math.abs(h1 - h0) < 3) return;
+    pickersEl.style.transition = 'none';
+    pickersEl.style.height = h0 + 'px';
+    pickersEl.style.overflow = 'hidden';
+    void pickersEl.offsetHeight; // commit the starting height
+    pickersEl.style.transition = 'height .26s cubic-bezier(.22,.61,.36,1)';
+    pickersEl.style.height = h1 + 'px';
+    pickHeightTimer = setTimeout(() => {
+      pickHeightTimer = null;
+      pickersEl.style.transition = '';
+      pickersEl.style.height = '';
+      pickersEl.style.overflow = '';
+    }, 300);
+  }
   function keepScroll(el: HTMLElement, fn: () => void) {
     const saves = [...el.querySelectorAll('.strip, .piano-wrap')].map((s) => s.scrollLeft);
     fn();
@@ -941,6 +972,9 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     fx: ['reverb', 'delay', 'chorus', 'drive'],
   };
   function renderPickers() {
+    animatePickHeight(renderPickersNow);
+  }
+  function renderPickersNow() {
     const t = active();
     if (!canEdit(t)) {
       pickStatus.innerHTML = readOnly
