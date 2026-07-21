@@ -39,8 +39,10 @@ export default async function GameRoomPage({ params }: { params: Promise<{ id: s
 
   const playerOrder = game.playerOrder as string[];
   let nextPlayer: { displayName: string; avatarEmoji: string } | null = null;
+  let nextIsYou = false;
   if (room.roomIndex + 1 < game.roomCount) {
     const nextId = playerForRoom(room.roomIndex + 1, playerOrder);
+    nextIsYou = nextId === userId;
     const [np] = await db
       .select({ displayName: users.displayName, avatarEmoji: users.avatarEmoji })
       .from(users)
@@ -64,6 +66,7 @@ export default async function GameRoomPage({ params }: { params: Promise<{ id: s
           : normalizeSequencerState(song.sequencerData)
       }
       nextPlayer={nextPlayer}
+      nextIsYou={nextIsYou}
     />
   );
 }

@@ -31,6 +31,7 @@ export function GameRoomClient({
   curse,
   initialState,
   nextPlayer,
+  nextIsYou,
 }: {
   gameId: string;
   gameTitle: string;
@@ -41,6 +42,7 @@ export function GameRoomClient({
   curse: Curse;
   initialState: SongBlob;
   nextPlayer: { displayName: string; avatarEmoji: string } | null;
+  nextIsYou?: boolean;
 }) {
   const router = useRouter();
   const roman = toRoman(roomIndex + 1);
@@ -271,6 +273,12 @@ export function GameRoomClient({
           <div className="next">
             {gameComplete || !nextPlayer ? (
               <span className="who">The song is complete ✦</span>
+            ) : nextIsYou ? (
+              // Solo runs (and small circles) can deal the next room to the
+              // same bard — "passed to yourself" would read strangely.
+              <span>
+                The next room is <span className="who">yours as well</span> — descend again
+              </span>
             ) : (
               <>
                 <span style={{ fontSize: 22 }}>{nextPlayer.avatarEmoji}</span>

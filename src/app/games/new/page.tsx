@@ -29,11 +29,9 @@ async function createGameAction(formData: FormData) {
     .getAll('players')
     .map(String)
     .filter((id) => validIds.has(id));
-  // Creator always plays, and goes first.
+  // Creator always plays, and goes first. A lone bard is a valid circle —
+  // solo dungeons simply deal every room to the creator.
   const playerOrder = [userId, ...picked.filter((id) => id !== userId)];
-  if (playerOrder.length < 2) {
-    redirect('/games/new?error=players');
-  }
 
   const [song] = await db
     .insert(songs)
@@ -64,9 +62,8 @@ async function createGameAction(formData: FormData) {
   redirect(`/games/${game.id}`);
 }
 
-export default async function NewGamePage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function NewGamePage() {
   const { userId } = await requireUser();
-  const { error } = await searchParams;
   const roster = await db
     .select({ id: users.id, displayName: users.displayName, avatarEmoji: users.avatarEmoji })
     .from(users)
@@ -80,15 +77,9 @@ export default async function NewGamePage({ searchParams }: { searchParams: Prom
       </div>
 
       <p className="deal-intro">
-        Choose your fellow bards. You go first; the rest follow in turn, room by room,
-        each dealt a track and a curse.
+        Choose your fellow bards — or descend alone. You go first; any others follow
+        in turn, room by room, each dealt a track and a curse.
       </p>
-
-      {error === 'players' && (
-        <p className="deal-intro" style={{ color: 'var(--blood-lit)' }}>
-          A dungeon needs at least two bards — pick a companion.
-        </p>
-      )}
 
       <form action={createGameAction} className="gform">
         <label className="f-label" htmlFor="title">Name of the dungeon</label>
