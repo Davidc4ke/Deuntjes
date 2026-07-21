@@ -123,7 +123,8 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     focusedBar: 0,
     view: 'steps',
     instTab: 'voice',
-    pickTab: 'notes', // bottom bar tab: 'notes' | 'timing'
+    pickTab: 'notes', // bottom bar tab: 'notes' | 'timing' | 'shape'
+    stepTab: 'voice', // param group inside the shape tab
   };
   tracks.forEach((t) => {
     state.stickyEv[t.key] = t.kind === 'chord'
@@ -531,10 +532,10 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       }
     }
   }
-  function tone(track: LiveTrack, note: string, len = 1, when = 0, vol = 1) {
+  function tone(track: LiveTrack, note: string, len = 1, when = 0, vol = 1, pOver?: typeof track.params) {
     try {
       const ac = ensureAC();
-      const P = track.params;
+      const P = pOver ?? track.params;
       const t = ac.currentTime + when;
       if (track.kind === 'drum') {
         drumVoice(track.preset, t, noteFreq(note) / 65.41 /* C2 */, P, vol);
@@ -583,7 +584,9 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     }
   }
   function playEvent(track: LiveTrack, ev: RingEvent, when = 0) {
-    ev.notes.forEach((n, i) => tone(track, n, ev.len, when + i * .012, ev.vol ?? 1));
+    // step shaping: sparse per-step overrides merged over the lane params
+    const P = ev.params ? { ...track.params, ...ev.params } : track.params;
+    ev.notes.forEach((n, i) => tone(track, n, ev.len, when + i * .012, ev.vol ?? 1, P));
   }
 
   // ================= animated layout =================
@@ -1004,9 +1007,10 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     const ev = state.sel !== null ? stepAt(t, state.sel) : null;
     const sticky = state.stickyEv[t.key];
     const volTag = (x: RingEvent) => ((x.vol ?? 1) < 1 ? ` · ${Math.round((x.vol ?? 1) * 100)}%` : '');
+    const shapeTag = (x: RingEvent) => (x.params && Object.keys(x.params).length > 0 ? ' · shaped' : '');
     pickStatus.innerHTML = ev
-      ? `retuning step ${state.sel + 1} — <b>${ev.label}${ev.len > 1 ? ' ×' + ev.len : ''}${volTag(ev)}</b>`
-      : `next carve — <b>${sticky.label}${sticky.len > 1 ? ' ×' + sticky.len : ''}${volTag(sticky)}</b>`;
+      ? `retuning step ${state.sel + 1} — <b>${ev.label}${ev.len > 1 ? ' ×' + ev.len : ''}${volTag(ev)}${shapeTag(ev)}</b>`
+      : `next carve — <b>${sticky.label}${sticky.len > 1 ? ' ×' + sticky.len : ''}${volTag(sticky)}${shapeTag(sticky)}</b>`;
     keepScroll(pickBody, () => {
       // ----- Timing tab content -----
       const beatsRow = `
@@ -1054,11 +1058,33 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
         <div class="piano-wrap"><div class="piano" style="width:${wx + 4}px">${whites}${blacks}</div></div>
         ${qualRow}`;
 
+      // ----- Shape tab content: per-step overrides of the lane's params.
+      // Edits land on the selected step (and the sticky, so the next carve
+      // inherits them); without a selection they shape the sticky alone.
+      const target = ev ?? sticky;
+      const hasShape = !!(target.params && Object.keys(target.params).length > 0);
+      const shapeContent = `
+        <div class="ptabs">${Object.keys(PARAM_TABS).map((tab) =>
+          `<button data-stab="${tab}" class="${state.stepTab === tab ? 'cur' : ''}">${tab}</button>`).join('')}</div>
+        ${PARAM_TABS[state.stepTab].map((p) => {
+          const ov = target.params && (target.params as any)[p] !== undefined;
+          const val = ov ? (target.params as any)[p] : (t.params as any)[p];
+          return `<div class="prow"><label${ov ? ' style="color:var(--blood-lit)"' : ''}>${p}</label>
+            <input type="range" min="0" max="100" value="${Math.round(val * 100)}" data-sparam="${p}" />
+            <output>${Math.round(val * 100)}</output></div>`;
+        }).join('')}
+        ${hasShape ? '<div class="len-row"><button class="nbtn util" data-sreset="1">✕ clear step shaping</button></div>' : ''}`;
+
       const tabBar = `<div class="ptabs pick-tabs">
         <button data-picktab="notes" class="${state.pickTab === 'notes' ? 'cur' : ''}">${isChord ? 'chord' : 'notes'}</button>
         <button data-picktab="timing" class="${state.pickTab === 'timing' ? 'cur' : ''}">timing</button>
+        <button data-picktab="shape" class="${state.pickTab === 'shape' ? 'cur' : ''}">shape</button>
       </div>`;
-      pickBody.innerHTML = tabBar + (state.pickTab === 'notes' ? notesContent : `${lenRow}${volRow}${beatsRow}${speedRow}`);
+      pickBody.innerHTML = tabBar + (state.pickTab === 'notes'
+        ? notesContent
+        : state.pickTab === 'timing'
+          ? `${lenRow}${volRow}${beatsRow}${speedRow}`
+          : shapeContent);
 
       if (state.pickTab === 'notes' && pianoScrolledFor !== t.key) {
         pianoScrolledFor = t.key;
@@ -1074,6 +1100,7 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       const prev = state.stickyEv[t.key];
       state.stickyEv[t.key] = buildChord(state.chordCfg, prev.len || 4);
       state.stickyEv[t.key].vol = prev.vol ?? 1;
+      if (prev.params) state.stickyEv[t.key].params = clone(prev.params);
     }
     const ev = clone(state.stickyEv[t.key]);
     if (state.sel !== null && stepAt(t, state.sel)) {
@@ -1096,6 +1123,19 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     }
     const ptab = target.closest('[data-ptab]') as HTMLElement | null;
     if (ptab) { state.instTab = ptab.dataset.ptab; renderPickers(); return; }
+    const stab = target.closest('[data-stab]') as HTMLElement | null;
+    if (stab) { state.stepTab = stab.dataset.stab; renderPickers(); return; }
+    const sreset = target.closest('[data-sreset]') as HTMLElement | null;
+    if (sreset) {
+      delete state.stickyEv[t.key].params;
+      const selEv = state.sel !== null ? stepAt(t, state.sel) : null;
+      if (selEv) {
+        delete selEv.params;
+        commit();
+      }
+      playEvent(t, selEv ?? state.stickyEv[t.key]);
+      renderPickers(); return;
+    }
     const kit = target.closest('[data-kit]') as HTMLElement | null;
     if (kit && t.kind === 'drum') {
       t.drumKit = kit.dataset.kit!;
@@ -1155,6 +1195,21 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       renderRing();
       return;
     }
+    const sp = target.closest('[data-sparam]') as HTMLInputElement | null;
+    if (sp) {
+      // step shaping: write the override on the sticky AND the selected step
+      const p = sp.dataset.sparam!;
+      const v = +sp.value / 100;
+      const targets: RingEvent[] = [state.stickyEv[t.key]];
+      const selEv = state.sel !== null ? stepAt(t, state.sel) : null;
+      if (selEv) targets.push(selEv);
+      targets.forEach((x) => {
+        x.params = x.params ?? {};
+        (x.params as any)[p] = v;
+      });
+      (sp.nextElementSibling as HTMLElement).textContent = sp.value;
+      return;
+    }
     const r = target.closest('[data-param]') as HTMLInputElement | null;
     if (!r) return;
     (t.params as any)[r.dataset.param!] = +r.value / 100;
@@ -1165,9 +1220,10 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     const t = active();
     if (!canEdit(t)) return;
     const target = e.target as HTMLElement;
-    if (target.closest('[data-param]') || target.closest('[data-vol]')) {
+    if (target.closest('[data-param]') || target.closest('[data-vol]') || target.closest('[data-sparam]')) {
       commit(); // sliders write persistent state; save once per release
-      playEvent(t, state.stickyEv[t.key]);
+      const selEv = state.sel !== null ? stepAt(t, state.sel) : null;
+      playEvent(t, selEv ?? state.stickyEv[t.key]);
       renderPickers();
     }
   };
@@ -1259,6 +1315,7 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
         const prev = state.stickyEv[t.key];
         state.stickyEv[t.key] = buildChord(state.chordCfg, prev.len || 4);
         state.stickyEv[t.key].vol = prev.vol ?? 1;
+        if (prev.params) state.stickyEv[t.key].params = clone(prev.params);
       }
       t.steps[String(s)] = clone(state.stickyEv[t.key]);
       state.sel = s;

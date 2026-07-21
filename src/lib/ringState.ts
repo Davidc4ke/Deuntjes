@@ -16,6 +16,9 @@ export type RingEvent = {
   len: number; // in this channel's own 16th steps
   vol?: number; // step velocity 0..1 (default 1)
   cfg?: ChordCfg; // chord tracks remember the forge settings for re-editing
+  // Sparse per-step overrides of the lane's params — only the touched knobs
+  // are stored; playback merges them over the lane values for this hit.
+  params?: Partial<RingParams>;
 };
 
 export type RingParams = {
@@ -231,6 +234,15 @@ export function sanitizeRingEvent(raw: unknown, kind: RingTrackKind): RingEvent 
     const root = typeof c.root === 'string' && RING_NOTE_ORDER.includes(c.root) ? c.root : 'C';
     const qual = typeof c.qual === 'string' && RING_CHORD_QUALITY_IDS.includes(c.qual) ? c.qual : 'maj';
     ev.cfg = { root, qual, oct: Math.round(num(c.oct, 3, 0, 8)), inv: Math.round(num(c.inv, 0, 0, 2)) };
+  }
+  if (r.params && typeof r.params === 'object') {
+    const src = r.params as Record<string, unknown>;
+    const p: Partial<RingParams> = {};
+    for (const k of RING_PARAM_KEYS) {
+      const v = src[k];
+      if (typeof v === 'number' && isFinite(v)) p[k] = Math.min(1, Math.max(0, v));
+    }
+    if (Object.keys(p).length > 0) ev.params = p;
   }
   return ev;
 }
