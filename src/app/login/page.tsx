@@ -1,9 +1,18 @@
 import { Suspense } from 'react';
+import { db } from '@/db/client';
+import { users } from '@/db/schema';
+import { asc } from 'drizzle-orm';
 import { LoginForm } from './LoginForm';
 
 export const dynamic = 'force-dynamic';
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  // The whole access list is three friends — show them as doors to tap
+  // instead of a field to type in.
+  const roster = await db
+    .select({ username: users.username, displayName: users.displayName, avatarEmoji: users.avatarEmoji })
+    .from(users)
+    .orderBy(asc(users.displayName));
   return (
     <div className="grim">
       <div className="grim-grain" aria-hidden="true" />
@@ -17,11 +26,11 @@ export default function LoginPage() {
             <span style={{ color: 'var(--blood-lit)' }}>D</span>euntjes
           </h1>
           <p style={{ color: 'var(--g-smoke)', fontStyle: 'italic', fontSize: 15, margin: '8px 0 0' }}>
-            Speak your name and the gates will open.
+            Choose your name and the gates will open.
           </p>
         </div>
         <Suspense fallback={null}>
-          <LoginForm />
+          <LoginForm roster={roster} />
         </Suspense>
       </main>
     </div>
