@@ -52,6 +52,22 @@
   border: 1px solid rgba(242,237,227,.22); border-radius: 3px; font-size: 16px;
 }
 .ringseq .icon-chip.lit { color: var(--ink); border-color: var(--blood-lit); box-shadow: 0 0 12px rgba(212,33,33,.3); }
+/* The forge (instrument) button should beckon: parchment face, bigger gear,
+   and a slow breathing red halo. While the wheel is open it burns steady. */
+.ringseq .icon-chip[data-act="inst"] {
+  background: linear-gradient(180deg, #f4efe2, #ddd5c2);
+  color: var(--parch-ink); border-color: #000; font-size: 19px;
+  animation: instBeckon 2.6s ease-in-out infinite;
+}
+@keyframes instBeckon {
+  0%, 100% { box-shadow: 0 0 5px rgba(212,33,33,.25); }
+  50% { box-shadow: 0 0 15px rgba(212,33,33,.65); }
+}
+.ringseq .icon-chip[data-act="inst"].lit {
+  animation: none;
+  border-color: var(--blood-lit);
+  box-shadow: 0 0 14px rgba(212,33,33,.75);
+}
 
 /* The ring must stay big enough to touch no matter how tall the bottom bar
    grows — the pickers scroll instead of eating the stage. */

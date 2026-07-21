@@ -159,10 +159,12 @@ type LaneSeed = {
 // a whole beat (kick/snare/hats/perc) and the melodic bards get a main lane
 // plus a support lane.
 const LANE_SEEDS: LaneSeed[] = [
-  { key: 'kick',  name: 'Kick',  kind: 'drum',    channelId: 2, preset: 'Kick',  drumKit: 'Bone Kit' },
-  { key: 'snare', name: 'Snare', kind: 'drum',    channelId: 2, preset: 'Snare', drumKit: 'Bone Kit' },
-  { key: 'hats',  name: 'Hats',  kind: 'drum',    channelId: 2, preset: 'Hat',   drumKit: 'Bone Kit' },
-  { key: 'perc',  name: 'Perc',  kind: 'drum',    channelId: 2, preset: 'Perc',  drumKit: 'Bone Kit' },
+  // Neon 808 is the house kit — new dungeons start there; Bone Kit and the
+  // rest stay one tap away in the forge.
+  { key: 'kick',  name: 'Kick',  kind: 'drum',    channelId: 2, preset: '808 Kick',  drumKit: 'Neon 808' },
+  { key: 'snare', name: 'Snare', kind: 'drum',    channelId: 2, preset: '808 Snare', drumKit: 'Neon 808' },
+  { key: 'hats',  name: 'Hats',  kind: 'drum',    channelId: 2, preset: '808 Hat',   drumKit: 'Neon 808' },
+  { key: 'perc',  name: 'Perc',  kind: 'drum',    channelId: 2, preset: '808 Tom',   drumKit: 'Neon 808' },
   { key: 'bass',  name: 'Bass',  kind: 'melodic', channelId: 1, preset: 'Bass' },
   { key: 'sub',   name: 'Sub',   kind: 'melodic', channelId: 1, preset: 'Sub' },
   { key: 'lead',  name: 'Lead',  kind: 'melodic', channelId: 3, preset: 'Lead' },
