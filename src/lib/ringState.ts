@@ -49,12 +49,18 @@ export type RingTrack = {
   preset: string;
   drumKit?: string; // drum lanes only
   barsN: number; // loop length in bars (1..3), independent per lane
+  // Clock rate relative to the master step, as a token from RING_SPEEDS:
+  // '1/2' advances one lane step per two master steps, '2' advances two lane
+  // steps per master step. '1' is lockstep.
+  speed: string;
   steps: Record<string, RingEvent>; // step index -> event
   params: RingParams;
 };
 
 export type RingSongState = {
   format: 'ring';
+  // Master tempo, set when the dungeon is raised and locked for its life.
+  bpm: number;
   tracks: RingTrack[];
 };
 
@@ -108,6 +114,31 @@ export const RING_CHORD_QUALITY_IDS = [
 export const RING_BARS_CHOICES = [1, 2, 3];
 export const RING_MAX_STEPS = 16 * 3;
 
+// Lane clock rates: lane steps advanced per master step. Fractions are slow
+// lanes (one step every N master steps), integers are fast lanes. Every value
+// divides the 24-subtick master step evenly, so the transport stays exact.
+export const RING_SPEEDS: Record<string, { num: number; den: number }> = {
+  '1/8': { num: 1, den: 8 },
+  '1/6': { num: 1, den: 6 },
+  '1/4': { num: 1, den: 4 },
+  '1/3': { num: 1, den: 3 },
+  '1/2': { num: 1, den: 2 },
+  '1': { num: 1, den: 1 },
+  '2': { num: 2, den: 1 },
+  '3': { num: 3, den: 1 },
+  '4': { num: 4, den: 1 },
+};
+export const RING_SPEED_ORDER = ['1/8', '1/6', '1/4', '1/3', '1/2', '1', '2', '3', '4'];
+
+export const RING_BPM_MIN = 40;
+export const RING_BPM_MAX = 220;
+export const RING_BPM_DEFAULT = 120;
+
+export function clampRingBpm(raw: unknown): number {
+  const n = typeof raw === 'number' && isFinite(raw) ? Math.round(raw) : RING_BPM_DEFAULT;
+  return Math.min(RING_BPM_MAX, Math.max(RING_BPM_MIN, n));
+}
+
 // ---------------------------------------------------------------------------
 // defaults
 // ---------------------------------------------------------------------------
@@ -137,12 +168,14 @@ const LANE_SEEDS: LaneSeed[] = [
   { key: 'pads',  name: 'Pads',  kind: 'chord',   channelId: 4, preset: 'Strings' },
 ];
 
-export function defaultRingSongState(): RingSongState {
+export function defaultRingSongState(bpm: number = RING_BPM_DEFAULT): RingSongState {
   return {
     format: 'ring',
+    bpm: clampRingBpm(bpm),
     tracks: LANE_SEEDS.map((seed) => ({
       ...seed,
       barsN: seed.kind === 'drum' ? 1 : 2,
+      speed: '1',
       steps: {},
       params: defaultRingParams(),
     })),
@@ -221,6 +254,7 @@ export function sanitizeRingTrack(identity: LaneSeed, raw: unknown): RingTrack {
 
   const barsRaw = Math.round(num(r.barsN, identity.kind === 'drum' ? 1 : 2, 1, 3));
   const barsN = RING_BARS_CHOICES.includes(barsRaw) ? barsRaw : 2;
+  const speed = typeof r.speed === 'string' && RING_SPEEDS[r.speed] ? r.speed : '1';
 
   const steps: Record<string, RingEvent> = {};
   if (r.steps && typeof r.steps === 'object') {
@@ -240,6 +274,7 @@ export function sanitizeRingTrack(identity: LaneSeed, raw: unknown): RingTrack {
     preset,
     ...(drumKit ? { drumKit } : {}),
     barsN,
+    speed,
     steps,
     params: sanitizeRingParams(r.params),
   };
@@ -260,6 +295,7 @@ export function normalizeRingState(raw: unknown): RingSongState {
   }
   return {
     format: 'ring',
+    bpm: clampRingBpm(isRingState(raw) ? (raw as { bpm?: unknown }).bpm : undefined),
     tracks: LANE_SEEDS.map((seed) => sanitizeRingTrack(seed, byKey.get(seed.key))),
   };
 }

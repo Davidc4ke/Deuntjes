@@ -24,6 +24,8 @@ import {
   RING_CHORD_PRESETS,
   RING_DRUM_KITS,
   RING_MELODIC_PRESETS,
+  RING_SPEEDS,
+  RING_SPEED_ORDER,
   normalizeRingState,
 } from '@/lib/ringState';
 
@@ -129,13 +131,24 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       : N(t.kind === 'drum' ? 'C2' : 'C4');
   });
 
-  // 16 steps per bar for everyone; channels differ in how many BARS they loop.
-  // The transport walks the LCM of all loop lengths; each channel plays
-  // (globalStep mod its own length) — short loops repeat while long ones roam.
-  const STEP_MS = 125;
+  // 16 steps per bar for everyone; channels differ in how many BARS they loop
+  // and how FAST their clock runs. The master step comes from the dungeon's
+  // sealed bpm; each master step is subdivided into SUB=24 subticks so every
+  // speed in RING_SPEEDS (1/8x .. 4x) lands on exact integer periods. The
+  // transport walks subticks over the LCM of all lane cycles.
+  const BPM = song.bpm || 120;
+  const STEP_MS = 60000 / BPM / 4; // one master 16th
+  const SUB = 24;
   const trackSteps = (t: LiveTrack) => t.barsN * 16;
+  // subticks between two of this lane's steps
+  const period = (t: LiveTrack) => {
+    const s = RING_SPEEDS[t.speed] ?? RING_SPEEDS['1'];
+    return (SUB * s.den) / s.num;
+  };
   const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
-  const songSteps = () => state.tracks.reduce((l: number, t: LiveTrack) => (l * t.barsN) / gcd(l, t.barsN), 1) * 16;
+  const lcm = (a: number, b: number): number => (a / gcd(a, b)) * b;
+  const trackCycleQ = (t: LiveTrack) => trackSteps(t) * period(t);
+  const songCycleQ = () => state.tracks.reduce((l: number, t: LiveTrack) => lcm(l, trackCycleQ(t)), SUB);
   const active = (): LiveTrack => state.tracks.find((t: LiveTrack) => t.key === state.activeKey);
   const others = (): LiveTrack[] => state.tracks.filter((t: LiveTrack) => t.key !== state.activeKey && !state.hidden.has(t.key));
 
@@ -145,6 +158,7 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
   function serialize(): RingSongState {
     return {
       format: 'ring',
+      bpm: song.bpm,
       tracks: state.tracks.map((t: LiveTrack) => {
         const { pat: _pat, ...rest } = t;
         return clone(rest);
@@ -536,7 +550,9 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       const atk = .003 + P.attack * .3;
       const dec = .02 + P.decay * .5;
       const rel = .04 + P.release * 1.2;
-      const hold = Math.max(.02, len * .125 * .9);
+      // a "step" of hold time is one of THIS lane's steps at the master bpm
+      const laneStepSec = (STEP_MS / 1000) * (period(track) / SUB);
+      const hold = Math.max(.02, len * laneStepSec * .9);
       const peak = Math.max(.002, (track.kind === 'chord' ? .12 : .2) * vol * (P.volume / .8));
       const susLvl = Math.max(.0015, peak * P.sustain);
       const tSus = t + atk + dec, tEnd = Math.max(tSus, t + atk + hold);
@@ -566,8 +582,8 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       /* audio is best-effort */
     }
   }
-  function playEvent(track: LiveTrack, ev: RingEvent) {
-    ev.notes.forEach((n, i) => tone(track, n, ev.len, i * .012, ev.vol ?? 1));
+  function playEvent(track: LiveTrack, ev: RingEvent, when = 0) {
+    ev.notes.forEach((n, i) => tone(track, n, ev.len, when + i * .012, ev.vol ?? 1));
   }
 
   // ================= animated layout =================
@@ -606,30 +622,41 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     })(t0);
   }
 
-  // ================= transport (per-channel bar loops) =================
+  // ================= transport (per-lane bar loops AND clock rates) =======
+  // The interval fires once per master step; each firing schedules every lane
+  // hit that falls inside the coming step at exact WebAudio offsets, so fast
+  // lanes (x2..x4) subdivide the step and slow lanes (1/2..1/8) skip steps.
   let timer: ReturnType<typeof setInterval> | null = null;
-  let gPos = -1; // global 16th index over the LCM of all loops
+  let gQ = -1; // global subtick position over the LCM of all lane cycles
   function stopPlay() {
     if (timer) clearInterval(timer);
     timer = null;
-    gPos = -1;
+    gQ = -1;
     renderRing();
   }
   function togglePlay() {
     if (timer) { stopPlay(); return; }
     ensureAC();
-    let pos = state.cursor % trackSteps(active());
-    gPos = pos;
+    let q = (state.cursor % trackSteps(active())) * period(active());
+    gQ = q;
     timer = setInterval(() => {
       state.tracks.forEach((t: LiveTrack) => {
-        const ev = stepAt(t, pos % trackSteps(t));
-        if (ev) playEvent(t, ev);
+        const per = period(t);
+        const cyc = trackCycleQ(t);
+        for (let j = 0; j < SUB; j++) {
+          const qq = (q + j) % cyc;
+          if (qq % per === 0) {
+            const ev = stepAt(t, (qq / per) % trackSteps(t));
+            if (ev) playEvent(t, ev, (j / SUB) * (STEP_MS / 1000));
+          }
+        }
       });
-      gPos = pos;
-      const bar = Math.floor((pos % trackSteps(active())) / 16);
+      gQ = q;
+      const shown = Math.floor(q / period(active())) % trackSteps(active());
+      const bar = Math.floor(shown / 16);
       if (bar !== state.focusedBar) { state.focusedBar = bar; settle(); }
       renderRing();
-      pos = (pos + 1) % songSteps();
+      q = (q + SUB) % songCycleQ();
     }, STEP_MS);
     renderRing();
   }
@@ -746,7 +773,7 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
   function renderRing() {
     const t = active();
     const div = 16;
-    const shownStep = (timer ? gPos : state.cursor) % trackSteps(t);
+    const shownStep = (timer ? Math.floor(gQ / period(t)) : state.cursor) % trackSteps(t);
     const shownBar = Math.floor(shownStep / 16);
     const playStep = timer ? shownStep : -1;
     const stepsAlpha = 1 - L.inst;
@@ -892,7 +919,8 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       out += `<text x="${CX}" y="${CY + orbR + 26}" class="inst-title" style="font-size:14px" pointer-events="none">${active().preset}</text>`;
     }
     svg.innerHTML = out;
-    posLab.textContent = `bar ${['I', 'II', 'III'][shownBar]} · step ${shownStep + 1} of ${trackSteps(t)}`;
+    const paceTag = t.speed && t.speed !== '1' ? ` · ${t.speed}× pace` : '';
+    posLab.textContent = `bar ${['I', 'II', 'III'][shownBar]} · step ${shownStep + 1} of ${trackSteps(t)} · ${BPM} bpm${paceTag}`;
   }
 
   // ================= pickers =================
@@ -957,6 +985,13 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
         <div class="len-row"><span class="lab">Step vol</span>
           <input type="range" min="10" max="100" value="${stepVol}" data-vol style="flex:1;accent-color:var(--blood-lit);min-width:0" />
           <output style="width:30px;text-align:right;font-size:11px;color:var(--smoke)">${stepVol}</output></div>`;
+      // Lane clock: fractions crawl (one lane step per N master steps),
+      // integers race (N lane steps per master step).
+      const speedRow = `
+        <div class="len-row"><span class="lab">Pace</span>
+          <div class="strip" style="padding:0;flex:1;min-width:0">${RING_SPEED_ORDER.map((sp) =>
+            `<button class="nbtn util ${(t.speed || '1') === sp ? 'sticky' : ''}" data-speed="${sp}" style="height:30px;min-width:38px">${sp}×</button>`).join('')}
+          </div></div>`;
 
       // ----- Notes tab content: key-dot piano (+ chord quality) -----
       const KW = 44;
@@ -988,7 +1023,7 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
         <button data-picktab="notes" class="${state.pickTab === 'notes' ? 'cur' : ''}">${isChord ? 'chord' : 'notes'}</button>
         <button data-picktab="timing" class="${state.pickTab === 'timing' ? 'cur' : ''}">timing</button>
       </div>`;
-      pickBody.innerHTML = tabBar + (state.pickTab === 'notes' ? notesContent : `${lenRow}${volRow}${beatsRow}`);
+      pickBody.innerHTML = tabBar + (state.pickTab === 'notes' ? notesContent : `${lenRow}${volRow}${beatsRow}${speedRow}`);
 
       if (state.pickTab === 'notes' && pianoScrolledFor !== t.key) {
         pianoScrolledFor = t.key;
@@ -1032,6 +1067,12 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       if (!DRUM_KITS[t.drumKit].includes(t.preset)) t.preset = DRUM_KITS[t.drumKit][0];
       commit();
       playEvent(t, state.stickyEv[t.key]);
+      renderRing(); renderPickers(); return;
+    }
+    const spd = target.closest('[data-speed]') as HTMLElement | null;
+    if (spd) {
+      t.speed = spd.dataset.speed!;
+      commit();
       renderRing(); renderPickers(); return;
     }
     const barsn = target.closest('[data-barsn]') as HTMLElement | null;

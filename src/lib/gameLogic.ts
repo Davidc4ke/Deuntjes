@@ -123,5 +123,6 @@ export function validateRingTurnSave(
       return { ok: false, error: `lane "${prev.name}" belongs to a sealed channel and may not be changed` };
     }
   }
-  return { ok: true, state: { format: 'ring', tracks } };
+  // The master tempo is sealed at creation — the stored value always wins.
+  return { ok: true, state: { format: 'ring', bpm: before.bpm, tracks } };
 }

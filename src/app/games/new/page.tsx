@@ -4,7 +4,8 @@ import { requireUser } from '@/components/shared/AuthGate';
 import { db } from '@/db/client';
 import { games, gameRooms, songs, users } from '@/db/schema';
 import { asc } from 'drizzle-orm';
-import { defaultRingSongState } from '@/lib/ringState';
+import { clampRingBpm, defaultRingSongState } from '@/lib/ringState';
+import { BpmPicker } from './BpmPicker';
 import { channelForRoom, playerForRoom } from '@/lib/gameLogic';
 import { dealCurse } from '@/lib/curses';
 import { initials, SkullGlyph } from '../glyphs';
@@ -20,6 +21,7 @@ async function createGameAction(formData: FormData) {
   const title = String(formData.get('title') ?? '').trim() || 'Untitled dungeon';
   const roomCountRaw = Number(formData.get('roomCount'));
   const roomCount = ROOM_CHOICES.includes(roomCountRaw) ? roomCountRaw : 8;
+  const bpm = clampRingBpm(Number(formData.get('bpm')));
 
   const roster = await db.select({ id: users.id }).from(users);
   const validIds = new Set(roster.map((u) => u.id));
@@ -36,8 +38,9 @@ async function createGameAction(formData: FormData) {
   const [song] = await db
     .insert(songs)
     // New dungeons compose in the Ritual Ring; the blob's format field is
-    // what routes the room to the ring editor and the ring validator.
-    .values({ title, createdBy: userId, sequencerData: defaultRingSongState() })
+    // what routes the room to the ring editor and the ring validator. The
+    // bpm is sealed here — the validator pins it for the game's whole life.
+    .values({ title, createdBy: userId, sequencerData: defaultRingSongState(bpm) })
     .returning({ id: songs.id });
 
   const [game] = await db
@@ -109,6 +112,9 @@ export default async function NewGamePage({ searchParams }: { searchParams: Prom
           </label>
         ))}
         {/* disabled checkboxes don't submit; the action always includes the creator */}
+
+        <label className="f-label">The master tempo</label>
+        <BpmPicker />
 
         <label className="f-label" htmlFor="roomCount">Rooms in the dungeon</label>
         <select id="roomCount" name="roomCount" defaultValue="8">
