@@ -99,6 +99,14 @@ export default async function GameMapPage({ params }: { params: Promise<{ id: st
         </div>
       ) : null}
 
+      {/* Anyone who isn't the one composing can hear the song so far,
+          read-only — the sealed layers played back through the ring. */}
+      {!complete && !yourTurn && rooms.some((r) => r.status === 'locked') && (
+        <Link href={`/songs/${game.songId}`} className="gbtn iron" style={{ marginTop: 10 }}>
+          ▶︎ Listen to the song so far
+        </Link>
+      )}
+
       <div className="ornament" />
       <div className="section-label">
         The Dungeon · <b>{toRoman(game.roomCount)}</b> Rooms
@@ -126,7 +134,7 @@ export default async function GameMapPage({ params }: { params: Promise<{ id: st
                   </span>
                   <span className="chip">
                     <i className={`sw ${CHANNEL_PATTERNS[r.channelId] ?? ''}`} />
-                    {CHANNEL_NAMES[r.channelId] ?? `Ch ${r.channelId}`}
+                    {CHANNEL_NAMES[r.channelId] ?? `Ch ${r.channelId}`} layer
                   </span>
                   {curse && (
                     <span className="chip curse">
@@ -134,6 +142,11 @@ export default async function GameMapPage({ params }: { params: Promise<{ id: st
                     </span>
                   )}
                 </div>
+                {curse && (
+                  <div className="rm-rule">
+                    <SkullGlyph size={11} /> {curse.rule}
+                  </div>
+                )}
               </div>
               <LockGlyph size={24} stroke="rgba(242,237,227,.75)" />
             </div>

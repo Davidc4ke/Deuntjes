@@ -400,6 +400,18 @@
 .grim .chip.curse { color: var(--g-ink-dim); border-color: rgba(242, 237, 227, 0.4); }
 .grim .chip.curse svg { flex-shrink: 0; }
 
+/* what the dealt curse actually does, spelled out under the chips */
+.grim .room .rm-rule {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--g-smoke);
+}
+.grim .room .rm-rule svg { flex-shrink: 0; opacity: 0.7; }
+
 /* woodcut hatches = channel identity */
 .grim .pat-drum {
   background-image:
