@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<title>Deuntjes — the Ritual Ring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=UnifrakturCook:wght@700&family=Pirata+One&family=IM+Fell+English:ital@0;1&family=Space+Mono:wght@700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --void: #050505; --iron: #101010; --iron-2: #181818;
+    --ink: #f2ede3; --ink-dim: #b3ac9d; --smoke: #7d7768;
+    --blood: #a01818; --blood-lit: #d42121; --blood-dark: #5c0d0d;
+    --parch: #efe9db; --parch-ink: #151210;
+    --display: "UnifrakturCook", "Pirata One", serif;
+    --gothic: "Pirata One", serif;
+    --body: "IM Fell English", Georgia, serif;
+  }
+  /* touch-action: manipulation kills iOS double-tap zoom on every control
+     (double-pressing chord chips was zooming the page); the ring svg
+     overrides with touch-action: none for the wind gesture */
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: radial-gradient(130% 90% at 50% -20%, #141414, var(--void) 55%);
+    color: var(--ink); font-family: var(--body);
+    user-select: none; -webkit-user-select: none;
+  }
+  button { font-family: inherit; cursor: pointer; }
+
+  .app {
+    height: 100dvh; max-width: 540px; margin: 0 auto;
+    display: flex; flex-direction: column;
+    padding: calc(8px + env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom));
+    overflow: hidden;
+  }
+
+  .curse-strip {
+    display: flex; align-items: center; gap: 9px;
+    background: linear-gradient(180deg, #f4efe2, #ddd5c2); color: var(--parch-ink);
+    padding: 6px 11px; margin-bottom: 8px; transform: rotate(-.5deg);
+    clip-path: polygon(0 8%, 2% 0, 98% 3%, 100% 14%, 99% 90%, 96% 100%, 3% 97%, 0 88%);
+    font-size: 12px; font-style: italic; flex-shrink: 0;
+  }
+  .curse-strip b { font-family: var(--display); font-style: normal; font-size: 14px; margin-right: 2px; }
+
+  .chips-row { display: flex; gap: 6px; margin-bottom: 6px; flex-shrink: 0; align-items: stretch; }
+  .track-chips { display: flex; gap: 6px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .track-chips::-webkit-scrollbar { display: none; }
+  .tchip {
+    flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 5px;
+    background: #0d0d0d; border: 1px solid rgba(242,237,227,.16); border-radius: 3px;
+    color: var(--smoke); font: 400 12px var(--gothic); letter-spacing: .04em; padding: 8px 9px;
+  }
+  .tchip .sw { width: 9px; height: 9px; border: 1px solid rgba(242,237,227,.5); flex-shrink: 0; }
+  .tchip.active { color: var(--parch-ink); background: linear-gradient(180deg, #f4efe2, #ddd5c2); border-color: #000; }
+  .tchip .eye { background: none; border: none; padding: 1px; color: inherit; display: inline-flex; }
+  .tchip.hidden-track .sw, .tchip.hidden-track .nm { opacity: .3; }
+  .pat-0 { background-image: repeating-linear-gradient(45deg, rgba(242,237,227,.95) 0 1px, transparent 1px 4px), repeating-linear-gradient(-45deg, rgba(242,237,227,.95) 0 1px, transparent 1px 4px); }
+  .pat-1 { background-image: repeating-linear-gradient(0deg, rgba(242,237,227,.95) 0 2px, transparent 2px 5px); }
+  .pat-2 { background-image: repeating-linear-gradient(45deg, rgba(242,237,227,.95) 0 1.5px, transparent 1.5px 5px); }
+  .pat-3 { background-image: radial-gradient(rgba(242,237,227,.95) 1px, transparent 1.4px); background-size: 5px 5px; }
+  .pat-4 { background-image: repeating-linear-gradient(90deg, rgba(242,237,227,.95) 0 2px, transparent 2px 5px); }
+  .tchip.active .sw { filter: invert(1); border-color: rgba(21,18,16,.7); }
+  .icon-chip {
+    flex: 0 0 42px; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, var(--iron-2), var(--iron)); color: var(--ink-dim);
+    border: 1px solid rgba(242,237,227,.22); border-radius: 3px; font-size: 16px;
+  }
+  .icon-chip.lit { color: var(--ink); border-color: var(--blood-lit); box-shadow: 0 0 12px rgba(212,33,33,.3); }
+
+  .stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+  .stage svg { max-width: 100%; max-height: 100%; display: block; }
+  .stage .fx-layer { position: absolute; inset: 0; margin: auto; pointer-events: none; }
+  .stage .main-layer { position: relative; z-index: 1; touch-action: none; }
+
+  /* position readout: thin left-aligned line under the channel bar */
+  .pos-row {
+    flex-shrink: 0; padding: 0 2px 4px; font-size: 11.5px; font-style: italic; color: var(--smoke);
+  }
+
+  /* decorative spinners live on the static fx-layer so playback re-renders
+     never restart their animation */
+  .spin-slow { animation: spin 60s linear infinite; }
+  .spin-rev { animation: spin 42s linear infinite reverse; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .b-step { fill: #0d0d0d; stroke: rgba(242,237,227,.32); stroke-width: 1.6; }
+  .b-step.accent { stroke: rgba(242,237,227,.5); }
+  .b-step.on { fill: var(--parch); stroke: #000; }
+  .b-step.sel { stroke: var(--blood-lit); stroke-width: 3; }
+  .b-step.playhead { stroke: var(--ink); stroke-width: 3; filter: drop-shadow(0 0 6px rgba(242,237,227,.7)); }
+  .b-lab { font-family: var(--gothic); fill: var(--smoke); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .b-lab.on { fill: var(--parch-ink); }
+  .b-ghost { fill: rgba(242,237,227,.5); }
+  .b-rune-ring { fill: none; stroke: rgba(242,237,227,.2); stroke-dasharray: 1 7; }
+  .b-rune-ring.r2 { stroke: rgba(212,33,33,.25); stroke-dasharray: 1 11; }
+  .b-hand { stroke: rgba(212,33,33,.85); stroke-width: 2.5; stroke-linecap: round; filter: drop-shadow(0 0 5px rgba(212,33,33,.8)); }
+  .b-hand.idle { stroke: rgba(242,237,227,.3); filter: none; stroke-dasharray: 3 5; }
+  .b-cursor-notch { fill: none; stroke: var(--blood-lit); stroke-width: 2; stroke-dasharray: 4 4; }
+  .b-lenarc { fill: none; stroke: rgba(239,233,219,.4); stroke-linecap: round; }
+  .b-focusring { fill: none; stroke: transparent; cursor: pointer; }
+
+  .play-core { fill: url(#playGrad); stroke: var(--blood-dark); stroke-width: 1.5; }
+  .play-halo { fill: none; stroke: rgba(212,33,33,.5); }
+  .play-halo.pulse { animation: halo 2.4s ease-in-out infinite; }
+  @keyframes halo { 0%,100% { opacity: .25; } 50% { opacity: .75; } }
+  .play-glyph { fill: var(--ink); pointer-events: none; }
+
+  /* ===== skull medallion (play / stop / instrument-confirm) ===== */
+  .sk-rim { fill: none; stroke: rgba(212,33,33,.45); stroke-width: 2.5; }
+  .sk-rim.idle { animation: skIdle 3s ease-in-out infinite; }
+  .sk-rim.lit { stroke: rgba(212,33,33,.95); filter: drop-shadow(0 0 10px rgba(212,33,33,.85)); animation: skLit 1.4s ease-in-out infinite; }
+  @keyframes skIdle { 0%,100% { opacity: .35; } 50% { opacity: .7; } }
+  @keyframes skLit { 0%,100% { opacity: .7; } 50% { opacity: 1; } }
+  .sk-disc { fill: url(#skullGrad); stroke: #4a0d0d; stroke-width: 1.5; }
+  @keyframes skEye { 0%,100% { opacity: .65; } 50% { opacity: 1; } }
+  .sk3-pulse { animation: skEye 1.15s ease-in-out infinite; }
+  .sk3-crack { fill: none; stroke: rgba(58,32,20,.5); stroke-width: .7; stroke-linecap: round; stroke-linejoin: round; }
+  .sk3-crack.lit { stroke: rgba(255,69,38,.85); stroke-width: .9; filter: drop-shadow(0 0 1.5px #ff3a1f); animation: skEye 1.15s ease-in-out infinite; }
+  .sk-chip { fill: url(#chipGrad); stroke: #4a0d0d; stroke-width: 1.2; filter: drop-shadow(0 2px 4px rgba(0,0,0,.6)); }
+  .sk-glyph { fill: #f7f2e8; }
+  .sk-glyph.check { fill: none; stroke: #f7f2e8; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .sk-hit { fill: transparent; cursor: pointer; }
+
+  /* instrument wheel */
+  .p-stone { fill: #12100d; stroke: rgba(242,237,227,.35); stroke-width: 1.5; }
+  .p-stone.cur { fill: var(--parch); stroke: var(--blood-lit); stroke-width: 2.5; }
+  .p-lab { font-family: var(--gothic); fill: var(--ink-dim); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .p-lab.cur { fill: var(--parch-ink); }
+  .fx-arc-bg { fill: none; stroke: rgba(242,237,227,.15); stroke-width: 10; stroke-linecap: round; }
+  .fx-arc-fill { fill: none; stroke: var(--blood-lit); stroke-width: 10; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(212,33,33,.5)); }
+  .fx-arc-hit { fill: none; stroke: transparent; stroke-width: 34; cursor: pointer; }
+  .fx-lab { font: italic 10px var(--body); fill: var(--smoke); text-anchor: middle; }
+  .inst-title { font-family: var(--display); fill: var(--ink); text-anchor: middle; }
+  .inst-sub { font: italic 10.5px var(--body); fill: var(--smoke); text-anchor: middle; }
+
+  /* ===== pickers ===== */
+  .pickers { flex-shrink: 0; border-top: 1px solid rgba(242,237,227,.1); padding-top: 6px; }
+  .pick-status { font-size: 11.5px; font-style: italic; color: var(--smoke); text-align: center; margin: 0 0 6px; min-height: 14px; }
+  .pick-status b { color: var(--ink-dim); font-style: normal; font-family: var(--gothic); font-weight: 400; letter-spacing: .05em; }
+
+  /* key-dot piano (matches the app's sequencer keyboard) */
+  .piano-wrap { overflow-x: auto; scrollbar-width: none; padding: 2px 0 7px; }
+  .piano-wrap::-webkit-scrollbar { display: none; }
+  .piano { position: relative; height: 80px; }
+  .pk-w, .pk-b {
+    position: absolute; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font: 700 10px "Space Mono", ui-monospace, monospace; letter-spacing: .03em; text-transform: uppercase;
+    transition: transform .15s ease;
+  }
+  .pk-w:active, .pk-b:active { transform: scale(.92); }
+  .pk-w {
+    top: 38px; width: 40px; height: 40px;
+    background: radial-gradient(circle at 35% 30%, #fbf6e6 0%, #ebe5d3 70%, #d6d0bd 100%);
+    color: rgba(21,18,16,.8); border: 1px solid #b8b0a0;
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.7), inset 0 -2px 3px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.5);
+  }
+  .pk-b {
+    top: 0; width: 34px; height: 34px; z-index: 2; font-size: 8.5px;
+    background: radial-gradient(circle at 35% 30%, #2c2c2c 0%, #141414 70%, #060606 100%);
+    color: var(--ink-dim); border: 1px solid #000;
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.15), inset 0 -2px 3px rgba(0,0,0,.55), 0 1px 3px rgba(0,0,0,.6);
+  }
+  .pk-w.sticky, .pk-b.sticky {
+    background: radial-gradient(circle at 35% 30%, #e5473a 0%, var(--blood) 70%, var(--blood-dark) 100%);
+    color: var(--ink); border-color: var(--blood-dark);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 0 10px rgba(212,33,33,.5);
+  }
+
+  .strip { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 7px; scrollbar-width: none; }
+  .strip::-webkit-scrollbar { display: none; }
+  .nbtn {
+    flex-shrink: 0; height: 38px; min-width: 40px; padding: 0 9px; border-radius: 999px;
+    background: #0d0d0d; border: 1.5px solid rgba(242,237,227,.25); color: var(--ink-dim);
+    font: 400 12.5px var(--gothic); letter-spacing: .03em;
+  }
+  .nbtn.black { background: #000; color: var(--smoke); }
+  .nbtn.sticky { background: linear-gradient(180deg, #f4efe2, #ddd5c2); color: var(--parch-ink); border-color: #000; }
+  .nbtn.util { border-style: dashed; font-size: 11px; }
+  .drum-note { text-align: center; color: var(--smoke); font-style: italic; font-size: 12px; padding: 16px 10px; }
+  .len-row { display: flex; gap: 6px; align-items: center; padding: 0 2px 2px; }
+  .len-row .lab, .strip-label { font: 400 9.5px var(--gothic); letter-spacing: .14em; text-transform: uppercase; color: rgba(242,237,227,.35); padding: 0 4px 2px; }
+  .len-row .nbtn { height: 30px; min-width: 34px; font-size: 11.5px; }
+
+  /* instrument parameter sections (Voice / Tone / EQ / FX like the app) */
+  .ptabs { display: flex; gap: 6px; padding: 0 2px 8px; }
+  .ptabs button {
+    flex: 1; background: #0d0d0d; border: 1px solid rgba(242,237,227,.2); border-radius: 3px;
+    color: var(--smoke); font: 400 12px var(--gothic); letter-spacing: .08em; text-transform: uppercase; padding: 7px 4px;
+  }
+  .ptabs button.cur { background: linear-gradient(180deg, #f4efe2, #ddd5c2); color: var(--parch-ink); border-color: #000; }
+  .prow { display: flex; align-items: center; gap: 9px; padding: 2px 4px 7px; }
+  .prow label { width: 64px; font: 400 12px var(--gothic); letter-spacing: .05em; color: var(--ink-dim); flex-shrink: 0; }
+  .prow input[type=range] { flex: 1; accent-color: var(--blood-lit); min-width: 0; }
+  .prow output { width: 30px; text-align: right; font-size: 11px; color: var(--smoke); flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="curse-strip"><b>Minor Key</b> — only notes from a minor scale.</div>
+  <div class="chips-row">
+    <div class="track-chips"></div>
+    <button class="icon-chip" data-act="inst" title="Instrument">⚙&#xFE0E;</button>
+    <button class="icon-chip" data-act="clear" title="Clear track">✕</button>
+  </div>
+  <div class="pos-row"><span class="pos-lab-html">bar I · step 1</span></div>
+  <div class="stage">
+    <svg class="fx-layer" viewBox="0 0 372 372"></svg>
+    <svg class="main-layer" viewBox="0 0 372 372"></svg>
+  </div>
+  <div class="pickers">
+    <p class="pick-status"></p>
+    <div class="pick-body"></div>
+  </div>
+</div>
+
+<script>
+// ================= notes, chords =================
+const NOTE_ORDER = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const parseN = (n) => { const m = /^([A-G]#?)(\d)$/.exec(n); return { semi: NOTE_ORDER.indexOf(m[1]), oct: +m[2] }; };
+const midi = (n) => { const p = parseN(n); return (p.oct + 1) * 12 + p.semi; };
+const fromMidi = (v) => NOTE_ORDER[v % 12] + (Math.floor(v / 12) - 1);
+const noteFreq = (n) => 440 * Math.pow(2, (midi(n) - 69) / 12);
+const clone = (o) => JSON.parse(JSON.stringify(o));
+
+const CHORD_QUALITIES = [
+  { id: 'maj', label: 'maj', suffix: '', iv: [0,4,7] }, { id: 'min', label: 'min', suffix: 'm', iv: [0,3,7] },
+  { id: '7', label: '7', suffix: '7', iv: [0,4,7,10] }, { id: 'maj7', label: 'maj7', suffix: 'M7', iv: [0,4,7,11] },
+  { id: 'm7', label: 'm7', suffix: 'm7', iv: [0,3,7,10] }, { id: '6', label: '6', suffix: '6', iv: [0,4,7,9] },
+  { id: 'm6', label: 'm6', suffix: 'm6', iv: [0,3,7,9] }, { id: 'sus2', label: 'sus2', suffix: 'sus2', iv: [0,2,7] },
+  { id: 'sus4', label: 'sus4', suffix: 'sus4', iv: [0,5,7] }, { id: 'dim', label: 'dim', suffix: 'dim', iv: [0,3,6] },
+  { id: 'dim7', label: 'dim7', suffix: '°7', iv: [0,3,6,9] }, { id: 'm7b5', label: 'm7♭5', suffix: 'ø7', iv: [0,3,6,10] },
+  { id: 'aug', label: 'aug', suffix: '+', iv: [0,4,8] }, { id: '5', label: '5', suffix: '5', iv: [0,7] },
+  { id: 'add9', label: 'add9', suffix: 'add9', iv: [0,4,7,14] }, { id: '9', label: '9', suffix: '9', iv: [0,4,7,10,14] },
+  { id: 'maj9', label: 'maj9', suffix: 'M9', iv: [0,4,7,11,14] }, { id: 'm9', label: 'm9', suffix: 'm9', iv: [0,3,7,10,14] },
+  { id: '11', label: '11', suffix: '11', iv: [0,4,7,10,14,17] }, { id: '13', label: '13', suffix: '13', iv: [0,4,7,10,14,21] },
+];
+const INVERSIONS = ['root', '1st', '2nd'];
+function buildChord(cfg, len = 4) {
+  const q = CHORD_QUALITIES.find(x => x.id === cfg.qual);
+  const root = (cfg.oct + 1) * 12 + NOTE_ORDER.indexOf(cfg.root);
+  let vals = q.iv.map(i => root + i);
+  for (let i = 0; i < Math.min(cfg.inv, vals.length - 1); i++) vals[i] += 12;
+  vals.sort((a, b) => a - b);
+  return { label: cfg.root + q.suffix, notes: vals.map(fromMidi), len, vol: 1, cfg: clone(cfg) };
+}
+const N = (label, len = 1, vol = 1) => ({ label, notes: [label], len, vol });
+
+// ================= channels (lots of them) =================
+const ALLOWED = {
+  drum: ['Kick', '808', 'Snare', 'Clap', 'Hat', 'Open Hat', 'Tom', 'Perc', 'Rim', 'Crash', 'Ride'],
+  melodic: ['Bass', 'Sub', 'Acid', 'Reese', 'Lead', 'Pluck', 'Bell', 'Marimba', 'Keys'],
+  chord: ['Pad', 'Keys', 'Organ', 'Strings', 'Choir', 'Bell'],
+};
+// two drum kits: the plain bone kit, and a proper 80s drum machine
+const DRUM_KITS = {
+  'Bone Kit': ALLOWED.drum,
+  'Neon 808': ['808 Kick', '808 Snare', '808 Clap', '808 Hat', '808 Open', '808 Tom', 'Cowbell', 'Rimshot', 'Maracas'],
+};
+const TIMBRE = {
+  Kick: ['sine', .1], '808': ['sine', .3], Snare: ['square', .05], Clap: ['square', .06],
+  Hat: ['square', .03], 'Open Hat': ['square', .12], Tom: ['sine', .12], Perc: ['sine', .06],
+  Rim: ['square', .03], Crash: ['sawtooth', .4], Ride: ['sawtooth', .2],
+  Bass: ['square', .16], Sub: ['sine', .2], Acid: ['sawtooth', .12], Reese: ['sawtooth', .2],
+  Lead: ['triangle', .15], Pluck: ['triangle', .08], Bell: ['sine', .35], Marimba: ['sine', .12], Keys: ['triangle', .18],
+  Pad: ['sine', .4], Organ: ['square', .3], Strings: ['sawtooth', .38], Choir: ['sine', .45],
+};
+const defaultParams = () => ({
+  volume: .8,
+  attack: .05, decay: .2, sustain: .6, release: .3,
+  cutoff: .8, resonance: .1, pan: .5, glide: 0,
+  low: .5, mid: .5, high: .5,
+  reverb: .15, delay: 0, chorus: 0, drive: 0,
+});
+// barsN = loop length in bars for THIS channel. A 1-bar kick loops while a
+// 2-bar chord progression walks on — independent loops, clip-style.
+const CH = (key, name, kind, preset, steps = {}, barsN = 2) => ({ key, name, kind, preset, steps, barsN });
+const BARS_CHOICES = [1, 2, 3];
+const state = {
+  tracks: [
+    CH('kick',  'Kick',  'drum', 'Kick',  { 0: N('C2'), 4: N('C2'), 8: N('C2'), 12: N('C2') }, 1),
+    CH('snare', 'Snare', 'drum', 'Snare', { 4: N('C2'), 12: N('C2') }, 1),
+    CH('hats',  'Hats',  'drum', 'Hat',   { 2: N('C2'), 6: N('C2'), 10: N('C2'), 14: N('C2') }, 1),
+    CH('perc',  'Perc',  'drum', 'Perc',  { 7: N('C2'), 23: N('C2') }, 2),
+    CH('bass',  'Bass',  'melodic', 'Bass', { 0: N('C2', 2), 6: N('G1'), 8: N('C2', 2), 14: N('A#1'), 16: N('C2', 2), 22: N('D#2'), 24: N('C2'), 30: N('G1') }, 2),
+    CH('sub',   'Sub',   'melodic', 'Sub',  { 0: N('C1', 8), 16: N('G1', 8) }, 2),
+    CH('lead',  'Lead',  'melodic', 'Lead', {}, 2),
+    CH('arp',   'Arp',   'melodic', 'Pluck', { 1: N('C4'), 3: N('D#4'), 5: N('G4'), 9: N('C5'), 11: N('G4'), 13: N('D#4') }, 1),
+    CH('chord', 'Chord', 'chord', 'Pad', { 0: buildChord({ root: 'C', qual: 'min', oct: 3, inv: 0 }), 8: buildChord({ root: 'G', qual: '7', oct: 2, inv: 0 }), 16: buildChord({ root: 'D#', qual: 'maj7', oct: 3, inv: 0 }), 24: buildChord({ root: 'A#', qual: 'maj', oct: 2, inv: 0 }) }, 2),
+    CH('pads',  'Pads',  'chord', 'Strings', { 0: buildChord({ root: 'C', qual: '5', oct: 2, inv: 0 }, 8), 16: buildChord({ root: 'A#', qual: '5', oct: 1, inv: 0 }, 8) }, 2),
+  ],
+  activeKey: 'chord',
+  hidden: new Set(['sub', 'perc']),
+  stickyEv: {},
+  chordCfg: { root: 'C', qual: 'min', oct: 3, inv: 0 },
+  sel: null,
+  cursor: 0,
+  focusedBar: 0,
+  view: 'steps',
+  instTab: 'voice',
+  pickTab: 'notes', // bottom bar tab: 'notes' | 'timing'
+  preset: {},
+  params: {},
+};
+state.drumKit = {};
+state.tracks.forEach((t, i) => {
+  t.pat = 'pat-' + (i % 5);
+  state.preset[t.key] = t.preset;
+  state.params[t.key] = defaultParams();
+  if (t.kind === 'drum') state.drumKit[t.key] = 'Bone Kit';
+  state.stickyEv[t.key] = t.kind === 'chord'
+    ? buildChord({ root: 'C', qual: 'min', oct: 3, inv: 0 })
+    : N(t.kind === 'drum' ? 'C2' : 'C4');
+});
+// 16 steps per bar for everyone; channels differ in how many BARS they loop.
+// The transport walks the LCM of all loop lengths; each channel plays
+// (globalStep mod its own length) — short loops repeat while long ones roam.
+const STEP_MS = 125;
+const trackSteps = (t) => t.barsN * 16;
+const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+const songSteps = () => state.tracks.reduce((l, t) => (l * t.barsN) / gcd(l, t.barsN), 1) * 16;
+const active = () => state.tracks.find(t => t.key === state.activeKey);
+const others = () => state.tracks.filter(t => t.key !== state.activeKey && !state.hidden.has(t.key));
+
+// ================= audio =================
+let AC = null, noiseBuf = null, FXBUS = null;
+// shared send effects: a real (generated-impulse) reverb and a feedback delay
+function fxBus() {
+  if (FXBUS) return FXBUS;
+  const len = Math.floor(AC.sampleRate * 1.6);
+  const imp = AC.createBuffer(2, len, AC.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const d = imp.getChannelData(c);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.4);
+  }
+  const conv = AC.createConvolver(); conv.buffer = imp; conv.connect(AC.destination);
+  const dly = AC.createDelay(1); dly.delayTime.value = .28;
+  const fb = AC.createGain(); fb.gain.value = .38;
+  dly.connect(fb); fb.connect(dly); dly.connect(AC.destination);
+  FXBUS = { conv, dly };
+  return FXBUS;
+}
+// per-hit channel chain: drive -> 3-band EQ -> pan -> dry out + fx sends.
+// Everything in the Tone/EQ/FX tabs is audible through this.
+function chain(P) {
+  const inG = AC.createGain();
+  let node = inG;
+  if (P.drive > .01) {
+    const sh = AC.createWaveShaper();
+    const k = P.drive * 70, curve = new Float32Array(257);
+    for (let i = 0; i < 257; i++) { const x = (i / 128) - 1; curve[i] = (1 + k) * x / (1 + k * Math.abs(x)); }
+    sh.curve = curve;
+    const trim = AC.createGain(); trim.gain.value = 1 / (1 + P.drive * 1.4);
+    node.connect(sh); sh.connect(trim); node = trim;
+  }
+  const eq = [
+    ['lowshelf', 200, (P.low - .5) * 18],
+    ['peaking', 1000, (P.mid - .5) * 15],
+    ['highshelf', 4200, (P.high - .5) * 18],
+  ].map(([type, f, g]) => { const b = AC.createBiquadFilter(); b.type = type; b.frequency.value = f; b.gain.value = g; return b; });
+  node.connect(eq[0]); eq[0].connect(eq[1]); eq[1].connect(eq[2]); node = eq[2];
+  if (AC.createStereoPanner) { const p = AC.createStereoPanner(); p.pan.value = (P.pan - .5) * 2; node.connect(p); node = p; }
+  node.connect(AC.destination);
+  const bus = fxBus();
+  if (P.reverb > .01) { const s = AC.createGain(); s.gain.value = P.reverb * 1.3; node.connect(s); s.connect(bus.conv); }
+  if (P.delay > .01) { const s = AC.createGain(); s.gain.value = P.delay * .9; node.connect(s); s.connect(bus.dly); }
+  return inG;
+}
+function noiseSrc() {
+  if (!noiseBuf) {
+    noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const s = AC.createBufferSource();
+  s.buffer = noiseBuf; s.loop = true;
+  return s;
+}
+function envGain(t, peak, dur) {
+  const g = AC.createGain();
+  g.gain.setValueAtTime(peak, t);
+  g.gain.exponentialRampToValueAtTime(.001, t + dur);
+  return g;
+}
+// Drums carry pitch: `factor` scales every voice from its C2 home.
+// `vol` is the step's own velocity; P.volume the channel fader.
+function drumVoice(name, t, factor, P, vol = 1) {
+  const out = chain(P); // EQ / pan / drive / reverb / delay all apply
+  const rv = 1;
+  const vg = vol * (P.volume / .8);
+  const envGain = (tt, peak, dur) => {
+    const g = AC.createGain();
+    g.gain.setValueAtTime(Math.max(.001, peak * vg), tt);
+    g.gain.exponentialRampToValueAtTime(.001, tt + dur);
+    return g;
+  };
+  switch (name) {
+    case '808 Kick': {
+      const o = AC.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(160 * factor, t);
+      o.frequency.exponentialRampToValueAtTime(Math.max(28, 45 * factor), t + .12);
+      const g = envGain(t, .5, .5 * rv);
+      o.connect(g).connect(out); o.start(t); o.stop(t + .55 * rv); break;
+    }
+    case '808 Snare': {
+      const o = AC.createOscillator(); o.type = 'triangle'; o.frequency.value = 185 * factor;
+      const g = envGain(t, .22, .18 * rv);
+      o.connect(g).connect(out); o.start(t); o.stop(t + .25 * rv);
+      const n = noiseSrc(); const hp = AC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
+      const g2 = envGain(t, .28, .2 * rv);
+      n.connect(hp); hp.connect(g2).connect(out); n.start(t); n.stop(t + .25 * rv); break;
+    }
+    case '808 Clap': {
+      for (let k = 0; k < 3; k++) {
+        const n = noiseSrc(); const bp = AC.createBiquadFilter(); bp.type = 'bandpass';
+        bp.frequency.value = 1200 * factor; bp.Q.value = 1.5;
+        const tt = t + k * .012;
+        const g = envGain(tt, .26, k === 2 ? .25 * rv : .03);
+        n.connect(bp); bp.connect(g).connect(out); n.start(tt); n.stop(tt + .3 * rv);
+      }
+      break;
+    }
+    case '808 Hat': case '808 Open': {
+      const dur = (name === '808 Open' ? .4 : .06) * rv;
+      const hp = AC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 7000;
+      const g = envGain(t, .14, dur);
+      hp.connect(g).connect(out);
+      [2, 3, 4.16, 5.43, 6.79, 8.21].forEach(r => {
+        const o = AC.createOscillator(); o.type = 'square';
+        o.frequency.value = 80 * r * factor;
+        o.connect(hp); o.start(t); o.stop(t + dur + .05);
+      });
+      break;
+    }
+    case '808 Tom': {
+      const o = AC.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(200 * factor, t);
+      o.frequency.exponentialRampToValueAtTime(Math.max(40, 90 * factor), t + .2);
+      const g = envGain(t, .32, .3 * rv);
+      o.connect(g).connect(out); o.start(t); o.stop(t + .38 * rv); break;
+    }
+    case 'Cowbell': {
+      [540, 800].forEach(fq => {
+        const o = AC.createOscillator(); o.type = 'square'; o.frequency.value = fq * factor;
+        const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 800 * factor;
+        const g = envGain(t, .2, .25 * rv);
+        o.connect(bp); bp.connect(g).connect(out); o.start(t); o.stop(t + .35 * rv);
+      });
+      break;
+    }
+    case 'Rimshot': {
+      const o = AC.createOscillator(); o.type = 'square'; o.frequency.value = 1700 * factor;
+      const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1700 * factor; bp.Q.value = 8;
+      const g = envGain(t, .3, .05);
+      o.connect(bp); bp.connect(g).connect(out); o.start(t); o.stop(t + .1); break;
+    }
+    case 'Maracas': {
+      const n = noiseSrc(); const hp = AC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 5000;
+      const g = envGain(t, .18, .05 * rv);
+      n.connect(hp); hp.connect(g).connect(out); n.start(t); n.stop(t + .1); break;
+    }
+    default: {
+      // Bone Kit, now pitch-aware and less flat: noisy voices get real noise
+      const base = (TIMBRE[name] || ['sine', .1])[1];
+      const noisy = { Snare: 1500, Clap: 1200, Hat: 6000, 'Open Hat': 6000, Rim: 3000, Crash: 5000, Ride: 6500 }[name];
+      if (noisy) {
+        const n = noiseSrc(); const hp = AC.createBiquadFilter(); hp.type = 'highpass';
+        hp.frequency.value = noisy * Math.sqrt(factor);
+        const g = envGain(t, .24, base * rv * 2.2);
+        n.connect(hp); hp.connect(g).connect(out); n.start(t); n.stop(t + base * rv * 2.2 + .05);
+      } else {
+        const o = AC.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(Math.max(30, 82 * factor * (name === '808' ? .8 : name === 'Tom' ? 1.6 : name === 'Perc' ? 2.2 : 1)), t);
+        o.frequency.exponentialRampToValueAtTime(Math.max(24, 38 * factor), t + .09);
+        const g = envGain(t, .3, base * rv * 3);
+        o.connect(g).connect(out); o.start(t); o.stop(t + base * rv * 3 + .05);
+      }
+    }
+  }
+}
+function tone(track, note, len = 1, when = 0, vol = 1) {
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    const P = state.params[track.key];
+    const t = AC.currentTime + when;
+    if (track.kind === 'drum') {
+      drumVoice(state.preset[track.key], t, noteFreq(note) / 65.41 /* C2 */, P, vol);
+      return;
+    }
+    const g = AC.createGain(), f = AC.createBiquadFilter();
+    const [type] = TIMBRE[state.preset[track.key]] || ['triangle', .15];
+    const fr = noteFreq(note);
+    f.type = 'lowpass';
+    f.frequency.value = 200 + P.cutoff * 9000;
+    f.Q.value = 1 + P.resonance * 12;
+    // full ADSR: attack -> decay to sustain -> hold for the step length -> release
+    const atk = .003 + P.attack * .3;
+    const dec = .02 + P.decay * .5;
+    const rel = .04 + P.release * 1.2;
+    const hold = Math.max(.02, len * .125 * .9);
+    const peak = Math.max(.002, (track.kind === 'chord' ? .12 : .2) * vol * (P.volume / .8));
+    const susLvl = Math.max(.0015, peak * P.sustain);
+    const tSus = t + atk + dec, tEnd = Math.max(tSus, t + atk + hold);
+    g.gain.setValueAtTime(.0001, t);
+    g.gain.linearRampToValueAtTime(peak, t + atk);
+    g.gain.exponentialRampToValueAtTime(susLvl, tSus);
+    g.gain.setValueAtTime(susLvl, tEnd);
+    g.gain.exponentialRampToValueAtTime(.001, tEnd + rel);
+    const stopAt = tEnd + rel + .05;
+    const mkOsc = (detuneCents) => {
+      const o = AC.createOscillator();
+      o.type = type;
+      if (P.glide > .01) {
+        o.frequency.setValueAtTime(fr / Math.pow(2, P.glide * .6), t);
+        o.frequency.exponentialRampToValueAtTime(fr, t + .04 + P.glide * .3);
+      } else o.frequency.value = fr;
+      o.detune.value = detuneCents;
+      o.connect(f);
+      o.start(t); o.stop(stopAt);
+    };
+    mkOsc(0);
+    if (P.chorus > .02) mkOsc(7 + P.chorus * 18); // detuned twin = audible thickening
+    f.connect(g);
+    g.connect(chain(P));
+  } catch (_) {}
+}
+function playEvent(track, ev) { ev.notes.forEach((n, i) => tone(track, n, ev.len, i * .012, ev.vol ?? 1)); }
+
+// ================= animated layout =================
+let L = { rings: [], inst: 0 };
+function targetLayout() {
+  const f = state.focusedBar;
+  const rings = [];
+  for (let b = 0; b < active().barsN; b++) {
+    if (b === f) rings.push({ r: 146, s: 1 });
+    else if (b < f) rings.push({ r: 174 - (f - 1 - b) * 13, s: .42 });
+    else rings.push({ r: 146 - 44 * (b - f), s: b - f === 1 ? .6 : .42 });
+  }
+  return { rings, inst: state.view === 'inst' ? 1 : 0 };
+}
+let animId = 0;
+function settle(instant = false) {
+  const from = clone(L), to = targetLayout();
+  while (from.rings.length < to.rings.length) from.rings.push({ r: 40, s: 0 });
+  from.rings.length = to.rings.length;
+  if (instant) { L = to; renderRing(); return; }
+  const id = ++animId, t0 = performance.now(), MS = 260;
+  const ease = (x) => 1 - Math.pow(1 - x, 3);
+  (function frame(now) {
+    if (id !== animId) return;
+    const k = ease(Math.min(1, (now - t0) / MS));
+    L = {
+      inst: from.inst + (to.inst - from.inst) * k,
+      rings: to.rings.map((tr, i) => ({
+        r: from.rings[i].r + (tr.r - from.rings[i].r) * k,
+        s: from.rings[i].s + (tr.s - from.rings[i].s) * k,
+      })),
+    };
+    renderRing();
+    if (k < 1) requestAnimationFrame(frame);
+  })(t0);
+}
+
+// ================= transport (per-channel bar loops) =================
+let timer = null, gPos = -1; // global 16th index over the LCM of all loops
+function stopPlay() { if (timer) clearInterval(timer); timer = null; gPos = -1; renderRing(); }
+function togglePlay() {
+  if (timer) { stopPlay(); return; }
+  let pos = state.cursor % trackSteps(active());
+  gPos = pos;
+  timer = setInterval(() => {
+    state.tracks.forEach(t => {
+      const ev = t.steps[pos % trackSteps(t)];
+      if (ev) playEvent(t, ev);
+    });
+    gPos = pos;
+    const bar = Math.floor((pos % trackSteps(active())) / 16);
+    if (bar !== state.focusedBar) { state.focusedBar = bar; settle(); }
+    renderRing();
+    pos = (pos + 1) % songSteps();
+  }, STEP_MS);
+  renderRing();
+}
+
+// ================= rendering =================
+const app = document.getElementById('app');
+const svg = app.querySelector('.main-layer');
+const fxLayer = app.querySelector('.fx-layer');
+const posLab = app.querySelector('.pos-lab-html');
+const CX = 186, CY = 186, R = 150, orbR = 34;
+
+// The center control: an engraved bone skull on a blood-iron medallion.
+// mode 'play' (idle) · 'stop' (playing: eyes blaze + rim pulses) · 'done'
+// (instrument-confirm: red check chip). One transparent hit circle on top
+// carries the click, so the detailed art stays pointer-inert.
+function skullMedallion(mode) {
+  const lit = mode === 'stop';
+  const hitAttr = mode === 'done' ? 'data-instdone="1"' : 'data-play="1"';
+  const ss = 0.68, tx = (CX - 45 * ss).toFixed(1), ty = (CY - 4 - 44.5 * ss).toFixed(1);
+  const litC = lit ? ' lit' : '';
+  let g = '';
+  g += `<circle cx="${CX}" cy="${CY}" r="${orbR + 7}" class="sk-rim ${lit ? 'lit' : 'idle'}"/>`;
+  g += `<circle cx="${CX}" cy="${CY}" r="${orbR + 2}" class="sk-disc"/>`;
+  // Layered illustration: form gradient → clipped shading (edge AO, temple
+  // hollows, red underlight, specular sheen, bone grain) → sutures → sockets
+  // with lit upper rims → nasal → mouth cavity + sculpted teeth → embers.
+  g += `<g transform="translate(${tx},${ty}) scale(${ss})" pointer-events="none">
+    <g style="filter:drop-shadow(0 2.5px 3.5px rgba(0,0,0,.6))">
+      <use href="#skSil" fill="url(#skBoneG)" stroke="rgba(24,15,9,.9)" stroke-width="1.1"/>
+    </g>
+    <g clip-path="url(#skClip)">
+      <use href="#skSil" fill="none" stroke="rgba(80,60,38,.6)" stroke-width="5" filter="url(#skB2)"/>
+      <ellipse cx="16" cy="35" rx="8" ry="14" fill="rgba(96,76,50,.55)" filter="url(#skB2)"/>
+      <ellipse cx="74" cy="35" rx="8" ry="14" fill="rgba(96,76,50,.55)" filter="url(#skB2)"/>
+      <ellipse cx="20" cy="61" rx="7.5" ry="6" fill="rgba(80,60,38,.6)" filter="url(#skB2)"/>
+      <ellipse cx="70" cy="61" rx="7.5" ry="6" fill="rgba(80,60,38,.6)" filter="url(#skB2)"/>
+      <ellipse cx="45" cy="88" rx="27" ry="9" fill="rgba(52,36,20,.55)" filter="url(#skB2)"/>
+      <ellipse cx="45" cy="78" rx="24" ry="12" fill="rgba(178,28,22,${lit ? '.55' : '.3'})" filter="url(#skB2)"/>
+      <ellipse cx="34" cy="14.5" rx="15" ry="7.5" fill="rgba(255,252,240,.75)" filter="url(#skB2)"/>
+      <ellipse cx="25.5" cy="31" rx="5.5" ry="3" fill="rgba(255,252,240,.5)" filter="url(#skB1)"/>
+      <ellipse cx="63" cy="29" rx="4.5" ry="2.6" fill="rgba(255,252,240,.32)" filter="url(#skB1)"/>
+      <ellipse cx="15.5" cy="54" rx="3.6" ry="2" fill="rgba(255,252,240,.45)" filter="url(#skB1)"/>
+      <ellipse cx="74.5" cy="54" rx="3.6" ry="2" fill="rgba(255,252,240,.32)" filter="url(#skB1)"/>
+      <use href="#skSil" fill="#241a10" filter="url(#skGrainF)" opacity=".3"/>
+    </g>
+    <path class="sk3-crack" d="M22 21 Q30 16.5 37 20 Q44 23.5 51 19 Q58 15 66 20"/>
+    <path class="sk3-crack${litC}" d="M64 13 L60.5 20 L63 26 L59.5 32"/>
+    <path class="sk3-crack" d="M13 51 C16.5 54.5 20.5 56 24.5 55.5"/>
+    <path class="sk3-crack" d="M77 51 C73.5 54.5 69.5 56 65.5 55.5"/>
+    <path d="M17.5 43 C19.5 35.5 30.5 33.5 37.5 40.5 C39.6 45.8 36.6 52.7 28.8 53.2 C21.2 53.7 15.9 49.3 17.5 43 Z" fill="url(#skSocketG)"/>
+    <path d="M72.5 43 C70.5 35.5 59.5 33.5 52.5 40.5 C50.4 45.8 53.4 52.7 61.2 53.2 C68.8 53.7 74.1 49.3 72.5 43 Z" fill="url(#skSocketG)"/>
+    <path d="M18.8 41.2 C21.6 35.8 30.4 34.6 36.4 39.6" fill="none" stroke="rgba(253,248,234,.55)" stroke-width="1.1" stroke-linecap="round"/>
+    <path d="M71.2 41.2 C68.4 35.8 59.6 34.6 53.6 39.6" fill="none" stroke="rgba(253,248,234,.4)" stroke-width="1.1" stroke-linecap="round"/>
+    <path d="M45 54.5 C42.6 60 40.4 64 41.4 67.6 C42.1 70 44 71 45 71 C46 71 47.9 70 48.6 67.6 C49.6 64 47.4 60 45 54.5 Z" fill="url(#skSocketG)"/>
+    <path d="M44.4 56.5 C42.6 60.6 41.4 63.8 42.1 66.6" fill="none" stroke="rgba(253,248,234,.35)" stroke-width=".9" stroke-linecap="round"/>
+    <path d="M29.5 72.8 C34 71.3 56 71.3 60.5 72.8 L60 81.6 C55.8 84.8 34.2 84.8 30 81.6 Z" fill="${lit ? 'url(#skMouthG)' : '#140c07'}"/>
+    ${lit ? '<ellipse cx="45" cy="81" rx="13" ry="4.5" fill="rgba(255,80,36,.5)" filter="url(#skB2)" class="sk3-pulse"/>' : ''}
+    <rect x="31.4" y="72.6" width="4" height="8.6" rx="1.9" fill="url(#skToothG)" stroke="rgba(40,26,14,.55)" stroke-width=".5"/>
+    <rect x="36" y="72.6" width="4.1" height="9.8" rx="1.9" fill="url(#skToothG)" stroke="rgba(40,26,14,.55)" stroke-width=".5"/>
+    <rect x="40.7" y="72.6" width="4.2" height="10.8" rx="2" fill="url(#skToothG)" stroke="rgba(40,26,14,.55)" stroke-width=".5"/>
+    <rect x="45.5" y="72.6" width="4.2" height="10.8" rx="2" fill="url(#skToothG)" stroke="rgba(40,26,14,.55)" stroke-width=".5"/>
+    <rect x="50.3" y="72.6" width="4.1" height="9.8" rx="1.9" fill="url(#skToothG)" stroke="rgba(40,26,14,.55)" stroke-width=".5"/>
+    <rect x="54.9" y="72.6" width="4" height="8.6" rx="1.9" fill="url(#skToothG)" stroke="rgba(40,26,14,.55)" stroke-width=".5"/>
+    ${lit ? `<g class="sk3-pulse">
+      <circle cx="28.3" cy="45" r="5.6" fill="#ff3a1f" filter="url(#skB2)" opacity=".9"/>
+      <circle cx="61.7" cy="45" r="5.6" fill="#ff3a1f" filter="url(#skB2)" opacity=".9"/>
+      <circle cx="28.3" cy="45" r="2" fill="#ffd9a8"/>
+      <circle cx="61.7" cy="45" r="2" fill="#ffd9a8"/>
+      <circle cx="45" cy="64.5" r="2.1" fill="#ff3a1f" filter="url(#skB1)" opacity=".75"/>
+    </g>` : ''}
+  </g>`;
+  const cyc = CY + orbR + 1;
+  g += `<circle cx="${CX}" cy="${cyc}" r="10.5" class="sk-chip" pointer-events="none"/>`;
+  if (mode === 'done') g += `<path d="M${CX - 4.5} ${cyc + .5} l3 3 l6 -6.5" class="sk-glyph check" pointer-events="none"/>`;
+  else if (mode === 'stop') g += `<rect x="${CX - 4}" y="${cyc - 4}" width="8" height="8" rx="1.5" class="sk-glyph" pointer-events="none"/>`;
+  else g += `<path d="M${CX - 3.5} ${cyc - 5} L${CX + 5} ${cyc} L${CX - 3.5} ${cyc + 5} Z" class="sk-glyph" pointer-events="none"/>`;
+  g += `<circle cx="${CX}" cy="${CY + 5}" r="${orbR + 12}" class="sk-hit" ${hitAttr}/>`;
+  return g;
+}
+// position of step i on a ring subdivided into `div` beats
+const posOf = (i, div, r) => {
+  const a = (-90 + i * (360 / div)) * Math.PI / 180;
+  return [CX + r * Math.cos(a), CY + r * Math.sin(a)];
+};
+const polar = (deg, r) => [CX + r * Math.cos(deg * Math.PI / 180), CY + r * Math.sin(deg * Math.PI / 180)];
+function arcPath(r, a0, a1) {
+  const [x0, y0] = polar(a0, r), [x1, y1] = polar(a1, r);
+  return `M${x0} ${y0} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}`;
+}
+// static decorative layer: rendered ONCE so the spin never restarts
+fxLayer.innerHTML = `
+  <g class="spin-slow" style="transform-origin:${CX}px ${CY}px"><circle cx="${CX}" cy="${CY}" r="${R + 24}" class="b-rune-ring"/>
+    <path d="M${CX} ${CY - R - 32} l4 6 -4 6 -4 -6 Z" fill="rgba(242,237,227,.3)"/>
+    <path d="M${CX} ${CY + R + 32} l4 -6 -4 -6 -4 6 Z" fill="rgba(242,237,227,.3)"/></g>
+  <g class="spin-rev" style="transform-origin:${CX}px ${CY}px"><circle cx="${CX}" cy="${CY}" r="${R + 12}" class="b-rune-ring r2"/></g>`;
+
+function renderRing() {
+  const t = active();
+  const div = 16;
+  const shownStep = (timer ? gPos : state.cursor) % trackSteps(t);
+  const shownBar = Math.floor(shownStep / 16);
+  const playStep = timer ? shownStep : -1;
+  const stepsAlpha = 1 - L.inst;
+  let out = `<defs>
+    <radialGradient id="playGrad" cx="38%" cy="30%">
+      <stop offset="0%" stop-color="#e5473a"/><stop offset="55%" stop-color="#a01818"/><stop offset="100%" stop-color="#4a0b0b"/>
+    </radialGradient>
+    <radialGradient id="skullGrad" cx="42%" cy="34%">
+      <stop offset="0%" stop-color="#5e1616"/><stop offset="52%" stop-color="#280a0a"/><stop offset="100%" stop-color="#0b0303"/>
+    </radialGradient>
+    <radialGradient id="chipGrad" cx="38%" cy="30%">
+      <stop offset="0%" stop-color="#e5473a"/><stop offset="55%" stop-color="#a01818"/><stop offset="100%" stop-color="#4a0b0b"/>
+    </radialGradient>
+    <radialGradient id="skBoneG" cx="38%" cy="26%" r="85%">
+      <stop offset="0%" stop-color="#fdf9ee"/><stop offset="45%" stop-color="#ece2c8"/>
+      <stop offset="75%" stop-color="#cbbc9c"/><stop offset="100%" stop-color="#8e7f61"/>
+    </radialGradient>
+    <radialGradient id="skSocketG" cx="50%" cy="42%" r="65%">
+      <stop offset="0%" stop-color="#060302"/><stop offset="55%" stop-color="#170d07"/><stop offset="100%" stop-color="#42301d"/>
+    </radialGradient>
+    <linearGradient id="skToothG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#efe6ce"/><stop offset="70%" stop-color="#d6c8a6"/><stop offset="100%" stop-color="#a8987a"/>
+    </linearGradient>
+    <radialGradient id="skMouthG" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#ff5a2e"/><stop offset="60%" stop-color="#b31f10"/><stop offset="100%" stop-color="#2a0503"/>
+    </radialGradient>
+    <filter id="skB1" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.4"/></filter>
+    <filter id="skB2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="skGrainF">
+      <feTurbulence type="fractalNoise" baseFrequency=".55" numOctaves="2" seed="7" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  .9 .9 .9 0 0" result="a"/>
+      <feComposite in="a" in2="SourceGraphic" operator="in"/>
+    </filter>
+    <path id="skSil" d="M45 3 C28 3 13.5 14 11.5 32 C10.8 40 12 46 14 50 C11.5 52 10.2 55 11.5 58 C12.5 62 15 65 19 66 C20.5 68.5 21 71 22 74 C23 79 25.5 83 31 84.5 C36 86 54 86 59 84.5 C64.5 83 67 79 68 74 C69 71 69.5 68.5 71 66 C75 65 77.5 62 78.5 58 C79.8 55 78.5 52 76 50 C78 46 79.2 40 78.5 32 C76.5 14 62 3 45 3 Z"/>
+    <clipPath id="skClip"><use href="#skSil"/></clipPath>
+  </defs>`;
+
+  if (stepsAlpha > 0.02) {
+    out += `<g opacity="${stepsAlpha}">`;
+    const carved = Object.keys(t.steps).map(Number).filter(s => s < trackSteps(t)).sort((a, b) => a - b);
+    // length arcs (len in this channel's own beats)
+    carved.forEach(s => {
+      const ev = t.steps[s];
+      if (ev.len > 1) {
+        const ring = L.rings[Math.floor(s / div)];
+        const a0 = -90 + (s % div) * (360 / div) + 5, a1 = -90 + ((s % div) + ev.len) * (360 / div) - 7;
+        if (a1 > a0) out += `<path d="${arcPath(ring.r, a0, a1)}" class="b-lenarc" style="stroke-width:${5 * ring.s}"/>`;
+      }
+    });
+    // ghosts on the focused ring — each other channel shows the bar of ITS
+    // loop that lines up (modulo its own length)
+    {
+      const fr = L.rings[state.focusedBar];
+      if (fr) {
+        const gr = fr.r - 19 * fr.s - 10;
+        others().forEach(o => {
+          const ob = state.focusedBar % o.barsN;
+          for (let i = 0; i < 16; i++) {
+            if (o.steps[ob * 16 + i]) {
+              const [x, y] = posOf(i, 16, gr);
+              out += `<circle cx="${x}" cy="${y}" r="3" class="b-ghost"/>`;
+            }
+          }
+        });
+      }
+    }
+    // hand + cursor notch
+    {
+      const ring = L.rings[shownBar] || L.rings[0];
+      const handA = (-90 + ((shownStep % 16) / 16) * 360) * Math.PI / 180;
+      const hr = ring.r - 20 * ring.s - 5;
+      out += `<line x1="${CX}" y1="${CY}" x2="${CX + hr * Math.cos(handA)}" y2="${CY + hr * Math.sin(handA)}" class="b-hand ${timer ? '' : 'idle'}"/>`;
+      const c = state.cursor % trackSteps(t);
+      const cring = L.rings[Math.floor(c / div)] || L.rings[0];
+      const [nx, ny] = posOf(c % div, div, cring.r);
+      out += `<circle cx="${nx}" cy="${ny}" r="${(19 * cring.s) + 5}" class="b-cursor-notch"/>`;
+    }
+    // stones: one ring per bar of the active channel's loop
+    L.rings.forEach((ring, bar) => {
+      if (bar !== state.focusedBar) {
+        out += `<circle cx="${CX}" cy="${CY}" r="${ring.r}" stroke-width="${Math.max(26, 40 * ring.s)}" class="b-focusring" data-focus="${bar}"/>`;
+      }
+      for (let i = 0; i < div; i++) {
+        const s = bar * div + i;
+        const ev = t.steps[s];
+        const [x, y] = posOf(i, div, ring.r);
+        const accent = i % 4 === 0;
+        const rr = (accent ? 19 : 16) * ring.s;
+        const volStyle = ev && (ev.vol ?? 1) < 1 ? ` style="fill-opacity:${.4 + .6 * ev.vol}"` : '';
+        out += `<circle cx="${x}" cy="${y}" r="${rr}" data-s="${s}"${volStyle} class="b-step ${accent ? 'accent' : ''} ${ev ? 'on' : ''} ${state.sel === s ? 'sel' : ''} ${playStep === s ? 'playhead' : ''}"/>`;
+        if (bar === state.focusedBar && ring.s > .8) {
+          const fs = 10.5 * ring.s;
+          if (ev) {
+            if (t.kind === 'chord') {
+              out += `<text x="${x}" y="${y - 3.5}" class="b-lab on" style="font-size:${fs}px">${ev.label.slice(0, 6)}</text>`;
+              out += `<text x="${x}" y="${y + 7}" class="b-lab on" style="font-size:${fs * .62}px;font-family:var(--body);font-style:italic;opacity:.75">${ev.notes.length}v${ev.len > 1 ? '·' + ev.len : ''}</text>`;
+            } else {
+              out += `<text x="${x}" y="${y}" class="b-lab on" style="font-size:${fs}px">${ev.label}</text>`;
+            }
+          } else {
+            out += `<text x="${x}" y="${y}" class="b-lab" style="font-size:${fs}px">${s + 1}</text>`;
+          }
+        }
+      }
+    });
+    out += `</g>`;
+  }
+
+  // instrument wheel
+  if (L.inst > 0.02) {
+    const t2 = active();
+    const names = t2.kind === 'drum' ? DRUM_KITS[state.drumKit[t2.key]] : ALLOWED[t2.kind];
+    const wr = 40 + 106 * L.inst;
+    out += `<g opacity="${L.inst}">`;
+    names.forEach((p, i) => {
+      const a = -90 + (360 / names.length) * i;
+      const [x, y] = polar(a, wr);
+      const cur = state.preset[t2.key] === p;
+      const pr = (names.length > 8 ? 20 : 25) * L.inst;
+      out += `<circle cx="${x}" cy="${y}" r="${pr}" class="p-stone ${cur ? 'cur' : ''}" data-preset="${p}"/>`;
+      out += `<text x="${x}" y="${y}" class="p-lab ${cur ? 'cur' : ''}" style="font-size:${(p.length > 6 ? 8.5 : 10.5) * L.inst}px">${p}</text>`;
+    });
+    const P = state.params[t2.key];
+    const arcs = [
+      { key: 'reverb', a0: 115, a1: 163, lab: 'reverb' },
+      { key: 'drive', a0: 17, a1: 65, lab: 'drive' },
+    ];
+    arcs.forEach(({ key, a0, a1, lab }) => {
+      const r = wr + 36;
+      out += `<path d="${arcPath(r, a0, a1)}" class="fx-arc-bg"/>`;
+      const v = P[key];
+      if (v > 0.01) out += `<path d="${arcPath(r, a0, a0 + (a1 - a0) * v)}" class="fx-arc-fill"/>`;
+      out += `<path d="${arcPath(r, a0 - 4, a1 + 4)}" class="fx-arc-hit" data-arc="${key}" data-a0="${a0}" data-a1="${a1}"/>`;
+      const [lx, ly] = polar((a0 + a1) / 2, r + 17);
+      out += `<text x="${lx}" y="${ly}" class="fx-lab">${lab} ${Math.round(v * 100)}</text>`;
+    });
+    out += `</g>`;
+  }
+
+  // center: engraved blood-iron skull medallion (play / stop / confirm)
+  out += skullMedallion(state.view === 'inst' ? 'done' : (timer ? 'stop' : 'play'));
+  if (state.view === 'inst') {
+    out += `<text x="${CX}" y="${CY + orbR + 26}" class="inst-title" style="font-size:14px" pointer-events="none">${state.preset[active().key]}</text>`;
+  }
+  svg.innerHTML = out;
+  posLab.textContent = `bar ${['I', 'II', 'III'][shownBar]} · step ${shownStep + 1} of ${trackSteps(t)}`;
+}
+
+// ================= pickers =================
+const pickStatus = app.querySelector('.pick-status');
+const pickBody = app.querySelector('.pick-body');
+let pianoScrolledFor = null;
+function keepScroll(el, fn) {
+  const saves = [...el.querySelectorAll('.strip, .piano-wrap')].map(s => s.scrollLeft);
+  fn();
+  [...el.querySelectorAll('.strip, .piano-wrap')].forEach((s, i) => { if (saves[i] !== undefined) s.scrollLeft = saves[i]; });
+}
+const PARAM_TABS = {
+  voice: ['volume', 'attack', 'decay', 'sustain', 'release'],
+  tone: ['cutoff', 'resonance', 'pan', 'glide'],
+  eq: ['low', 'mid', 'high'],
+  fx: ['reverb', 'delay', 'chorus', 'drive'],
+};
+function renderPickers() {
+  const t = active();
+  // instrument view: the pickers area becomes the parameter altar
+  if (state.view === 'inst') {
+    const P = state.params[t.key];
+    pickStatus.innerHTML = `shaping <b>${t.name}</b> — ${state.preset[t.key]}`;
+    const kitRow = t.kind === 'drum' ? `
+      <div class="ptabs">${Object.keys(DRUM_KITS).map(k =>
+        `<button data-kit="${k}" class="${state.drumKit[t.key] === k ? 'cur' : ''}">${k}</button>`).join('')}</div>` : '';
+    pickBody.innerHTML = `
+      ${kitRow}
+      <div class="ptabs">${Object.keys(PARAM_TABS).map(tab =>
+        `<button data-ptab="${tab}" class="${state.instTab === tab ? 'cur' : ''}">${tab}</button>`).join('')}</div>
+      ${PARAM_TABS[state.instTab].map(p => `
+        <div class="prow"><label>${p}</label>
+          <input type="range" min="0" max="100" value="${Math.round(P[p] * 100)}" data-param="${p}" />
+          <output>${Math.round(P[p] * 100)}</output></div>`).join('')}`;
+    return;
+  }
+  const ev = state.sel !== null ? t.steps[state.sel] : null;
+  const sticky = state.stickyEv[t.key];
+  const volTag = (x) => ((x.vol ?? 1) < 1 ? ` · ${Math.round(x.vol * 100)}%` : '');
+  pickStatus.innerHTML = ev
+    ? `retuning step ${state.sel + 1} — <b>${ev.label}${ev.len > 1 ? ' ×' + ev.len : ''}${volTag(ev)}</b>`
+    : `next carve — <b>${sticky.label}${sticky.len > 1 ? ' ×' + sticky.len : ''}${volTag(sticky)}</b>`;
+  keepScroll(pickBody, () => {
+    // ----- Timing tab content -----
+    const beatsRow = `
+      <div class="len-row"><span class="lab">Bars</span>${BARS_CHOICES.map(b =>
+        `<button class="nbtn util ${t.barsN === b ? 'sticky' : ''}" data-barsn="${b}">${['I', 'II', 'III'][b - 1]}</button>`).join('')}</div>`;
+    const lenRow = `
+      <div class="len-row"><span class="lab">Length</span>${[1, 2, 3, 4, 6, 8].map(l =>
+        `<button class="nbtn util ${((ev ?? sticky).len || 1) === l ? 'sticky' : ''}" data-len="${l}">${l === 1 ? '1 step' : '×' + l}</button>`).join('')}</div>`;
+    const stepVol = Math.round(((ev ?? sticky).vol ?? 1) * 100);
+    const volRow = `
+      <div class="len-row"><span class="lab">Step vol</span>
+        <input type="range" min="10" max="100" value="${stepVol}" data-vol style="flex:1;accent-color:var(--blood-lit);min-width:0" />
+        <output style="width:30px;text-align:right;font-size:11px;color:var(--smoke)">${stepVol}</output></div>`;
+
+    // ----- Notes tab content: key-dot piano (+ chord quality) -----
+    const KW = 44;
+    const isChord = t.kind === 'chord';
+    const litKey = isChord ? state.chordCfg.root + state.chordCfg.oct : sticky.label;
+    const [oLo, oHi] = isChord ? [1, 4] : [2, 5];
+    let whites = '', blacks = '', wx = 4;
+    for (let o = oLo; o <= oHi; o++) {
+      for (let i = 0; i < 12; i++) {
+        const name = NOTE_ORDER[i] + o;
+        if (!NOTE_ORDER[i].includes('#')) {
+          whites += `<div class="pk-w ${name === litKey ? 'sticky' : ''}" style="left:${wx}px" data-note="${name}">${name}</div>`;
+          wx += KW;
+        } else {
+          blacks += `<div class="pk-b ${name === litKey ? 'sticky' : ''}" style="left:${wx - 21}px" data-note="${name}">${name}</div>`;
+        }
+      }
+    }
+    const qualRow = isChord ? `
+      <div class="strip" data-strip="qual">${CHORD_QUALITIES.map(q =>
+        `<button class="nbtn ${state.chordCfg.qual === q.id ? 'sticky' : ''}" data-qual="${q.id}">${q.label}</button>`).join('')}
+        <button class="nbtn util" data-inv="1">${INVERSIONS[state.chordCfg.inv]}</button>
+      </div>` : '';
+    const notesContent = `
+      <div class="piano-wrap"><div class="piano" style="width:${wx + 4}px">${whites}${blacks}</div></div>
+      ${qualRow}`;
+
+    const tabBar = `<div class="ptabs pick-tabs">
+      <button data-picktab="notes" class="${state.pickTab === 'notes' ? 'cur' : ''}">${isChord ? 'chord' : 'notes'}</button>
+      <button data-picktab="timing" class="${state.pickTab === 'timing' ? 'cur' : ''}">timing</button>
+    </div>`;
+    pickBody.innerHTML = tabBar + (state.pickTab === 'notes'
+      ? notesContent
+      : `${lenRow}${volRow}${beatsRow}`);
+
+    if (state.pickTab === 'notes' && pianoScrolledFor !== t.key) {
+      pianoScrolledFor = t.key;
+      const wrap = pickBody.querySelector('.piano-wrap');
+      const kEl = wrap.querySelector('.pk-w.sticky, .pk-b.sticky');
+      if (kEl) wrap.scrollLeft = Math.max(0, kEl.offsetLeft - wrap.clientWidth / 2);
+    }
+  });
+}
+function applySticky() {
+  const t = active();
+  if (t.kind === 'chord') {
+    const prev = state.stickyEv[t.key];
+    state.stickyEv[t.key] = buildChord(state.chordCfg, prev.len || 4);
+    state.stickyEv[t.key].vol = prev.vol ?? 1;
+  }
+  const ev = clone(state.stickyEv[t.key]);
+  if (state.sel !== null && t.steps[state.sel]) t.steps[state.sel] = ev;
+  playEvent(t, ev);
+  renderRing(); renderPickers();
+}
+pickBody.addEventListener('click', (e) => {
+  const t = active();
+  const picktab = e.target.closest('[data-picktab]');
+  if (picktab) {
+    state.pickTab = picktab.dataset.picktab;
+    if (state.pickTab === 'notes') pianoScrolledFor = null; // re-center the piano
+    renderPickers(); return;
+  }
+  const ptab = e.target.closest('[data-ptab]');
+  if (ptab) { state.instTab = ptab.dataset.ptab; renderPickers(); return; }
+  const kit = e.target.closest('[data-kit]');
+  if (kit) {
+    state.drumKit[t.key] = kit.dataset.kit;
+    if (!DRUM_KITS[kit.dataset.kit].includes(state.preset[t.key])) {
+      state.preset[t.key] = DRUM_KITS[kit.dataset.kit][0];
+    }
+    playEvent(t, state.stickyEv[t.key]);
+    renderRing(); renderPickers(); return;
+  }
+  const barsn = e.target.closest('[data-barsn]');
+  if (barsn) {
+    // change how many bars this channel's loop spans
+    t.barsN = +barsn.dataset.barsn;
+    state.cursor = state.cursor % trackSteps(t);
+    state.focusedBar = Math.min(state.focusedBar, t.barsN - 1);
+    if (state.sel !== null && state.sel >= trackSteps(t)) state.sel = null;
+    settle(); renderPickers(); return;
+  }
+  const note = e.target.closest('[data-note]');
+  if (note) {
+    if (t.kind === 'chord') {
+      // piano key = chord root AND octave in one tap
+      const p = parseN(note.dataset.note);
+      state.chordCfg.root = NOTE_ORDER[p.semi];
+      state.chordCfg.oct = p.oct;
+    } else {
+      const len = state.stickyEv[t.key].len || 1;
+      state.stickyEv[t.key] = N(note.dataset.note, len);
+    }
+    applySticky(); return;
+  }
+  const qual = e.target.closest('[data-qual]');
+  if (qual) { state.chordCfg.qual = qual.dataset.qual; applySticky(); return; }
+  const inv = e.target.closest('[data-inv]');
+  if (inv) { state.chordCfg.inv = (state.chordCfg.inv + 1) % INVERSIONS.length; applySticky(); return; }
+  const len = e.target.closest('[data-len]');
+  if (len) { state.stickyEv[t.key].len = +len.dataset.len; applySticky(); return; }
+});
+pickBody.addEventListener('input', (e) => {
+  const vr = e.target.closest('[data-vol]');
+  if (vr) {
+    const t = active();
+    const v = vr.value / 100;
+    state.stickyEv[t.key].vol = v;
+    if (state.sel !== null && t.steps[state.sel]) t.steps[state.sel].vol = v;
+    vr.nextElementSibling.textContent = vr.value;
+    renderRing();
+    return;
+  }
+  const r = e.target.closest('[data-param]');
+  if (!r) return;
+  state.params[active().key][r.dataset.param] = r.value / 100;
+  r.nextElementSibling.textContent = r.value;
+  if (state.view === 'inst') renderRing(); // arcs mirror reverb/drive
+});
+pickBody.addEventListener('change', (e) => {
+  if (e.target.closest('[data-param]') || e.target.closest('[data-vol]')) {
+    playEvent(active(), state.stickyEv[active().key]);
+    renderPickers();
+  }
+});
+
+// ================= ring interaction =================
+let dragY = null, dragged = false, dragStartCursor = 0, arcDrag = null;
+svg.addEventListener('pointerdown', (e) => {
+  const arc = e.target.closest('[data-arc]');
+  if (arc) {
+    arcDrag = { key: arc.dataset.arc, a0: +arc.dataset.a0, a1: +arc.dataset.a1 };
+    try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+    setArcFromPointer(e);
+    return;
+  }
+  if (state.view !== 'steps') return;
+  dragY = e.clientY; dragged = false; dragStartCursor = state.cursor;
+});
+function setArcFromPointer(e) {
+  const rect = svg.getBoundingClientRect();
+  const sx = 372 / rect.width;
+  const x = (e.clientX - rect.left) * sx - CX;
+  const y = (e.clientY - rect.top) * sx - CY;
+  let a = Math.atan2(y, x) * 180 / Math.PI;
+  if (a < 0) a += 360;
+  const { key, a0, a1 } = arcDrag;
+  state.params[active().key][key] = Math.min(1, Math.max(0, (a - a0) / (a1 - a0)));
+  renderRing(); renderPickers();
+}
+svg.addEventListener('pointermove', (e) => {
+  if (arcDrag) { setArcFromPointer(e); return; }
+  if (dragY === null) return;
+  const dy = e.clientY - dragY;
+  if (!dragged && Math.abs(dy) > 10) {
+    dragged = true;
+    try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+  }
+  if (dragged) {
+    const n = trackSteps(active());
+    const delta = Math.round(dy / 22);
+    state.cursor = ((dragStartCursor + delta) % n + n) % n;
+    const bar = Math.floor(state.cursor / 16);
+    if (bar !== state.focusedBar && !timer) { state.focusedBar = bar; settle(); }
+    renderRing();
+  }
+});
+window.addEventListener('pointerup', () => { dragY = null; arcDrag = null; });
+svg.addEventListener('click', (e) => {
+  if (dragged) { dragged = false; return; }
+  if (e.target.closest('[data-play]')) { togglePlay(); return; }
+  if (e.target.closest('[data-instdone]')) { closeInst(); return; }
+  const preset = e.target.closest('[data-preset]');
+  if (preset) {
+    state.preset[active().key] = preset.dataset.preset;
+    playEvent(active(), state.stickyEv[active().key]);
+    renderRing(); renderPickers();
+    return;
+  }
+  const focusRing = e.target.closest('[data-focus]');
+  if (focusRing) {
+    state.focusedBar = +focusRing.dataset.focus;
+    settle();
+    return;
+  }
+  const st = e.target.closest('[data-s]');
+  if (!st || state.view !== 'steps') return;
+  const s = +st.dataset.s;
+  const bar = Math.floor(s / 16);
+  if (bar !== state.focusedBar) { state.focusedBar = bar; settle(); return; }
+  const t = active();
+  if (!t.steps[s]) {
+    if (t.kind === 'chord') {
+      const prev = state.stickyEv[t.key];
+      state.stickyEv[t.key] = buildChord(state.chordCfg, prev.len || 4);
+      state.stickyEv[t.key].vol = prev.vol ?? 1;
+    }
+    t.steps[s] = clone(state.stickyEv[t.key]);
+    state.sel = s;
+    playEvent(t, t.steps[s]);
+  } else if (state.sel === s) {
+    delete t.steps[s];
+    state.sel = null;
+  } else {
+    state.sel = s;
+    state.stickyEv[t.key] = clone(t.steps[s]);
+    if (t.kind === 'chord' && t.steps[s].cfg) state.chordCfg = clone(t.steps[s].cfg);
+    playEvent(t, t.steps[s]);
+  }
+  renderRing(); renderPickers();
+});
+svg.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  if (state.view !== 'steps') return;
+  const n = trackSteps(active());
+  state.cursor = ((state.cursor + (e.deltaY > 0 ? 1 : -1)) % n + n) % n;
+  const bar = Math.floor(state.cursor / 16);
+  if (bar !== state.focusedBar && !timer) { state.focusedBar = bar; settle(); }
+  renderRing();
+}, { passive: false });
+
+// ================= instrument view =================
+const instBtn = app.querySelector('[data-act="inst"]');
+const clearBtn = app.querySelector('[data-act="clear"]');
+function openInst() {
+  stopPlay(); state.view = 'inst'; state.sel = null;
+  instBtn.classList.add('lit');
+  clearBtn.style.display = 'none'; // reads as a "close" button next to the wheel
+  settle(); renderPickers();
+}
+function closeInst() {
+  state.view = 'steps';
+  instBtn.classList.remove('lit');
+  clearBtn.style.display = '';
+  settle(); renderPickers();
+}
+instBtn.addEventListener('click', () => { state.view === 'inst' ? closeInst() : openInst(); });
+
+// ================= chrome =================
+const chips = app.querySelector('.track-chips');
+function renderChips() {
+  chips.innerHTML = state.tracks.map(t => `
+    <div class="tchip ${t.key === state.activeKey ? 'active' : ''} ${state.hidden.has(t.key) ? 'hidden-track' : ''}" data-k="${t.key}">
+      <i class="sw ${t.pat}"></i><span class="nm">${t.name}</span>
+      <button class="eye" data-eye="${t.key}">${state.hidden.has(t.key)
+        ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18M10.5 10.6a2.3 2.3 0 0 0 3 3M7 7.2C4.7 8.6 3 12 3 12s3.5 6 9 6c1.6 0 3-.4 4.2-1M10 6.2C10.6 6.1 11.3 6 12 6c5.5 0 9 6 9 6s-.7 1.3-2 2.7"/></svg>'
+        : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.4"/></svg>'}</button>
+    </div>`).join('');
+  // keep the active chip in view (direct scroll, no smooth-jacking)
+  const act = chips.querySelector('.tchip.active');
+  if (act && (act.offsetLeft < chips.scrollLeft || act.offsetLeft + act.offsetWidth > chips.scrollLeft + chips.clientWidth)) {
+    chips.scrollLeft = Math.max(0, act.offsetLeft - chips.clientWidth / 2 + act.offsetWidth / 2);
+  }
+}
+chips.addEventListener('click', (e) => {
+  const eye = e.target.closest('[data-eye]');
+  if (eye) {
+    const k = eye.dataset.eye;
+    if (k !== state.activeKey) state.hidden.has(k) ? state.hidden.delete(k) : state.hidden.add(k);
+    renderChips(); renderRing(); return;
+  }
+  const chip = e.target.closest('.tchip');
+  if (chip) {
+    state.activeKey = chip.dataset.k;
+    state.hidden.delete(chip.dataset.k);
+    state.sel = null;
+    // fold the wound position into the new channel's loop length
+    state.cursor = state.cursor % trackSteps(active());
+    state.focusedBar = Math.min(Math.floor(state.cursor / 16), active().barsN - 1);
+    renderChips(); settle(); renderPickers();
+  }
+});
+app.querySelector('[data-act="clear"]').addEventListener('click', () => {
+  active().steps = {}; state.sel = null; renderRing(); renderPickers();
+});
+renderChips();
+settle(true);
+renderPickers();
+</script>
+</body>
+</html>

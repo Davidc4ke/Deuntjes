@@ -1,27 +1,15 @@
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/components/shared/AuthGate';
 import { db } from '@/db/client';
-import { songs, users } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { games, gameRooms, songs, users } from '@/db/schema';
+import { asc, eq, inArray } from 'drizzle-orm';
 import { SongPageClient } from './SongPageClient';
-import { defaultSequencerState, type SequencerState } from '@/lib/sequencerState';
-
-function normalize(raw: unknown): SequencerState {
-  // Songs predating the sequencer rewrite have empty / partial blobs. Fill in
-  // missing fields from the default so the editor always boots cleanly.
-  const base = defaultSequencerState();
-  if (!raw || typeof raw !== 'object') return base;
-  const r = raw as Partial<SequencerState>;
-  return {
-    steps: r.steps ?? base.steps,
-    bpm: typeof r.bpm === 'number' && isFinite(r.bpm) ? r.bpm : base.bpm,
-    notes: Array.isArray(r.notes) ? r.notes : base.notes,
-    channels: Array.isArray(r.channels) && r.channels.length > 0 ? r.channels : base.channels,
-    activeChannelId: r.activeChannelId ?? base.activeChannelId,
-    nextChannelId: r.nextChannelId ?? base.nextChannelId,
-    nextId: r.nextId ?? base.nextId,
-  };
-}
+import { RingSongView } from './RingSongView';
+import { normalizeSequencerState } from '@/lib/sequencerState';
+import { isRingState, normalizeRingState } from '@/lib/ringState';
+import { curseById } from '@/lib/curses';
+import { CHANNEL_NAMES } from '@/lib/gameLogic';
+import { toRoman } from '../../games/glyphs';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,12 +31,70 @@ export default async function SongPage({ params }: { params: Promise<{ id: strin
     .limit(1);
   if (!row) notFound();
 
+  // A game-backed song is read-only for EVERYONE here, owner included — the
+  // only write path is the game's turn API. Without this the owner's autosave
+  // would hammer the song PATCH's 409 guard in a retry loop.
+  const [game] = await db.select({ id: games.id }).from(games).where(eq(games.songId, id)).limit(1);
+  const isOwner = !game && row.createdBy === userId;
+
+  // Dungeon songs composed in the Ritual Ring get the ring listen-view; the
+  // only write path for them is the game's turn API, so it's always read-only.
+  if (isRingState(row.sequencerData)) {
+    // The chronicle: who forged which layer under which curse. Only SEALED
+    // rooms are credited — an in-progress room's cards stay secret, exactly
+    // as on the map.
+    let credits: Array<{
+      roman: string;
+      player: string;
+      avatar: string;
+      track: string;
+      curse: string | null;
+      rule: string | null;
+    }> = [];
+    if (game) {
+      const roomsList = await db
+        .select()
+        .from(gameRooms)
+        .where(eq(gameRooms.gameId, game.id))
+        .orderBy(asc(gameRooms.roomIndex));
+      const locked = roomsList.filter((r) => r.status === 'locked');
+      const ids = [...new Set(locked.map((r) => r.playerId))];
+      const players = ids.length
+        ? await db
+            .select({ id: users.id, displayName: users.displayName, avatarEmoji: users.avatarEmoji })
+            .from(users)
+            .where(inArray(users.id, ids))
+        : [];
+      const byId = new Map(players.map((p) => [p.id, p]));
+      credits = locked.map((r) => {
+        const p = byId.get(r.playerId);
+        const c = curseById(r.curseId);
+        return {
+          roman: toRoman(r.roomIndex + 1),
+          player: p?.displayName ?? '?',
+          avatar: p?.avatarEmoji ?? '',
+          track: CHANNEL_NAMES[r.channelId] ?? `Ch ${r.channelId}`,
+          curse: c?.name ?? null,
+          rule: c?.rule ?? null,
+        };
+      });
+    }
+    return (
+      <RingSongView
+        title={row.title}
+        initialState={normalizeRingState(row.sequencerData)}
+        creator={{ displayName: row.creatorName, avatarEmoji: row.creatorAvatar }}
+        credits={credits}
+      />
+    );
+  }
+
   return (
     <SongPageClient
       songId={row.id}
       title={row.title}
-      initialState={normalize(row.sequencerData)}
-      isOwner={row.createdBy === userId}
+      initialState={normalizeSequencerState(row.sequencerData)}
+      isOwner={isOwner}
       creator={{ displayName: row.creatorName, avatarEmoji: row.creatorAvatar }}
     />
   );

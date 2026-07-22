@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/db/client';
-import { songs, users } from '@/db/schema';
+import { games, songs, users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+
+// A song that belongs to a dungeon game may only be written through the
+// game's turn/lock API — even by its owner. Blocking DELETE also stops the
+// cascade FK from silently killing the game.
+async function songGameId(songId: string): Promise<string | null> {
+  const [g] = await db.select({ id: games.id }).from(games).where(eq(games.songId, songId)).limit(1);
+  return g?.id ?? null;
+}
 
 async function loadSong(id: string) {
   const [row] = await db
@@ -57,6 +65,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const row = await loadSong(id);
   if (!row) return NextResponse.json({ error: 'not found' }, { status: 404 });
   if (row.createdBy !== userId) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (await songGameId(id)) return NextResponse.json({ error: 'song belongs to a game' }, { status: 409 });
 
   const body = (await req.json().catch(() => null)) as
     | { title?: string; sequencerData?: unknown }
@@ -95,6 +104,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const row = await loadSong(id);
   if (!row) return NextResponse.json({ error: 'not found' }, { status: 404 });
   if (row.createdBy !== userId) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (await songGameId(id)) return NextResponse.json({ error: 'song belongs to a game' }, { status: 409 });
 
   await db.delete(songs).where(eq(songs.id, id));
   return NextResponse.json({ ok: true });

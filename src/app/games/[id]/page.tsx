@@ -1,0 +1,164 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { requireUser } from '@/components/shared/AuthGate';
+import { db } from '@/db/client';
+import { games, gameRooms, users } from '@/db/schema';
+import { asc, eq, inArray } from 'drizzle-orm';
+import { curseById } from '@/lib/curses';
+import { CHANNEL_NAMES } from '@/lib/gameLogic';
+import { CHANNEL_PATTERNS, initials, LockGlyph, SkullGlyph, SwordsGlyph, toRoman } from '../glyphs';
+import { DeleteGameButton } from './DeleteGameButton';
+
+export const dynamic = 'force-dynamic';
+
+export default async function GameMapPage({ params }: { params: Promise<{ id: string }> }) {
+  const { userId } = await requireUser();
+  const { id } = await params;
+
+  const [game] = await db.select().from(games).where(eq(games.id, id)).limit(1);
+  if (!game) notFound();
+
+  const rooms = await db
+    .select()
+    .from(gameRooms)
+    .where(eq(gameRooms.gameId, id))
+    .orderBy(asc(gameRooms.roomIndex));
+
+  const playerOrder = game.playerOrder as string[];
+  const players = await db
+    .select({ id: users.id, displayName: users.displayName, avatarEmoji: users.avatarEmoji })
+    .from(users)
+    .where(inArray(users.id, playerOrder));
+  const byId = new Map(players.map((p) => [p.id, p]));
+
+  const complete = game.status === 'complete';
+  const currentRoom = rooms.find((r) => r.status === 'current') ?? null;
+  const yourTurn = !complete && currentRoom?.playerId === userId;
+  const currentPlayer = currentRoom ? byId.get(currentRoom.playerId) : null;
+
+  return (
+    <main className="grim-page">
+      <div className="grim-bar">
+        <Link href="/" className="grim-back">‹</Link>
+        <span className="grim-title">{game.title}</span>
+        <span className="grim-crumb">
+          {complete ? 'Complete' : `Room ${toRoman((currentRoom?.roomIndex ?? 0) + 1)} · ${toRoman(game.roomCount)}`}
+        </span>
+      </div>
+
+      {complete ? (
+        <>
+          <div className="banner">
+            <div className="k">✦ The dungeon is cleared ✦</div>
+            <div className="v">
+              Song complete
+              <small>
+                {game.roomCount} layers, {playerOrder.length} bards, one cursed groove
+              </small>
+            </div>
+          </div>
+          <Link href={`/songs/${game.songId}`} className="gbtn rite">
+            ▶︎ Hear the finished song
+          </Link>
+        </>
+      ) : yourTurn && currentRoom ? (
+        // The next room and the enter action are ONE element: tap the door.
+        <Link href={`/games/${game.id}/room`} className="door enterable">
+          <span className="door-label">
+            <span className="k">✦ It is your turn ✦</span>
+            <span className="v">Room <span className="rn">{toRoman(currentRoom.roomIndex + 1)}</span> awaits</span>
+          </span>
+          <span className="door-frame">
+            <span className={`door-numeral${toRoman(currentRoom.roomIndex + 1).length > 2 ? ' long' : ''}`}>
+              {toRoman(currentRoom.roomIndex + 1)}
+            </span>
+            <span className="door-keeper">the Room holds its secrets</span>
+          </span>
+          <span className="door-plate">
+            <SwordsGlyph size={18} stroke="#f2ede3" /> Enter the Room
+          </span>
+        </Link>
+      ) : currentRoom ? (
+        <div className="door">
+          <span className="door-label">
+            <span className="k">✦ The crypt is occupied ✦</span>
+            <span className="v">Room <span className="rn">{toRoman(currentRoom.roomIndex + 1)}</span></span>
+            <small>
+              {currentPlayer ? `${currentPlayer.displayName} is inside — you will be summoned` : 'Awaiting a bard'}
+            </small>
+          </span>
+          <span className="door-frame">
+            <span className={`door-numeral${toRoman(currentRoom.roomIndex + 1).length > 2 ? ' long' : ''}`}>
+              {toRoman(currentRoom.roomIndex + 1)}
+            </span>
+            <span className="door-keeper">
+              {currentPlayer && <span className="med">{initials(currentPlayer.displayName)}</span>}
+              fate undisclosed…
+            </span>
+          </span>
+        </div>
+      ) : null}
+
+      {/* Anyone who isn't the one composing can hear the song so far,
+          read-only — the sealed layers played back through the ring. */}
+      {!complete && !yourTurn && rooms.some((r) => r.status === 'locked') && (
+        <Link href={`/songs/${game.songId}`} className="gbtn iron" style={{ marginTop: 10 }}>
+          ▶︎ Listen to the song so far
+        </Link>
+      )}
+
+      <div className="ornament" />
+      <div className="section-label">
+        The Dungeon · <b>{toRoman(game.roomCount)}</b> Rooms
+      </div>
+
+      {/* Only rooms that have been opened and sealed appear on the map —
+          the future stays dark. Deepest (most recent) room first. */}
+      {rooms
+        .filter((r) => r.status === 'locked')
+        .sort((a, b) => b.roomIndex - a.roomIndex)
+        .map((r) => {
+          const p = byId.get(r.playerId);
+          const roman = toRoman(r.roomIndex + 1);
+          const curse = curseById(r.curseId);
+          return (
+            <div key={r.id} className="room locked">
+              <div className="arch">
+                <span className={`roman${roman.length > 2 ? ' long' : ''}`}>{roman}</span>
+              </div>
+              <div className="body">
+                <div className="rm-title">Room {roman}</div>
+                <div className="rm-sub">
+                  <span className="who">
+                    <span className="med">{initials(p?.displayName ?? '?')}</span> {p?.displayName ?? '?'}
+                  </span>
+                  <span className="chip">
+                    <i className={`sw ${CHANNEL_PATTERNS[r.channelId] ?? ''}`} />
+                    {CHANNEL_NAMES[r.channelId] ?? `Ch ${r.channelId}`} layer
+                  </span>
+                  {curse && (
+                    <span className="chip curse">
+                      <SkullGlyph size={11} /> {curse.name}
+                    </span>
+                  )}
+                </div>
+                {curse && (
+                  <div className="rm-rule">
+                    <SkullGlyph size={11} /> {curse.rule}
+                  </div>
+                )}
+              </div>
+              <LockGlyph size={24} stroke="rgba(242,237,227,.75)" />
+            </div>
+          );
+        })}
+      {!rooms.some((r) => r.status === 'locked') && (
+        <p className="deal-intro" style={{ marginTop: 4 }}>
+          No rooms have been sealed yet — the crypt below lies in darkness.
+        </p>
+      )}
+
+      {game.createdBy === userId && <DeleteGameButton gameId={game.id} />}
+    </main>
+  );
+}

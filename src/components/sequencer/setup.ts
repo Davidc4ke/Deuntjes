@@ -8,6 +8,14 @@ export interface MountOptions {
   initialState?: unknown;
   onChange?: (state: unknown) => void;
   readOnly?: boolean;
+  // Turn mode (dungeon games): confine all editing to this channel. The
+  // channel strip renders only this channel, switching is blocked, and
+  // notes on other channels can't be selected. Server-side validation is
+  // the backstop; this keeps honest edits from 400-ing the autosave.
+  lockedChannelId?: number;
+  // Turn mode: only these presets appear in (and are applicable from) the
+  // instrument picker — drums for a Drum turn, poly voices for Chord, etc.
+  allowedPresets?: string[];
   // Song-level integration hooks (no-ops in the standalone mockup):
   onBack?: () => void;
   onRenameTitle?: (title: string) => void;
@@ -1327,6 +1335,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   // or many) as the seed. Cursor + scroller jump to the step. If the note is on
   // a different channel, switch input to that channel first.
   function enterChordModeAtNote(n) {
+    if (options.lockedChannelId && n.channelId !== options.lockedChannelId) return;
     if (n.channelId !== state.activeChannelId) setActiveChannel(n.channelId);
     state.cursor = n.step;
     positionKnobFromCursor();
@@ -1455,6 +1464,10 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   })();
 
   function enterMultiSelectWith(noteId) {
+    if (options.lockedChannelId) {
+      const __n = state.notes.find(x => x.id === noteId);
+      if (__n && __n.channelId !== options.lockedChannelId) return;
+    }
     if (state.multiSelect && state.selectedIds.has(noteId)) {
       // Long-press on an already-selected note removes it from the set.
       state.selectedIds.delete(noteId);
@@ -1577,6 +1590,10 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   }
 
   function selectNote(id) {
+    if (options.lockedChannelId) {
+      const __n = state.notes.find(x => x.id === id);
+      if (__n && __n.channelId !== options.lockedChannelId) return;
+    }
     if (!state.multiSelect) {
       const n0 = state.notes.find(x => x.id === id);
       if (n0 && n0.channelId !== state.activeChannelId) {
@@ -1801,6 +1818,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     const cont = $("channelHeaders");
     cont.innerHTML = "";
     state.channels.forEach(ch => {
+      if (options.lockedChannelId && ch.id !== options.lockedChannelId) return;
       const btn = document.createElement("button");
       btn.type = "button";
       let cls = "channel-col-header";
@@ -1813,6 +1831,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       attachChannelHeaderGesture(btn, ch.id);
       cont.appendChild(btn);
     });
+    if (options.lockedChannelId) return; // no channel add/settings in turn mode
     const addBtn = document.createElement("button");
     addBtn.type = "button";
     addBtn.className = "channel-col-add";
@@ -1824,6 +1843,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   }
 
   function openChannelsPopup() {
+    if (options.lockedChannelId) return;
     renderChannelList();
     document.querySelectorAll(".popup").forEach(p => p.classList.toggle("hidden", p.dataset.name !== "channels"));
     $("popupLayer").classList.remove("hidden");
@@ -2307,6 +2327,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   }
 
   function setActiveChannel(id) {
+    if (options.lockedChannelId && id !== options.lockedChannelId) return;
     if (id === state.activeChannelId) return;
     state.activeChannelId = id;
     state.selectedId = null;
@@ -2508,6 +2529,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     const btn = e.target.closest("button[data-value]");
     if (!btn) return;
     const value = btn.dataset.value;
+    if (options.allowedPresets && !options.allowedPresets.includes(value)) return;
     pushUndo();
     const ch = activeChannel();
     ch.presetName = value;
@@ -2991,8 +3013,24 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
   // await this; we deliberately don't attach a document-level capture-phase
   // listener because that interferes with click delivery on iOS Safari.
   let audioUnlockPromise = null;
+  // iOS mutes plain WebAudio output while the ringer switch is on silent.
+  // Looping a (silent) HTML <audio> element flips the audio session into
+  // "playback" mode, which ignores the switch — the standard workaround for
+  // web music apps. Created once, on the same first gesture as Tone.start().
+  let __mediaKick = null;
   function unlockAudio() {
-    if (!audioUnlockPromise) audioUnlockPromise = Tone.start();
+    if (!audioUnlockPromise) {
+      audioUnlockPromise = Tone.start();
+      try {
+        __mediaKick = document.createElement('audio');
+        __mediaKick.setAttribute('playsinline', '');
+        __mediaKick.loop = true;
+        __mediaKick.src =
+          'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+        const p = __mediaKick.play();
+        if (p && p.catch) p.catch(() => {});
+      } catch (_) { __mediaKick = null; }
+    }
     return audioUnlockPromise;
   }
 
@@ -3124,6 +3162,10 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     cont.innerHTML = "";
     const active = activeChannel().presetName;
     PRESET_CATEGORIES.forEach(cat => {
+      const presets = options.allowedPresets
+        ? cat.presets.filter(name => options.allowedPresets.includes(name))
+        : cat.presets;
+      if (presets.length === 0) return; // whole category off-limits this turn
       const group = document.createElement("div");
       group.className = "preset-group";
       const lab = document.createElement("div");
@@ -3133,7 +3175,7 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
       const seg = document.createElement("div");
       seg.className = "seg seg-presets";
       seg.dataset.group = "instrument";
-      cat.presets.forEach(name => {
+      presets.forEach(name => {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.dataset.value = name;
@@ -3232,10 +3274,19 @@ export function mountSequencer(root: HTMLElement, options: MountOptions = {}): (
     if (options.initialState) applySnapshot(JSON.stringify(options.initialState));
   } catch (err) { console.warn('sequencer initialState load failed', err); }
 
+  // Turn mode: force the dealt channel active before init() renders.
+  if (options.lockedChannelId) {
+    try {
+      state.activeChannelId = options.lockedChannelId;
+      root.classList.add('seq-channel-locked');
+    } catch (_) {}
+  }
+
   if (options.readOnly) root.classList.add('seq-readonly');
 
   return () => {
     __destroyed = true;
+    if (__mediaKick) { try { __mediaKick.pause(); __mediaKick.src = ''; } catch (_) {} __mediaKick = null; }
     if (__raf) { try { cancelAnimationFrame(__raf); } catch (_) {} __raf = 0; }
     if (__resizeHandler) { try { window.removeEventListener('resize', __resizeHandler); } catch (_) {} __resizeHandler = null; }
     try { Tone.Transport.stop(); Tone.Transport.cancel(); } catch (_) {}

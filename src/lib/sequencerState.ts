@@ -45,6 +45,23 @@ export type SequencerState = {
   nextId: number;
 };
 
+// Songs predating the sequencer rewrite have empty / partial blobs. Fill in
+// missing fields from the default so the editor always boots cleanly.
+export function normalizeSequencerState(raw: unknown): SequencerState {
+  const base = defaultSequencerState();
+  if (!raw || typeof raw !== 'object') return base;
+  const r = raw as Partial<SequencerState>;
+  return {
+    steps: r.steps ?? base.steps,
+    bpm: typeof r.bpm === 'number' && isFinite(r.bpm) ? r.bpm : base.bpm,
+    notes: Array.isArray(r.notes) ? r.notes : base.notes,
+    channels: Array.isArray(r.channels) && r.channels.length > 0 ? r.channels : base.channels,
+    activeChannelId: r.activeChannelId ?? base.activeChannelId,
+    nextChannelId: r.nextChannelId ?? base.nextChannelId,
+    nextId: r.nextId ?? base.nextId,
+  };
+}
+
 export function defaultSequencerState(): SequencerState {
   // Mirrors the mockup's initial state object so a freshly-created song
   // opens to the same seed grid the sandbox does.
@@ -62,7 +79,9 @@ export function defaultSequencerState(): SequencerState {
     notes: [],
     channels: [
       { id: 1, name: 'Bass',  color: '#e89e58', edge: '#b87a3a', presetName: 'bass',  muted: false, volume: 0.8, adsr: { attack: 0.02,  decay: 0.15, sustain: 0.7, release: 0.4  }, eq: defaultEQ(), fx: defaultFX(), tone: defaultTone() },
-      { id: 2, name: 'Drum',  color: '#6ec3a4', edge: '#3f8a70', presetName: 'pluck', muted: false, volume: 0.8, adsr: { attack: 0.005, decay: 0.05, sustain: 0.0, release: 0.15 }, eq: defaultEQ(), fx: defaultFX(), tone: defaultTone() },
+      // Drum seeds with an actual drum voice so game turns that whitelist
+      // drum presets accept the untouched default.
+      { id: 2, name: 'Drum',  color: '#6ec3a4', edge: '#3f8a70', presetName: 'kick',  muted: false, volume: 0.8, adsr: { attack: 0.001, decay: 0.40, sustain: 0.0, release: 0.30 }, eq: defaultEQ(), fx: defaultFX(), tone: defaultTone() },
       { id: 3, name: 'Lead',  color: '#7b9ce6', edge: '#4b6db8', presetName: 'lead',  muted: false, volume: 0.8, adsr: { attack: 0.01,  decay: 0.10, sustain: 0.5, release: 0.3  }, eq: defaultEQ(), fx: defaultFX(), tone: defaultTone() },
       { id: 4, name: 'Chord', color: '#c47ccf', edge: '#8a4d93', presetName: 'pad',   muted: false, volume: 0.8, adsr: { attack: 0.10,  decay: 0.20, sustain: 0.8, release: 0.8  }, eq: defaultEQ(), fx: defaultFX(), tone: defaultTone() },
     ],
