@@ -7,6 +7,7 @@ import { games, gameRooms, songs, users } from '@/db/schema';
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { defaultSequencerState } from '@/lib/sequencerState';
 import { initials, SkullGlyph, SwordsGlyph, toRoman } from './games/glyphs';
+import { SubmitButton } from '@/components/shared/SubmitButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,9 +85,9 @@ export default async function HomePage() {
             <SkullGlyph size={17} stroke="#f2ede3" eyes="#f2ede3" /> New dungeon
           </Link>
           <form action={createSongAction} style={{ flex: 1, display: 'flex' }}>
-            <button type="submit" className="gbtn iron" style={{ flex: 1 }}>
+            <SubmitButton className="gbtn iron" style={{ flex: 1 }} pendingLabel="Creating…">
               + New song
-            </button>
+            </SubmitButton>
           </form>
         </div>
 

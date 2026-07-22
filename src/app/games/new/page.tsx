@@ -6,6 +6,7 @@ import { games, gameRooms, songs, users } from '@/db/schema';
 import { asc } from 'drizzle-orm';
 import { clampRingBpm, defaultRingSongState } from '@/lib/ringState';
 import { BpmPicker } from './BpmPicker';
+import { SubmitButton } from '@/components/shared/SubmitButton';
 import { channelForRoom, playerForRoom } from '@/lib/gameLogic';
 import { dealCurse } from '@/lib/curses';
 import { initials, SkullGlyph } from '../glyphs';
@@ -118,9 +119,9 @@ export default async function NewGamePage() {
         <p className="hint">Each room is one turn: one track, one curse, one bard.</p>
 
         <div style={{ marginTop: 26 }}>
-          <button type="submit" className="gbtn rite">
+          <SubmitButton className="gbtn rite" pendingLabel="Opening the gates…">
             <SkullGlyph size={18} stroke="#f2ede3" eyes="#f2ede3" /> Open the gates
-          </button>
+          </SubmitButton>
           <Link href="/" className="gbtn ghost">‹ Retreat home</Link>
         </div>
       </form>

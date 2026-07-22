@@ -691,6 +691,28 @@
 .grim .player-pick .pname { flex: 1; font-size: 15px; color: var(--g-ink); font-style: normal; }
 .grim .player-pick .pyou { font-size: 11px; color: var(--g-smoke); font-style: italic; }
 
+/* ===== generic loading feedback ===== */
+/* inline spinner for buttons — inherits the button's text colour so it
+   reads on parchment, iron and blood faces alike */
+.grim .gspin {
+  display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 7px;
+  border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%;
+  animation: gspin 0.7s linear infinite;
+}
+@keyframes gspin { to { transform: rotate(360deg); } }
+.grim button[aria-busy='true'], .grim [aria-busy='true'] { opacity: 0.75; cursor: progress; }
+/* full-route loading fallback (loading.tsx) */
+.grim .grim-loading {
+  min-height: 62vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+}
+.grim .grim-loading .gspin {
+  width: 34px; height: 34px; border-width: 3px; margin: 0; color: var(--blood-lit);
+}
+.grim .grim-loading .txt {
+  font-family: var(--g-display); font-size: 21px; color: var(--g-ink); letter-spacing: 0.02em;
+}
+
 /* ===== login loading feedback ===== */
 /* While a bard is entering, the roster dims and stops taking taps and an
    indeterminate blood bar sweeps above it. Purely visual — the native form
