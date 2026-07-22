@@ -579,13 +579,15 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       const ac = ensureAC();
       const P = pOver ?? track.params;
       const t = ac.currentTime + when;
+      // whole-lane octave transpose as a frequency multiplier (works on drums)
+      const octMul = Math.pow(2, track.octave ?? 0);
       if (track.kind === 'drum') {
-        drumVoice(track.preset, t, noteFreq(note) / 65.41 /* C2 */, P, vol);
+        drumVoice(track.preset, t, (noteFreq(note) / 65.41) /* C2 */ * octMul, P, vol);
         return;
       }
       const g = ac.createGain(), f = ac.createBiquadFilter();
       const [type] = TIMBRE[track.preset] || ['triangle', .15];
-      const fr = noteFreq(note);
+      const fr = noteFreq(note) * octMul;
       f.type = 'lowpass';
       f.frequency.value = 200 + P.cutoff * 9000;
       f.Q.value = 1 + P.resonance * 12;
@@ -961,7 +963,9 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     // the running loop; the wheel closes via the lit gear chip instead.
     out += skullMedallion(timer ? 'stop' : 'play');
     if (state.view === 'inst') {
-      out += `<text x="${CX}" y="${CY + orbR + 26}" class="inst-title" style="font-size:14px" pointer-events="none">${active().preset}</text>`;
+      const oc = active().octave ?? 0;
+      const octTag = oc ? ` · ${oc > 0 ? '+' : ''}${oc} oct` : '';
+      out += `<text x="${CX}" y="${CY + orbR + 26}" class="inst-title" style="font-size:14px" pointer-events="none">${active().preset}${octTag}</text>`;
     }
     svg.innerHTML = out;
   }
@@ -1033,10 +1037,22 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       const kitRow = t.kind === 'drum' ? `
         <div class="ptabs">${Object.keys(DRUM_KITS).map((k) =>
           `<button data-kit="${k}" class="${(t.drumKit ?? 'Bone Kit') === k ? 'cur' : ''}">${k}</button>`).join('')}</div>` : '';
+      // Octave transpose lives at the top of the Voice tab: shift the whole
+      // lane down (or up) in whole octaves when notes don't reach low enough.
+      const oc = t.octave ?? 0;
+      const octRow = state.instTab === 'voice' ? `
+        <div class="prow oct-row"><label>octave</label>
+          <div class="oct-step">
+            <button data-oct="down"${oc <= -4 ? ' disabled' : ''}>−</button>
+            <span class="oct-val">${oc > 0 ? '+' : ''}${oc}</span>
+            <button data-oct="up"${oc >= 4 ? ' disabled' : ''}>+</button>
+          </div>
+        </div>` : '';
       pickBody.innerHTML = `
         ${kitRow}
         <div class="ptabs">${Object.keys(PARAM_TABS).map((tab) =>
           `<button data-ptab="${tab}" class="${state.instTab === tab ? 'cur' : ''}">${tab}</button>`).join('')}</div>
+        ${octRow}
         ${PARAM_TABS[state.instTab].map((p) => `
           <div class="prow"><label>${p}</label>
             <input type="range" min="0" max="100" value="${Math.round(P[p] * 100)}" data-param="${p}" />
@@ -1158,6 +1174,19 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     }
     const ptab = target.closest('[data-ptab]') as HTMLElement | null;
     if (ptab) { state.instTab = ptab.dataset.ptab; renderPickers(); return; }
+    const octb = target.closest('[data-oct]') as HTMLElement | null;
+    if (octb) {
+      const dir = octb.dataset.oct === 'up' ? 1 : -1;
+      const next = Math.max(-4, Math.min(4, (t.octave ?? 0) + dir));
+      if (next !== t.octave) {
+        t.octave = next;
+        commit();
+        playEvent(t, state.stickyEv[t.key]);
+        renderRing();
+        renderPickers();
+      }
+      return;
+    }
     const stab = target.closest('[data-stab]') as HTMLElement | null;
     if (stab) { state.stepTab = stab.dataset.stab; renderPickers(); return; }
     const sreset = target.closest('[data-sreset]') as HTMLElement | null;

@@ -208,3 +208,13 @@
 .ringseq .prow label { width: 64px; font: 400 12px var(--gothic); letter-spacing: .05em; color: var(--ink-dim); flex-shrink: 0; }
 .ringseq .prow input[type=range] { flex: 1; accent-color: var(--blood-lit); min-width: 0; }
 .ringseq .prow output { width: 30px; text-align: right; font-size: 11px; color: var(--smoke); flex-shrink: 0; }
+/* octave stepper (Voice tab) */
+.ringseq .oct-step { display: flex; align-items: center; gap: 12px; flex: 1; }
+.ringseq .oct-step button {
+  width: 42px; height: 32px; border-radius: 6px; flex-shrink: 0;
+  background: #0d0d0d; border: 1.5px solid rgba(242,237,227,.28); color: var(--ink-dim);
+  font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center;
+}
+.ringseq .oct-step button:active { background: var(--blood-dark); color: var(--parch); }
+.ringseq .oct-step button:disabled { opacity: .3; }
+.ringseq .oct-step .oct-val { min-width: 40px; text-align: center; font: 400 16px var(--gothic); color: var(--parch); }

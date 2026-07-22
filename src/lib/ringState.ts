@@ -56,6 +56,9 @@ export type RingTrack = {
   // '1/2' advances one lane step per two master steps, '2' advances two lane
   // steps per master step. '1' is lockstep.
   speed: string;
+  // Whole-octave transpose for the whole lane (−4..+4). Applied at playback
+  // as a frequency multiplier, so it deepens drums too. 0 = as written.
+  octave: number;
   steps: Record<string, RingEvent>; // step index -> event
   params: RingParams;
 };
@@ -117,6 +120,8 @@ export const RING_CHORD_QUALITY_IDS = [
 
 export const RING_BARS_CHOICES = [1, 2, 3];
 export const RING_MAX_STEPS = 16 * 3;
+export const RING_OCTAVE_MIN = -4;
+export const RING_OCTAVE_MAX = 4;
 
 // Lane clock rates: lane steps advanced per master step. Fractions are slow
 // lanes (one step every N master steps), integers are fast lanes. Every value
@@ -182,6 +187,7 @@ export function defaultRingSongState(bpm: number = RING_BPM_DEFAULT): RingSongSt
       ...seed,
       barsN: seed.kind === 'drum' ? 1 : 2,
       speed: '1',
+      octave: 0,
       steps: {},
       params: defaultRingParams(),
     })),
@@ -270,6 +276,7 @@ export function sanitizeRingTrack(identity: LaneSeed, raw: unknown): RingTrack {
   const barsRaw = Math.round(num(r.barsN, identity.kind === 'drum' ? 1 : 2, 1, 3));
   const barsN = RING_BARS_CHOICES.includes(barsRaw) ? barsRaw : 2;
   const speed = typeof r.speed === 'string' && RING_SPEEDS[r.speed] ? r.speed : '1';
+  const octave = Math.round(num(r.octave, 0, RING_OCTAVE_MIN, RING_OCTAVE_MAX));
 
   const steps: Record<string, RingEvent> = {};
   if (r.steps && typeof r.steps === 'object') {
@@ -290,6 +297,7 @@ export function sanitizeRingTrack(identity: LaneSeed, raw: unknown): RingTrack {
     ...(drumKit ? { drumKit } : {}),
     barsN,
     speed,
+    octave,
     steps,
     params: sanitizeRingParams(r.params),
   };
