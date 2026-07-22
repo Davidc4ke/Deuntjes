@@ -1,12 +1,15 @@
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/components/shared/AuthGate';
 import { db } from '@/db/client';
-import { games, songs, users } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { games, gameRooms, songs, users } from '@/db/schema';
+import { asc, eq, inArray } from 'drizzle-orm';
 import { SongPageClient } from './SongPageClient';
 import { RingSongView } from './RingSongView';
 import { normalizeSequencerState } from '@/lib/sequencerState';
 import { isRingState, normalizeRingState } from '@/lib/ringState';
+import { curseById } from '@/lib/curses';
+import { CHANNEL_NAMES } from '@/lib/gameLogic';
+import { toRoman } from '../../games/glyphs';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,11 +40,51 @@ export default async function SongPage({ params }: { params: Promise<{ id: strin
   // Dungeon songs composed in the Ritual Ring get the ring listen-view; the
   // only write path for them is the game's turn API, so it's always read-only.
   if (isRingState(row.sequencerData)) {
+    // The chronicle: who forged which layer under which curse. Only SEALED
+    // rooms are credited — an in-progress room's cards stay secret, exactly
+    // as on the map.
+    let credits: Array<{
+      roman: string;
+      player: string;
+      avatar: string;
+      track: string;
+      curse: string | null;
+      rule: string | null;
+    }> = [];
+    if (game) {
+      const roomsList = await db
+        .select()
+        .from(gameRooms)
+        .where(eq(gameRooms.gameId, game.id))
+        .orderBy(asc(gameRooms.roomIndex));
+      const locked = roomsList.filter((r) => r.status === 'locked');
+      const ids = [...new Set(locked.map((r) => r.playerId))];
+      const players = ids.length
+        ? await db
+            .select({ id: users.id, displayName: users.displayName, avatarEmoji: users.avatarEmoji })
+            .from(users)
+            .where(inArray(users.id, ids))
+        : [];
+      const byId = new Map(players.map((p) => [p.id, p]));
+      credits = locked.map((r) => {
+        const p = byId.get(r.playerId);
+        const c = curseById(r.curseId);
+        return {
+          roman: toRoman(r.roomIndex + 1),
+          player: p?.displayName ?? '?',
+          avatar: p?.avatarEmoji ?? '',
+          track: CHANNEL_NAMES[r.channelId] ?? `Ch ${r.channelId}`,
+          curse: c?.name ?? null,
+          rule: c?.rule ?? null,
+        };
+      });
+    }
     return (
       <RingSongView
         title={row.title}
         initialState={normalizeRingState(row.sequencerData)}
         creator={{ displayName: row.creatorName, avatarEmoji: row.creatorAvatar }}
+        credits={credits}
       />
     );
   }
