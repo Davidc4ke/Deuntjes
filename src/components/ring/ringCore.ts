@@ -191,10 +191,36 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       } catch {
         mediaKick = null;
       }
+      // iOS suspends/"interrupts" the context on app switch, phone calls, etc.
+      // Whenever it drops out of running while we're foreground, try to bring
+      // it back so playback doesn't die silently.
+      AC.addEventListener('statechange', () => {
+        if (AC && AC.state !== 'running' && document.visibilityState === 'visible') {
+          AC.resume().catch(() => {});
+        }
+      });
     }
-    if (AC.state === 'suspended') AC.resume();
+    if (AC.state !== 'running') AC.resume().catch(() => {});
     return AC;
   }
+  // Backgrounding on iOS suspends WebAudio AND pauses the silent media-kick
+  // (which is what keeps sound alive through the ringer switch). On return to
+  // the foreground, wake both — otherwise coming back to the app leaves the
+  // ring mute until the next fresh gesture.
+  function resumeAudio() {
+    if (!AC) return;
+    if (AC.state !== 'running') AC.resume().catch(() => {});
+    if (mediaKick) {
+      const p = mediaKick.play();
+      if (p && p.catch) p.catch(() => {});
+    }
+  }
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') resumeAudio();
+  };
+  document.addEventListener('visibilitychange', onVisible);
+  window.addEventListener('focus', resumeAudio);
+  window.addEventListener('pageshow', resumeAudio);
   // shared send effects: a real (generated-impulse) reverb and a feedback delay
   function fxBus() {
     const ac = AC!;
@@ -1450,6 +1476,9 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       if (timer) clearInterval(timer);
       timer = null;
       window.removeEventListener('pointerup', onWindowPointerUp);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', resumeAudio);
+      window.removeEventListener('pageshow', resumeAudio);
       if (mediaKick) {
         try { mediaKick.pause(); } catch { /* already gone */ }
         mediaKick = null;
