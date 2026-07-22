@@ -574,13 +574,13 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       }
     }
   }
-  function tone(track: LiveTrack, note: string, len = 1, when = 0, vol = 1, pOver?: typeof track.params) {
+  function tone(track: LiveTrack, note: string, len = 1, when = 0, vol = 1, pOver?: typeof track.params, octOff = 0) {
     try {
       const ac = ensureAC();
       const P = pOver ?? track.params;
       const t = ac.currentTime + when;
-      // whole-lane octave transpose as a frequency multiplier (works on drums)
-      const octMul = Math.pow(2, track.octave ?? 0);
+      // lane octave + per-step octave offset, as a frequency multiplier (drums too)
+      const octMul = Math.pow(2, (track.octave ?? 0) + octOff);
       if (track.kind === 'drum') {
         drumVoice(track.preset, t, (noteFreq(note) / 65.41) /* C2 */ * octMul, P, vol);
         return;
@@ -630,7 +630,8 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
   function playEvent(track: LiveTrack, ev: RingEvent, when = 0) {
     // step shaping: sparse per-step overrides merged over the lane params
     const P = ev.params ? { ...track.params, ...ev.params } : track.params;
-    ev.notes.forEach((n, i) => tone(track, n, ev.len, when + i * .012, ev.vol ?? 1, P));
+    const octOff = ev.octave ?? 0;
+    ev.notes.forEach((n, i) => tone(track, n, ev.len, when + i * .012, ev.vol ?? 1, P, octOff));
   }
 
   // ================= animated layout =================
@@ -1113,10 +1114,22 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       // Edits land on the selected step (and the sticky, so the next carve
       // inherits them); without a selection they shape the sticky alone.
       const target = ev ?? sticky;
-      const hasShape = !!(target.params && Object.keys(target.params).length > 0);
+      const so = target.octave ?? 0;
+      const hasShape = !!((target.params && Object.keys(target.params).length > 0) || so !== 0);
+      // per-step octave stepper, top of the Shape → voice group (offset added
+      // on top of the lane octave for just this step)
+      const stepOctRow = state.stepTab === 'voice' ? `
+        <div class="prow oct-row"><label${so !== 0 ? ' style="color:var(--blood-lit)"' : ''}>octave</label>
+          <div class="oct-step">
+            <button data-soct="down"${so <= -4 ? ' disabled' : ''}>−</button>
+            <span class="oct-val">${so > 0 ? '+' : ''}${so}</span>
+            <button data-soct="up"${so >= 4 ? ' disabled' : ''}>+</button>
+          </div>
+        </div>` : '';
       const shapeContent = `
         <div class="ptabs">${Object.keys(PARAM_TABS).map((tab) =>
           `<button data-stab="${tab}" class="${state.stepTab === tab ? 'cur' : ''}">${tab}</button>`).join('')}</div>
+        ${stepOctRow}
         ${PARAM_TABS[state.stepTab].map((p) => {
           const ov = target.params && (target.params as any)[p] !== undefined;
           const val = ov ? (target.params as any)[p] : (t.params as any)[p];
@@ -1152,6 +1165,7 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
       state.stickyEv[t.key] = buildChord(state.chordCfg, prev.len || 4);
       state.stickyEv[t.key].vol = prev.vol ?? 1;
       if (prev.params) state.stickyEv[t.key].params = clone(prev.params);
+      if (prev.octave) state.stickyEv[t.key].octave = prev.octave;
     }
     const ev = clone(state.stickyEv[t.key]);
     if (state.sel !== null && stepAt(t, state.sel)) {
@@ -1189,12 +1203,28 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
     }
     const stab = target.closest('[data-stab]') as HTMLElement | null;
     if (stab) { state.stepTab = stab.dataset.stab; renderPickers(); return; }
+    const soct = target.closest('[data-soct]') as HTMLElement | null;
+    if (soct) {
+      // per-step octave — write on the sticky AND the selected step
+      const dir = soct.dataset.soct === 'up' ? 1 : -1;
+      const selEv = state.sel !== null ? stepAt(t, state.sel) : null;
+      [state.stickyEv[t.key], ...(selEv ? [selEv] : [])].forEach((x) => {
+        const nx = Math.max(-4, Math.min(4, (x.octave ?? 0) + dir));
+        if (nx === 0) delete x.octave;
+        else x.octave = nx;
+      });
+      if (selEv) commit();
+      playEvent(t, selEv ?? state.stickyEv[t.key]);
+      renderRing(); renderPickers(); return;
+    }
     const sreset = target.closest('[data-sreset]') as HTMLElement | null;
     if (sreset) {
       delete state.stickyEv[t.key].params;
+      delete state.stickyEv[t.key].octave;
       const selEv = state.sel !== null ? stepAt(t, state.sel) : null;
       if (selEv) {
         delete selEv.params;
+        delete selEv.octave;
         commit();
       }
       playEvent(t, selEv ?? state.stickyEv[t.key]);
@@ -1380,6 +1410,7 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
         state.stickyEv[t.key] = buildChord(state.chordCfg, prev.len || 4);
         state.stickyEv[t.key].vol = prev.vol ?? 1;
         if (prev.params) state.stickyEv[t.key].params = clone(prev.params);
+        if (prev.octave) state.stickyEv[t.key].octave = prev.octave;
       }
       t.steps[String(s)] = clone(state.stickyEv[t.key]);
       state.sel = s;

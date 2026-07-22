@@ -19,6 +19,9 @@ export type RingEvent = {
   // Sparse per-step overrides of the lane's params — only the touched knobs
   // are stored; playback merges them over the lane values for this hit.
   params?: Partial<RingParams>;
+  // Per-step octave offset, added on top of the lane octave for this hit
+  // (−4…+4). Omitted when 0.
+  octave?: number;
 };
 
 export type RingParams = {
@@ -252,6 +255,10 @@ export function sanitizeRingEvent(raw: unknown, kind: RingTrackKind): RingEvent 
       if (typeof v === 'number' && isFinite(v)) p[k] = Math.min(1, Math.max(0, v));
     }
     if (Object.keys(p).length > 0) ev.params = p;
+  }
+  if (typeof r.octave === 'number' && isFinite(r.octave)) {
+    const o = Math.round(Math.min(RING_OCTAVE_MAX, Math.max(RING_OCTAVE_MIN, r.octave)));
+    if (o !== 0) ev.octave = o;
   }
   return ev;
 }
