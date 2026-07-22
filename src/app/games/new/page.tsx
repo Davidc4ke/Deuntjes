@@ -7,7 +7,7 @@ import { asc } from 'drizzle-orm';
 import { clampRingBpm, defaultRingSongState } from '@/lib/ringState';
 import { BpmPicker } from './BpmPicker';
 import { SubmitButton } from '@/components/shared/SubmitButton';
-import { channelForRoom, playerForRoom } from '@/lib/gameLogic';
+import { channelDeck, playerForRoom } from '@/lib/gameLogic';
 import { dealCurse } from '@/lib/curses';
 import { initials, SkullGlyph } from '../glyphs';
 
@@ -47,12 +47,15 @@ async function createGameAction(formData: FormData) {
     .values({ title, songId: song.id, createdBy: userId, playerOrder, roomCount })
     .returning({ id: games.id });
 
+  // Track types are shuffled once per game, so the dungeon isn't always
+  // Drum-first and each playthrough deals a different order.
+  const deck = channelDeck(roomCount);
   await db.insert(gameRooms).values(
     Array.from({ length: roomCount }, (_, i) => ({
       gameId: game.id,
       roomIndex: i,
       playerId: playerForRoom(i, playerOrder),
-      channelId: channelForRoom(i),
+      channelId: deck[i],
       // Room 0 is dealt (and playable) immediately; later rooms get their
       // curse when they become current.
       curseId: i === 0 ? dealCurse().id : null,

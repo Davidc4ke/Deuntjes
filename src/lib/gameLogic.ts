@@ -30,6 +30,20 @@ export function channelForRoom(roomIndex: number): number {
   return CHANNEL_ORDER[roomIndex % CHANNEL_ORDER.length];
 }
 
+// A per-game running order of track types, one per room. The four channels
+// are spread evenly across the rooms (so every layer gets built a fair
+// number of times) and then shuffled, so the dungeon no longer always opens
+// on Drum — each game deals a different, unpredictable sequence.
+export function channelDeck(roomCount: number): number[] {
+  const deck: number[] = [];
+  for (let i = 0; i < roomCount; i++) deck.push(CHANNEL_ORDER[i % CHANNEL_ORDER.length]);
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+}
+
 export function playerForRoom(roomIndex: number, playerOrder: string[]): string {
   return playerOrder[roomIndex % playerOrder.length];
 }
