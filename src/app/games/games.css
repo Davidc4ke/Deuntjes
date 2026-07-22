@@ -690,6 +690,28 @@
 .grim .player-pick input { accent-color: var(--g-ink); width: 16px; height: 16px; }
 .grim .player-pick .pname { flex: 1; font-size: 15px; color: var(--g-ink); font-style: normal; }
 .grim .player-pick .pyou { font-size: 11px; color: var(--g-smoke); font-style: italic; }
+
+/* ===== login loading feedback ===== */
+/* While a bard is entering, the roster dims and stops taking taps and an
+   indeterminate blood bar sweeps above it. Purely visual — the native form
+   submit still runs, so no-JS webviews are unaffected. */
+.grim .login-gate.entering form { opacity: 0.4; pointer-events: none; transition: opacity 0.2s; }
+.grim .login-loading { margin: 2px 0 12px; }
+.grim .login-bar {
+  height: 4px; border-radius: 2px; overflow: hidden;
+  background: rgba(212, 33, 33, 0.16);
+  border: 1px solid rgba(212, 33, 33, 0.25);
+}
+.grim .login-bar span {
+  display: block; height: 100%; width: 40%; border-radius: 2px;
+  background: linear-gradient(90deg, var(--blood-dark), var(--blood-lit), var(--blood-dark));
+  box-shadow: 0 0 10px rgba(212, 33, 33, 0.7);
+  animation: loginSweep 1.05s ease-in-out infinite;
+}
+@keyframes loginSweep {
+  0% { margin-left: -42%; }
+  100% { margin-left: 102%; }
+}
 .grim .gform .hint { font-size: 12px; color: var(--g-smoke); font-style: italic; margin: 6px 2px 0; }
 
 /* ===== compose screen shell ===== */

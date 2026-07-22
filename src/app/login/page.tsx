@@ -4,6 +4,7 @@ import { signIn } from '@/auth';
 import { db } from '@/db/client';
 import { users } from '@/db/schema';
 import { asc } from 'drizzle-orm';
+import { LoginGate } from './LoginGate';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,26 +55,28 @@ export default async function LoginPage({
         </div>
         <div className="gform">
           <label className="f-label">Who goes there?</label>
-          {roster.map((u) => (
-            <form key={u.username} action={enterAction}>
-              <input type="hidden" name="username" value={u.username} />
-              <input type="hidden" name="callbackUrl" value={callbackUrl ?? '/'} />
-              <button
-                type="submit"
-                className="player-pick"
-                style={{ width: '100%', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}
-              >
-                <span className="med">
-                  {u.displayName.slice(0, 1).toUpperCase()}
-                  {u.displayName.slice(1, 2).toLowerCase()}
-                </span>
-                <span className="pname">
-                  {u.avatarEmoji} {u.displayName}
-                </span>
-                <span className="pyou">enter ›</span>
-              </button>
-            </form>
-          ))}
+          <LoginGate>
+            {roster.map((u) => (
+              <form key={u.username} action={enterAction} data-name={u.displayName}>
+                <input type="hidden" name="username" value={u.username} />
+                <input type="hidden" name="callbackUrl" value={callbackUrl ?? '/'} />
+                <button
+                  type="submit"
+                  className="player-pick"
+                  style={{ width: '100%', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}
+                >
+                  <span className="med">
+                    {u.displayName.slice(0, 1).toUpperCase()}
+                    {u.displayName.slice(1, 2).toLowerCase()}
+                  </span>
+                  <span className="pname">
+                    {u.avatarEmoji} {u.displayName}
+                  </span>
+                  <span className="pyou">enter ›</span>
+                </button>
+              </form>
+            ))}
+          </LoginGate>
           {error ? (
             <p className="hint" style={{ color: 'var(--blood-lit)' }}>
               The gate stayed shut. Ask David.
