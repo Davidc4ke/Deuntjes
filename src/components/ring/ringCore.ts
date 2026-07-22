@@ -291,8 +291,24 @@ export function mountRing(container: HTMLElement, opts: RingMountOptions): RingH
   // `vol` is the step's own velocity; P.volume the channel fader.
   function drumVoice(name: string, t: number, factor: number, P: any, vol = 1) {
     const ac = AC!;
-    const out = chain(P); // EQ / pan / drive / reverb / delay all apply
+    const dest = chain(P); // EQ / pan / drive / reverb / delay all apply
+    // Voice-tab ADSR now shapes drums too: an outer VCA gate over the whole
+    // hit. attack softens the transient; decay+sustain set how long the hit
+    // rings at full level; release fades the tail. Defaults give a ~1.05s
+    // gate — longer than every kit voice, so the stock sound is untouched —
+    // while lowering decay/sustain/release tightens a hit (short hats,
+    // clipped kicks) and raising attack blunts the crack.
+    const out = ac.createGain();
+    const atkSec = 0.001 + P.attack * 0.1;
+    const holdSec = 0.04 + (P.decay + P.sustain) * 0.95;
+    const relSec = 0.005 + P.release * 0.8;
+    out.gain.setValueAtTime(0.0001, t);
+    out.gain.linearRampToValueAtTime(1, t + atkSec);
+    out.gain.setValueAtTime(1, t + atkSec + holdSec);
+    out.gain.linearRampToValueAtTime(0.0001, t + atkSec + holdSec + relSec);
+    out.connect(dest);
     const rv = 1;
+    // channel fader only — the ADSR VCA owns the shaping now
     const vg = vol * (P.volume / .8);
     const envGain = (tt: number, peak: number, dur: number) => {
       const g = ac.createGain();
